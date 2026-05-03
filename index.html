@@ -4498,6 +4498,54 @@ function ShopView({
 /* ════════════════════════════════════════════════════════════
    ORDER VIEW (roster grid + permission gating)
    ════════════════════════════════════════════════════════════ */
+/* Sub-tab switcher for admin who's also a parent (toggles between own kids vs full roster) */
+function SubTabSwitcher({
+  subtab,
+  setSubtab,
+  myKidsCount,
+  totalCount,
+  shop
+}) {
+  const tabs = [{
+    id: 'mine',
+    label: '我的孩子',
+    en: 'MY KIDS',
+    count: myKidsCount,
+    icon: '👨‍👩‍👧'
+  }, {
+    id: 'all',
+    label: '全員',
+    en: 'ALL',
+    count: totalCount,
+    icon: '🏊'
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 flex gap-2"
+  }, tabs.map(t => {
+    const on = subtab === t.id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: t.id,
+      onClick: () => setSubtab(t.id),
+      className: "btn-tactile flex-1 py-2 px-3 text-left",
+      style: {
+        background: on ? shop.themeBg : 'var(--paper)',
+        color: on ? shop.themeColor : 'var(--ink-2)',
+        border: `2px solid ${on ? shop.themeColor : 'var(--line)'}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-base"
+    }, t.icon), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base",
+      style: {
+        fontWeight: on ? 900 : 500
+      }
+    }, t.label), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num"
+    }, t.en, " \xB7 ", t.count))));
+  }));
+}
 function OrderView({
   shop,
   carts,
@@ -4508,6 +4556,14 @@ function OrderView({
   setOpenSwimmer
 }) {
   const [filter, setFilter] = useState('all');
+  const myKids = (account?.swimmers || []).filter(sid => ROSTER_BY_ID[sid]);
+  const hasMyKids = myKids.length > 0;
+  const [subtab, setSubtab] = useState(hasMyKids ? 'mine' : 'all');
+  // re-pin when myKids changes
+  useEffect(() => {
+    if (hasMyKids && subtab !== 'mine' && subtab !== 'all') setSubtab('mine');
+    if (!hasMyKids && subtab === 'mine') setSubtab('all');
+  }, [hasMyKids]);
   if (!shop) {
     return /*#__PURE__*/React.createElement("section", {
       className: "pt-10 text-center"
@@ -4526,6 +4582,25 @@ function OrderView({
         color: 'var(--red)'
       }
     }, "SHOP \u9078\u5E97"), "\u300D\u5206\u9801\u6311\u9078\u660E\u65E5\u65E9\u9910\u5E97") : '等管理員選店後，您就能下單了'));
+  }
+
+  // If admin has their own kids and is on "我的孩子" subtab, render ParentOrderView
+  if (hasMyKids && subtab === 'mine') {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-5 sm:pt-7"
+    }, /*#__PURE__*/React.createElement(SubTabSwitcher, {
+      subtab: subtab,
+      setSubtab: setSubtab,
+      myKidsCount: myKids.length,
+      totalCount: ROSTER.length,
+      shop: shop
+    }), /*#__PURE__*/React.createElement(ParentOrderView, {
+      shop: shop,
+      carts: carts,
+      account: account,
+      isCutoff: isCutoff,
+      dispatch: dispatch
+    }));
   }
   const filtered = useMemo(() => {
     if (filter === 'all') return ROSTER;
@@ -4555,7 +4630,13 @@ function OrderView({
   const isAdmin = isAdminRole(account);
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, hasMyKids && /*#__PURE__*/React.createElement(SubTabSwitcher, {
+    subtab: subtab,
+    setSubtab: setSubtab,
+    myKidsCount: myKids.length,
+    totalCount: ROSTER.length,
+    shop: shop
+  }), /*#__PURE__*/React.createElement("div", {
     className: "mb-4 p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2",
     style: {
       background: shop.themeBg,
@@ -6636,32 +6717,69 @@ function AccountsView({
     }
   }, "\uD83D\uDC51 SUPER-ADMIN"), /*#__PURE__*/React.createElement("div", {
     className: "space-y-2"
-  }, supers.map(a => /*#__PURE__*/React.createElement("div", {
-    key: a.uid,
-    className: "p-3 flex items-center gap-3",
-    style: {
-      background: 'var(--super-bg)',
-      border: '1.5px solid var(--super)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-2xl"
-  }, "\uD83D\uDC51"), /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-base"
-  }, a.name || '(未命名)'), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs num-mono",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, a.email)), /*#__PURE__*/React.createElement("span", {
-    className: "role-chip",
-    style: {
-      background: 'var(--super)',
-      color: 'var(--paper)',
-      border: '1.5px solid var(--super)'
-    }
-  }, "SUPER"))))), /*#__PURE__*/React.createElement("div", {
+  }, supers.map(a => {
+    const isMe = a.uid === account.uid;
+    const swimmerNames = (a.swimmers || []).map(sid => ROSTER_BY_ID[sid]?.name).filter(Boolean);
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.uid,
+      className: "p-3",
+      style: {
+        background: 'var(--super-bg)',
+        border: '1.5px solid var(--super)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-3"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-2xl"
+    }, "\uD83D\uDC51"), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base"
+    }, a.name || '(未命名)', isMe && /*#__PURE__*/React.createElement("span", {
+      className: "ml-2 text-xs",
+      style: {
+        color: 'var(--super)'
+      }
+    }, "\xB7 \u60A8")), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs num-mono",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, a.email)), /*#__PURE__*/React.createElement("span", {
+      className: "role-chip",
+      style: {
+        background: 'var(--super)',
+        color: 'var(--paper)',
+        border: '1.5px solid var(--super)'
+      }
+    }, "SUPER")), /*#__PURE__*/React.createElement("div", {
+      className: "mt-2 pl-9 flex items-baseline justify-between gap-2 flex-wrap"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-xs flex-1 min-w-0",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u6211\u7684\u5B69\u5B50\uFF1A"), swimmerNames.length > 0 ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--ink)'
+      }
+    }, swimmerNames.join('、')) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "(\u672A\u7D81\u5B9A)")), isMe && /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditingBindings(a.uid),
+      className: "btn-tactile text-[10px] px-2 py-1 shrink-0",
+      style: {
+        border: '1px solid var(--super)',
+        color: 'var(--super)'
+      }
+    }, "\u6539\u6211\u7684\u7D81\u5B9A")));
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "mb-5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between mb-2"
@@ -6682,54 +6800,92 @@ function AccountsView({
     style: {
       color: 'var(--mute)'
     }
-  }, "\u5C1A\u7121 admin"), admins.map(a => /*#__PURE__*/React.createElement("div", {
-    key: a.uid,
-    className: "p-3 flex items-center gap-3",
-    style: {
-      background: 'var(--paper)',
-      border: '1.5px solid var(--admin)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-2xl"
-  }, "\uD83C\uDF96"), /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-base"
-  }, a.name || '(未命名)'), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs num-mono",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, a.email)), isSuper && /*#__PURE__*/React.createElement("div", {
-    className: "flex gap-1 flex-wrap justify-end"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      if (confirm(`確定降為 parent？`)) dispatch({
-        type: 'role_change',
-        uid: a.uid,
-        newRole: 'parent',
-        name: a.name
-      });
-    },
-    className: "btn-tactile text-[10px] px-2 py-1",
-    style: {
-      border: '1px solid var(--mute)',
-      color: 'var(--mute)'
-    }
-  }, "\u964D\u70BA\u5BB6\u9577"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      if (confirm(`確定移除帳號 ${a.name}？此動作無法復原`)) dispatch({
-        type: 'remove_account',
-        uid: a.uid,
-        name: a.name
-      });
-    },
-    className: "btn-tactile text-[10px] px-2 py-1",
-    style: {
-      border: '1px solid var(--red)',
-      color: 'var(--red)'
-    }
-  }, "\u79FB\u9664")))))), pendingParents.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "\u5C1A\u7121 admin"), admins.map(a => {
+    const isMe = a.uid === account.uid;
+    const swimmerNames = (a.swimmers || []).map(sid => ROSTER_BY_ID[sid]?.name).filter(Boolean);
+    const canEditBinding = isMe || isSuper;
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.uid,
+      className: "p-3",
+      style: {
+        background: 'var(--paper)',
+        border: '1.5px solid var(--admin)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-3"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-2xl"
+    }, "\uD83C\uDF96"), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base"
+    }, a.name || '(未命名)', isMe && /*#__PURE__*/React.createElement("span", {
+      className: "ml-2 text-xs",
+      style: {
+        color: 'var(--admin)'
+      }
+    }, "\xB7 \u60A8")), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs num-mono",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, a.email))), /*#__PURE__*/React.createElement("div", {
+      className: "mt-2 pl-9 flex items-baseline justify-between gap-2 flex-wrap"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-xs flex-1 min-w-0",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u6211\u7684\u5B69\u5B50\uFF1A"), swimmerNames.length > 0 ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--ink)'
+      }
+    }, swimmerNames.join('、')) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "(\u672A\u7D81\u5B9A)")), /*#__PURE__*/React.createElement("div", {
+      className: "flex gap-1 flex-wrap justify-end shrink-0"
+    }, canEditBinding && /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditingBindings(a.uid),
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--admin)',
+        color: 'var(--admin)'
+      }
+    }, isMe ? '改我的綁定' : '改綁定'), isSuper && !isMe && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (confirm(`確定降為 parent？`)) dispatch({
+          type: 'role_change',
+          uid: a.uid,
+          newRole: 'parent',
+          name: a.name
+        });
+      },
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--mute)',
+        color: 'var(--mute)'
+      }
+    }, "\u964D\u70BA\u5BB6\u9577"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (confirm(`確定移除帳號 ${a.name}？此動作無法復原`)) dispatch({
+          type: 'remove_account',
+          uid: a.uid,
+          name: a.name
+        });
+      },
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--red)',
+        color: 'var(--red)'
+      }
+    }, "\u79FB\u9664")))));
+  }))), pendingParents.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "mb-5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between mb-2"
@@ -6910,10 +7066,14 @@ function BindingModal({
   const [swimmers, setSwimmers] = useState(target.swimmers || []);
   const [busy, setBusy] = useState(false);
 
-  // Bound swimmers from OTHER accounts (so we can't steal)
-  const otherBound = new Set();
+  // Map: swimmerId → list of OTHER accounts that already bind this swimmer (for info)
+  const otherBinders = {};
   allAccounts.forEach(a => {
-    if (a.uid !== target.uid) (a.swimmers || []).forEach(s => otherBound.add(s));
+    if (a.uid === target.uid) return;
+    (a.swimmers || []).forEach(s => {
+      if (!otherBinders[s]) otherBinders[s] = [];
+      otherBinders[s].push(a.name || a.email);
+    });
   });
   const submit = async () => {
     setBusy(true);
@@ -6956,7 +7116,7 @@ function BindingModal({
     }
   }, "EDIT BINDING"), /*#__PURE__*/React.createElement("div", {
     className: "display-cn text-lg"
-  }, "\u6539\u7D81\u5B9A \xB7 ", target.name)), /*#__PURE__*/React.createElement("button", {
+  }, "\u7D81\u5B9A \xB7 ", target.name)), /*#__PURE__*/React.createElement("button", {
     onClick: onClose,
     className: "btn-tactile px-3 py-1 text-sm",
     style: {
@@ -6965,6 +7125,13 @@ function BindingModal({
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "p-4 space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it"
+  }, "tip \xB7"), " \u4E00\u4F4D\u968A\u54E1\u53EF\u4EE5\u7531\u591A\u500B\u5E33\u865F\u7D81\u5B9A\uFF08\u5982\u7236+\u6BCD\uFF09\uFF0C\u4E0D\u6703\u885D\u7A81"), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-64 overflow-y-auto scroll-y p-2",
     style: {
       border: '1.5px solid var(--line)',
@@ -6972,10 +7139,10 @@ function BindingModal({
     }
   }, ROSTER.map(m => {
     const checked = swimmers.includes(m.id);
-    const otherHas = otherBound.has(m.id);
+    const others = otherBinders[m.id] || [];
     return /*#__PURE__*/React.createElement("label", {
       key: m.id,
-      className: `flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer ${otherHas && !checked ? 'opacity-30' : ''}`,
+      className: "flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer",
       style: {
         background: checked ? 'var(--parent-bg)' : 'transparent',
         border: `1px solid ${checked ? 'var(--parent)' : 'transparent'}`
@@ -6983,18 +7150,19 @@ function BindingModal({
     }, /*#__PURE__*/React.createElement("input", {
       type: "checkbox",
       checked: checked,
-      disabled: otherHas && !checked,
       onChange: e => {
         if (e.target.checked) setSwimmers([...swimmers, m.id]);else setSwimmers(swimmers.filter(s => s !== m.id));
       }
-    }), /*#__PURE__*/React.createElement("span", {
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
       className: "display-cn"
-    }, m.name), otherHas && !checked && /*#__PURE__*/React.createElement("span", {
-      className: "text-[9px]",
+    }, m.name), others.length > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "text-[9px] truncate",
       style: {
         color: 'var(--mute)'
       }
-    }, "\u5DF2\u7D81"));
+    }, others.join('、'))));
   })), /*#__PURE__*/React.createElement("button", {
     onClick: submit,
     disabled: busy,
