@@ -7977,24 +7977,54 @@ function App() {
           const d = new Date(today);
           d.setDate(d.getDate() - dayOffset);
           const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const snap = await db.collection('orders').doc(ds).collection('swimmers').get();
-          if (cancelled) return;
-          snap.forEach(doc => {
-            const sid = doc.id;
-            if (!remaining.has(sid)) return;
-            const data = doc.data();
-            if (!data?.items || Object.keys(data.items).length === 0) return;
-            // detect shopId from any item
-            const firstItem = Object.values(data.items)[0];
-            out[sid] = {
-              date: ds,
-              items: data.items,
-              totalQty: data.totalQty || Object.values(data.items).reduce((s, l) => s + (l.qty || 0), 0),
-              totalPrice: data.totalPrice || Object.values(data.items).reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0),
-              shopId: firstItem?.shop || null
-            };
-            remaining.delete(sid);
-          });
+          if (swimmerIds) {
+            // Parent: only fetch own children's docs (avoids permission check on whole collection)
+            const fetches = Array.from(remaining).map(sid => db.collection('orders').doc(ds).collection('swimmers').doc(sid).get().then(doc => ({
+              sid,
+              doc
+            })).catch(() => ({
+              sid,
+              doc: null
+            })));
+            const results = await Promise.all(fetches);
+            if (cancelled) return;
+            results.forEach(({
+              sid,
+              doc
+            }) => {
+              if (!doc || !doc.exists) return;
+              const data = doc.data();
+              if (!data?.items || Object.keys(data.items).length === 0) return;
+              const firstItem = Object.values(data.items)[0];
+              out[sid] = {
+                date: ds,
+                items: data.items,
+                totalQty: data.totalQty || Object.values(data.items).reduce((s, l) => s + (l.qty || 0), 0),
+                totalPrice: data.totalPrice || Object.values(data.items).reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0),
+                shopId: firstItem?.shop || null
+              };
+              remaining.delete(sid);
+            });
+          } else {
+            // Admin: fetch entire date collection at once
+            const snap = await db.collection('orders').doc(ds).collection('swimmers').get();
+            if (cancelled) return;
+            snap.forEach(doc => {
+              const sid = doc.id;
+              if (!remaining.has(sid)) return;
+              const data = doc.data();
+              if (!data?.items || Object.keys(data.items).length === 0) return;
+              const firstItem = Object.values(data.items)[0];
+              out[sid] = {
+                date: ds,
+                items: data.items,
+                totalQty: data.totalQty || Object.values(data.items).reduce((s, l) => s + (l.qty || 0), 0),
+                totalPrice: data.totalPrice || Object.values(data.items).reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0),
+                shopId: firstItem?.shop || null
+              };
+              remaining.delete(sid);
+            });
+          }
         }
         if (!cancelled) setLastOrders(out);
       } catch (e) {
