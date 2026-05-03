@@ -149,6 +149,13 @@
     padding:3px 8px;font-size:11px;font-weight:700;
     font-family:"Inter",sans-serif;letter-spacing:0.1em;
   }
+  .help-content ul{list-style:disc;padding-left:1.4em;margin:6px 0}
+  .help-content ol{list-style:decimal;padding-left:1.4em;margin:6px 0}
+  .help-content li{margin-bottom:3px;line-height:1.5}
+  .help-content p{margin-bottom:6px;line-height:1.6}
+  .help-content strong{color:var(--ink);font-weight:700}
+  .help-content .text-red{color:var(--red)}
+  .help-content code{background:var(--bg);padding:1px 6px;border:1px solid var(--line);font-family:ui-monospace,monospace;font-size:12px}
   .lock-overlay{position:relative;}
   .lock-overlay::after{
     content:"";position:absolute;inset:0;
@@ -4123,7 +4130,8 @@ function Header({
   isCutoff,
   notifCount,
   onNotifClick,
-  onLogout
+  onLogout,
+  onHelp
 }) {
   const f = formatDateBig(date);
   const roleColor = account?.role === 'super-admin' ? 'var(--super)' : account?.role === 'admin' ? 'var(--admin)' : 'var(--parent)';
@@ -4196,6 +4204,17 @@ function Header({
   }, account?.name || account?.email), /*#__PURE__*/React.createElement("span", {
     className: "opacity-60"
   }, "\xB7 ", roleLabel)), /*#__PURE__*/React.createElement("button", {
+    onClick: onHelp,
+    className: "btn-tactile p-2 text-xs",
+    style: {
+      border: '1.5px solid var(--ink-2)',
+      background: 'var(--paper)',
+      color: 'var(--ink-2)'
+    },
+    title: "\u8AAA\u660E"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, "\u2753")), /*#__PURE__*/React.createElement("button", {
     onClick: onLogout,
     className: "btn-tactile p-2 text-xs",
     style: {
@@ -6707,6 +6726,7 @@ function MenuAdminView({
   dispatch
 }) {
   const [shopId, setShopId] = useState('yusee');
+  const [addingTo, setAddingTo] = useState(null); // catId currently in "add" mode
   const shop = shops[shopId];
   if (!isAdminRole(account)) {
     return /*#__PURE__*/React.createElement("section", {
@@ -6723,24 +6743,74 @@ function MenuAdminView({
       }
     }, "\u50C5\u7BA1\u7406\u54E1\u53EF\u7DE8\u8F2F\u83DC\u55AE"));
   }
-  const updateItemPrice = (catId, idx, variant, newPrice) => {
-    const oldShop = shops[shopId];
-    const newItems = JSON.parse(JSON.stringify(oldShop.items));
-    const itemsInCat = newItems.filter(it => it.cat === catId);
-    const target = itemsInCat[idx];
+
+  /* Locate target item by catId + index-in-category, then call updater */
+  const updateItemAt = (catId, idx, updater, detailFn) => {
+    const oldItems = shops[shopId].items || [];
+    const newItems = JSON.parse(JSON.stringify(oldItems));
+    // Find the same item position in newItems
+    const inCat = newItems.filter(it => it.cat === catId);
+    const target = inCat[idx];
     if (!target) return;
-    const oldPrice = target.prices[variant];
-    if (parseInt(newPrice) === oldPrice) return;
-    target.prices[variant] = parseInt(newPrice) || 0;
-    // find original index in flat items array and update
-    const allTarget = newItems.find(it => it.cat === catId && it.name === target.name);
-    if (allTarget) allTarget.prices[variant] = target.prices[variant];
+    const flatIdx = newItems.findIndex(it => it.cat === catId && it.name === target.name);
+    if (flatIdx < 0) return;
+    const before = JSON.parse(JSON.stringify(newItems[flatIdx]));
+    updater(newItems[flatIdx]);
+    const detail = detailFn ? detailFn(before, newItems[flatIdx]) : `編輯「${target.name}」`;
     dispatch({
       type: 'menu_edit',
       shopId,
       items: newItems,
-      detail: `「${target.name}」(${variant}) 價格 $${oldPrice} → $${newPrice}`
+      detail
     });
+  };
+  const updateItemPrice = (catId, idx, variant, newPrice) => {
+    updateItemAt(catId, idx, target => {
+      target.prices[variant] = parseInt(newPrice) || 0;
+    }, (before, after) => `「${after.name}」(${variant}) 價格 $${before.prices[variant]} → $${after.prices[variant]}`);
+  };
+  const updateItemName = (catId, idx, newName) => {
+    const trimmed = (newName || '').trim();
+    if (!trimmed) return; // ignore empty
+    updateItemAt(catId, idx, target => {
+      target.name = trimmed;
+    }, (before, after) => `品名 「${before.name}」 → 「${after.name}」`);
+  };
+  const deleteItem = (catId, idx) => {
+    const oldItems = shops[shopId].items || [];
+    const inCat = oldItems.filter(it => it.cat === catId);
+    const target = inCat[idx];
+    if (!target) return;
+    if (!confirm(`確定刪除「${target.name}」？\n\n注意：已下訂這個品項的訂單不受影響，但日後家長和管理員都將無法選擇此品項。`)) return;
+    const newItems = oldItems.filter(it => !(it.cat === catId && it.name === target.name));
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      items: newItems,
+      detail: `🗑 刪除品項「${target.name}」`
+    });
+  };
+  const addItem = (catId, name, prices) => {
+    const oldItems = shops[shopId].items || [];
+    // Avoid duplicate name+cat
+    const dup = oldItems.find(it => it.cat === catId && it.name === name);
+    if (dup) {
+      alert(`此分類已有同名品項「${name}」`);
+      return false;
+    }
+    const newItem = {
+      name,
+      cat: catId,
+      prices
+    };
+    const newItems = [...oldItems, newItem];
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      items: newItems,
+      detail: `➕ 新增品項「${name}」(${Object.entries(prices).map(([v, p]) => `${v === 'default' ? '' : v + ':'}$${p}`).join(' / ')})`
+    });
+    return true;
   };
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
@@ -6758,7 +6828,7 @@ function MenuAdminView({
     style: {
       color: 'var(--ink-2)'
     }
-  }, "edit prices \xB7 changes are logged")), /*#__PURE__*/React.createElement("div", {
+  }, "edit prices, names, add or remove items")), /*#__PURE__*/React.createElement("div", {
     className: "hl-strong mb-4"
   }), /*#__PURE__*/React.createElement("div", {
     className: "flex gap-2 mb-4 flex-wrap"
@@ -6799,6 +6869,7 @@ function MenuAdminView({
     return /*#__PURE__*/React.createElement("details", {
       key: cat.id,
       className: "overflow-hidden",
+      open: true,
       style: {
         background: 'var(--paper)',
         border: '1.5px solid var(--line-strong)'
@@ -6834,16 +6905,29 @@ function MenuAdminView({
       const variants = Object.keys(it.prices);
       return /*#__PURE__*/React.createElement("div", {
         key: it.name + idx,
-        className: "px-3 py-2 flex items-center gap-3"
+        className: "px-3 py-2 flex items-center gap-2 sm:gap-3"
       }, /*#__PURE__*/React.createElement("div", {
         className: "flex-1 min-w-0"
-      }, /*#__PURE__*/React.createElement("div", {
-        className: "display-cn text-sm",
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        defaultValue: it.name,
+        onBlur: e => {
+          const nv = e.target.value.trim();
+          if (nv && nv !== it.name) updateItemName(cat.id, idx, nv);else e.target.value = it.name;
+        },
+        onKeyDown: e => {
+          if (e.key === 'Enter') e.target.blur();
+        },
+        className: "display-cn text-sm w-full py-0.5 px-1",
         style: {
+          borderBottom: '1px dashed transparent',
+          background: 'transparent',
           color: 'var(--ink)'
-        }
-      }, it.name), it.desc && /*#__PURE__*/React.createElement("div", {
-        className: "text-[11px]",
+        },
+        onFocus: e => e.target.style.borderBottomColor = 'var(--admin)',
+        onBlurCapture: e => e.target.style.borderBottomColor = 'transparent'
+      }), it.desc && /*#__PURE__*/React.createElement("div", {
+        className: "text-[11px] px-1",
         style: {
           color: 'var(--mute)'
         }
@@ -6876,8 +6960,34 @@ function MenuAdminView({
           borderBottom: '1.5px solid var(--ink)',
           background: 'transparent'
         }
-      }))))));
-    })));
+      }))))), /*#__PURE__*/React.createElement("button", {
+        onClick: () => deleteItem(cat.id, idx),
+        className: "btn-tactile shrink-0 p-1.5",
+        style: {
+          border: '1px solid var(--red)',
+          color: 'var(--red)',
+          background: 'transparent'
+        },
+        title: "\u522A\u9664\u54C1\u9805"
+      }, "\uD83D\uDDD1"));
+    }), addingTo === cat.id ? /*#__PURE__*/React.createElement(NewItemForm, {
+      cat: cat,
+      sampleItem: items[0],
+      onSubmit: (name, prices) => {
+        const ok = addItem(cat.id, name, prices);
+        if (ok) setAddingTo(null);
+      },
+      onCancel: () => setAddingTo(null)
+    }) : /*#__PURE__*/React.createElement("button", {
+      onClick: () => setAddingTo(cat.id),
+      className: "btn-tactile w-full py-2 text-sm",
+      style: {
+        background: 'var(--bg)',
+        color: 'var(--admin)',
+        border: 'none',
+        borderTop: '1px dashed var(--admin)'
+      }
+    }, "+ \u65B0\u589E\u54C1\u9805\u5230\u300C", cat.name, "\u300D")));
   })), /*#__PURE__*/React.createElement("div", {
     className: "mt-5 p-3 text-xs",
     style: {
@@ -6887,7 +6997,124 @@ function MenuAdminView({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "serif-it"
-  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u50F9\u683C\u6B04\u4F4D \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u5230\u96F2\u7AEF\uFF0C\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u5206\u9801\u3002"));
+  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u54C1\u540D\uFF0F\u50F9\u683C\u6B04\u4F4D \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u3002\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u3002\u5DF2\u4E0B\u8A02\u7684\u8A02\u55AE\u4E0D\u53D7\u5F71\u97FF\u3002"));
+}
+
+/* New item form: appears inside a category when admin clicks "+ 新增品項" */
+function NewItemForm({
+  cat,
+  sampleItem,
+  onSubmit,
+  onCancel
+}) {
+  const [name, setName] = useState('');
+  // Inherit variant structure from a sample item in this category (so M/L or 原/厚酥 etc match)
+  const variants = sampleItem ? Object.keys(sampleItem.prices) : ['default'];
+  const [prices, setPrices] = useState(() => {
+    const p = {};
+    variants.forEach(v => {
+      p[v] = '';
+    });
+    return p;
+  });
+  const submit = () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      alert('請輸入品名');
+      return;
+    }
+    const cleanPrices = {};
+    let hasAny = false;
+    Object.entries(prices).forEach(([v, p]) => {
+      const n = parseInt(p);
+      if (n > 0) {
+        cleanPrices[v] = n;
+        hasAny = true;
+      }
+    });
+    if (!hasAny) {
+      alert('請至少填一個價格');
+      return;
+    }
+    onSubmit(trimmedName, cleanPrices);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-3",
+    style: {
+      background: 'var(--admin-bg)',
+      borderTop: '2px solid var(--admin)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] mb-2 tk-x",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "+ \u65B0\u589E\u54C1\u9805\u5230\u300C", cat.name, "\u300D"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: name,
+    onChange: e => setName(e.target.value),
+    placeholder: "\u8F38\u5165\u54C1\u540D\uFF08\u4F8B\uFF1A\u8D77\u53F8\u86CB\u9905\uFF09",
+    className: "display-cn text-sm w-full px-2 py-1.5",
+    style: {
+      border: '1.5px solid var(--admin)',
+      background: 'var(--paper)'
+    },
+    autoFocus: true,
+    onKeyDown: e => {
+      if (e.key === 'Enter') submit();
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-2 items-end"
+  }, variants.map(v => /*#__PURE__*/React.createElement("div", {
+    key: v
+  }, v !== 'default' && /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] mb-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, v), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-0.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: prices[v],
+    onChange: e => setPrices(p => ({
+      ...p,
+      [v]: e.target.value
+    })),
+    placeholder: "0",
+    className: "w-16 num text-base text-right py-0.5 px-1",
+    style: {
+      border: '1.5px solid var(--admin)',
+      background: 'var(--paper)'
+    },
+    onKeyDown: e => {
+      if (e.key === 'Enter') submit();
+    }
+  }))))), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    className: "btn-tactile px-3 py-1.5 text-xs",
+    style: {
+      border: '1.5px solid var(--mute)',
+      color: 'var(--mute)',
+      background: 'transparent'
+    }
+  }, "\u53D6\u6D88"), /*#__PURE__*/React.createElement("button", {
+    onClick: submit,
+    className: "btn-tactile flex-1 py-1.5 text-xs",
+    style: {
+      background: 'var(--admin)',
+      color: 'var(--paper)'
+    }
+  }, "\u2713 \u65B0\u589E"))));
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -8101,6 +8328,299 @@ function RosterEditModal({
     }
   }, busy ? '儲存中...' : isNew ? '新增' : '儲存變更'))));
 }
+
+/* ════════════════════════════════════════════════════════════
+   HELP SHEET — role-specific help modal triggered by ❓ button
+   ════════════════════════════════════════════════════════════ */
+function HelpSheet({
+  account,
+  onClose
+}) {
+  const [section, setSection] = useState('overview');
+  const role = account?.role || 'parent';
+  const sections = {
+    overview: {
+      title: '系統概述',
+      icon: '🏊',
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u9019\u662F", /*#__PURE__*/React.createElement("strong", null, "\u9F8D\u9580\u6CF3\u968A\u65E9\u9910\u8A02\u9910\u7CFB\u7D71"), "\u3002\u6559\u7DF4\u9078\u5E97\u3001\u5BB6\u9577\u4E0B\u55AE\u3001\u665A\u4E0A 9 \u9EDE\u622A\u55AE\u3001\u9694\u5929\u65E9\u4E0A\u5E97\u5BB6\u9001\u4F86\u3002"), /*#__PURE__*/React.createElement("p", null, "\u6BCF\u500B\u4EBA\u6709\u4E0D\u540C\u7684\u6B0A\u9650\uFF1A"), /*#__PURE__*/React.createElement("ul", null, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", null, "\uD83D\uDC51 Super-Admin"), "\uFF1A\u738B\u6559\u7DF4 \u2014 \u7CFB\u7D71\u6700\u9AD8\u7BA1\u7406\u54E1"), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", null, "\uD83C\uDF96 Admin"), "\uFF1A\u5354\u52A9\u6559\u7DF4 \u2014 \u9078\u5E97\u3001\u770B\u8A02\u55AE\u3001\u9080\u8ACB\u5BB6\u9577"), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("strong", null, "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 Parent"), "\uFF1A\u5BB6\u9577 \u2014 \u66FF\u81EA\u5BB6\u5C0F\u5B69\u4E0B\u55AE")), /*#__PURE__*/React.createElement("p", null, "\u60A8\u76EE\u524D\u662F\uFF1A", /*#__PURE__*/React.createElement("strong", null, role === 'super-admin' ? '👑 Super-Admin' : role === 'admin' ? '🎖 Admin' : '👨‍👩‍👧 家長')))
+    },
+    parent_ordering: {
+      title: '怎麼下單',
+      icon: '🍽',
+      roles: ['parent', 'admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u9032 ", /*#__PURE__*/React.createElement("strong", null, "ORDER \u9EDE\u9910"), " \u5206\u9801\uFF1A"), /*#__PURE__*/React.createElement("ol", null, /*#__PURE__*/React.createElement("li", null, "\u627E\u5230\u60F3\u9EDE\u7684\u54C1\u9805\uFF08\u83DC\u55AE\u6309\u5206\u985E\u6298\u758A\uFF09"), /*#__PURE__*/React.createElement("li", null, "\u9EDE\u50F9\u683C\u6309\u9215 \u2192 \u6578\u91CF\u6703 +1"), /*#__PURE__*/React.createElement("li", null, "\u518D\u9EDE\u4E00\u6B21 \u2192 +2\uFF0C\u4EE5\u6B64\u985E\u63A8"), /*#__PURE__*/React.createElement("li", null, "\u5DE6\u908A\u7D05\u8272 ", /*#__PURE__*/React.createElement("strong", null, "\u2212"), " \u6309\u9215 \u2192 \u6E1B\u91CF")), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", {
+        className: "text-red"
+      }, "\u6700\u91CD\u8981"), "\uFF1A\u9078\u597D\u4E4B\u5F8C\u4E00\u5B9A\u8981\u6309\u5E95\u90E8\u7684 ", /*#__PURE__*/React.createElement("strong", null, "\u300C\u2713 \u63D0\u4EA4\u8A02\u55AE\u300D"), " \u624D\u6703\u9001\u51FA\uFF01"), /*#__PURE__*/React.createElement("div", {
+        className: "p-2",
+        style: {
+          background: 'var(--note-bg)',
+          border: '1px dashed var(--note)'
+        }
+      }, /*#__PURE__*/React.createElement("strong", null, "\u300C\u2601\uFE0F \u5DF2\u81EA\u52D5\u5132\u5B58\u300D"), " \u53EA\u662F\u8AAA\u300C\u756B\u9762\u8A18\u4F4F\u4E86\u300D \u2014 ", /*#__PURE__*/React.createElement("strong", null, "\u4E0D\u7B49\u65BC\u5DF2\u9001\u51FA"), "\u3002\u8981\u6309\u63D0\u4EA4\u9375\u624D\u7B97\u6578\u3002"))
+    },
+    parent_notes: {
+      title: '加備註',
+      icon: '📝',
+      roles: ['parent', 'admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u4F8B\u5982\u300C\u5C11\u51B0\u300D\u3001\u300C\u4E0D\u8981\u6D0B\u8525\u300D\u3001\u300C\u534A\u7CD6\u300D\uFF1A"), /*#__PURE__*/React.createElement("ol", null, /*#__PURE__*/React.createElement("li", null, "\u52A0\u5B8C\u54C1\u9805\u5F8C\u4E0A\u65B9\u8A02\u55AE\u5340\u6703\u51FA\u73FE\u8A72\u54C1\u9805"), /*#__PURE__*/React.createElement("li", null, "\u627E\u5230\u54C1\u9805\u4E0B\u65B9\u7684 ", /*#__PURE__*/React.createElement("strong", null, "\u300C+ \u52A0\u5099\u8A3B\u300D"), " \u6DFA\u7070\u8272\u5C0F\u5B57"), /*#__PURE__*/React.createElement("li", null, "\u9EDE\u4E0B\u53BB \u2192 \u6253\u5B57 \u2192 \u9EDE ", /*#__PURE__*/React.createElement("strong", null, "\u300C\u5B58\u300D")), /*#__PURE__*/React.createElement("li", null, "\u8B8A\u6210 ", /*#__PURE__*/React.createElement("strong", null, "\uD83D\uDCDD \u5C11\u51B0"), " \u6A19\u7C64")), /*#__PURE__*/React.createElement("p", null, "\u5099\u8A3B\u53EF\u4EE5\u96A8\u6642\u9EDE\u65C1\u908A\u7684\u300C\u6539\u300D\u4FEE\u6539\u3002"))
+    },
+    parent_reuse: {
+      title: '沿用上次訂單',
+      icon: '📋',
+      roles: ['parent', 'admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u5982\u679C\u60A8\u7684\u5C0F\u5B69\u6BCF\u5929\u8A02\u7684\u5DEE\u4E0D\u591A\uFF0C\u4E0B\u55AE\u6642\u6703\u770B\u5230\uFF1A"), /*#__PURE__*/React.createElement("div", {
+        className: "p-2",
+        style: {
+          background: 'var(--note-bg)',
+          border: '1.5px dashed var(--note)'
+        }
+      }, "\uD83D\uDCCB \u6CBF\u7528\u4E0A\u6B21\u8A02\u55AE", /*#__PURE__*/React.createElement("br", null), "10/15 \xB7 3 \u9805 \xB7 $135 \u3000[\u5957\u7528 \u2192]"), /*#__PURE__*/React.createElement("p", null, "\u9EDE\u4E0B\u53BB\u5C31\u628A\u4E0A\u6B21\u8A02\u7684\u5168\u90E8\u8907\u88FD\u904E\u4F86\u3002\u4ECD\u7136\u8981\u6309 ", /*#__PURE__*/React.createElement("strong", null, "\u300C\u2713 \u63D0\u4EA4\u8A02\u55AE\u300D"), " \u624D\u6703\u9001\u51FA\uFF0C\u671F\u9593\u53EF\u8ABF\u6574\u3002"), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u689D\u4EF6"), "\uFF1A\u4E0A\u6B21\u7684\u5E97\u8DDF\u4ECA\u5929\u4E00\u6A23 + \u4ECA\u5929\u9084\u6C92\u4E0B\u904E\u55AE\u3002"))
+    },
+    parent_summary: {
+      title: '看全員訂單',
+      icon: '📊',
+      roles: ['parent', 'admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u9032 ", /*#__PURE__*/React.createElement("strong", null, "SUMMARY \u7D71\u8A08"), " \u5206\u9801\u53EF\u770B\u5168\u968A\u8A02\u55AE\u3002"), /*#__PURE__*/React.createElement("p", null, "\u5BB6\u9577\uFF1A", /*#__PURE__*/React.createElement("strong", null, "\u7D14\u6AA2\u8996"), "\uFF0C\u4E0D\u80FD\u4FEE\u6539\u5225\u4EBA\u7684\u8A02\u55AE\u3002"), /*#__PURE__*/React.createElement("p", null, "\u9802\u90E8\u300C\uD83D\uDCCB \u8907\u88FD\u8A02\u55AE\u7D14\u6587\u5B57\u300D\u53EF\u8CBC\u5230 LINE \u7FA4\u7D44\uFF0C", /*#__PURE__*/React.createElement("strong", null, "\u53D6\u9910\u5206\u914D"), "\u5F88\u65B9\u4FBF\u3002"))
+    },
+    parent_cutoff: {
+      title: '截單時間',
+      icon: '🔒',
+      roles: ['parent', 'admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u6BCF\u5929 ", /*#__PURE__*/React.createElement("strong", null, "\u665A\u4E0A 9:00"), " \u622A\u55AE\u30029 \u9EDE\u5F8C\u5BB6\u9577\u7121\u6CD5\u4FEE\u6539\u81EA\u5DF1\u7684\u8A02\u55AE\u3002"), /*#__PURE__*/React.createElement("p", null, "\u5982\u679C\u6709\u7279\u6B8A\u72C0\u6CC1\u8ACB\u806F\u7D61\u6559\u7DF4\uFF0Cadmin \u5F8C\u53F0\u53EF\u8D8A\u6B0A\u8655\u7406\u3002"))
+    },
+    admin_choose_shop: {
+      title: '選明日早餐店',
+      icon: '🏪',
+      roles: ['admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u9032 ", /*#__PURE__*/React.createElement("strong", null, "SHOP \u9078\u5E97"), " \u5206\u9801\uFF0C\u4E09\u5BB6\u5E97\u4EFB\u9078\u4E00\u5BB6\u3002"), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u26A0\uFE0F \u8B66\u544A"), "\uFF1A", /*#__PURE__*/React.createElement("strong", null, "\u63DB\u5E97\u6703\u6E05\u7A7A\u7576\u5929\u6240\u6709\u5DF2\u4E0B\u8A02\u55AE"), "\u3002\u5982\u679C\u5BB6\u9577\u5DF2\u7D93\u958B\u59CB\u4E0B\u55AE\u4E86\uFF0C\u63DB\u5E97\u524D\u6703\u8DF3\u8B66\u544A\u3002"))
+    },
+    admin_send: {
+      title: '送單給店家',
+      icon: '📤',
+      roles: ['admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u6BCF\u5929 21:00 \u81EA\u52D5\u622A\u55AE\u5F8C\uFF1A"), /*#__PURE__*/React.createElement("ol", null, /*#__PURE__*/React.createElement("li", null, "\u9032 ", /*#__PURE__*/React.createElement("strong", null, "SUMMARY \u7D71\u8A08"), " \u5206\u9801"), /*#__PURE__*/React.createElement("li", null, "\u78BA\u8A8D\u8A02\u55AE\u6C92\u554F\u984C"), /*#__PURE__*/React.createElement("li", null, "\u9EDE ", /*#__PURE__*/React.createElement("strong", null, "\u300C\uD83D\uDCCB \u8907\u88FD\u8A02\u55AE\u7D14\u6587\u5B57\u300D")), /*#__PURE__*/React.createElement("li", null, "\u8CBC\u5230\u5E97\u5BB6 LINE")))
+    },
+    admin_people: {
+      title: '帳號管理（PEOPLE）',
+      icon: '👥',
+      roles: ['admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u65B0\u5BB6\u9577\u8A3B\u518A\u5F8C\u6703\u51FA\u73FE\u5728 ", /*#__PURE__*/React.createElement("strong", null, "\u300C\u23F3 \u7B49\u5F85\u6838\u51C6\u300D"), "\u3002"), /*#__PURE__*/React.createElement("p", null, "\u8655\u7406\uFF1A"), /*#__PURE__*/React.createElement("ol", null, /*#__PURE__*/React.createElement("li", null, "\u9EDE ", /*#__PURE__*/React.createElement("strong", null, "\u300C\u8A2D\u5B9A\u70BA\u5BB6\u9577 \xB7 \u7D81\u5B9A\u968A\u54E1\u300D")), /*#__PURE__*/React.createElement("li", null, "\u52FE\u9078\u5979\u7684\u5C0F\u5B69\u540D\u5B57\uFF08\u53EF\u52FE\u591A\u500B\uFF09"), /*#__PURE__*/React.createElement("li", null, "\u9EDE\u300C\u5132\u5B58\u7D81\u5B9A\u300D")), /*#__PURE__*/React.createElement("p", null, "\u5BB6\u9577\u91CD\u65B0\u6574\u7406\u5C31\u80FD\u9032\u5165\u4E0B\u55AE\u756B\u9762\u3002"), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u7236+\u6BCD\u5171\u7D81\u540C\u4E00\u5C0F\u5B69"), "\uFF1A\u5169\u4F4D\u90FD\u5404\u5225\u8A3B\u518A\u767B\u5165\u5F8C\uFF0C\u5206\u5225\u9EDE\u300C\u8A2D\u5B9A\u70BA\u5BB6\u9577\u300D\u52FE\u540C\u4E00\u4F4D\u5C0F\u5B69\u5373\u53EF\u3002"))
+    },
+    admin_override: {
+      title: '截單後越權編輯',
+      icon: '⚠️',
+      roles: ['admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "21:00 \u5F8C\u5BB6\u9577\u7121\u6CD5\u6539\uFF0C\u4F46 admin \u4ECD\u53EF\u6539\u3002\u6539\u7684\u6642\u5019\uFF1A"), /*#__PURE__*/React.createElement("ul", null, /*#__PURE__*/React.createElement("li", null, "\u8DF3\u300C\u26A0 \u8D8A\u6B0A\u7DE8\u8F2F\u300D\u6A19\u7C64\u63D0\u9192\u60A8"), /*#__PURE__*/React.createElement("li", null, "\u81EA\u52D5\u767C\u901A\u77E5\u7D66\u8A72\u5BB6\u9577 \u2192 \u5BB6\u9577\u4E0B\u6B21\u767B\u5165\u6703\u770B\u5230 \uD83D\uDD14")))
+    },
+    super_role: {
+      title: '升降角色',
+      icon: '⚙️',
+      roles: ['super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u9032 ", /*#__PURE__*/React.createElement("strong", null, "PEOPLE \u5E33\u865F"), " \u5206\u9801\u3002"), /*#__PURE__*/React.createElement("p", null, "\u5F9E parent \u5347 admin\uFF1A\u627E\u5230\u8A72\u5BB6\u9577 \u2192 \u9EDE\u300C\u5347\u70BA admin\u300D\u3002"), /*#__PURE__*/React.createElement("p", null, "\u5F9E admin \u964D parent\uFF1A\u627E\u5230\u8A72 admin \u2192 \u9EDE\u300C\u964D\u70BA\u5BB6\u9577\u300D\u3002"), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u26A0\uFE0F \u91CD\u8981"), "\uFF1A\u5347\u964D\u5F8C\u8ACB\u8A72\u5BB6\u9577 ", /*#__PURE__*/React.createElement("strong", null, "\u5B8C\u5168\u767B\u51FA \u2192 \u91CD\u65B0\u767B\u5165"), "\uFF0C\u5426\u5247 App \u6703\u8DF3 Script error \u6253\u4E0D\u958B\u3002"))
+    },
+    super_emergency: {
+      title: '緊急應變',
+      icon: '🚨',
+      roles: ['super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u898F\u5247\u88AB\u6539\u58DE"), "\uFF1A\u9032 Firestore Rules Console \u2192 \u300C\u6B77\u7A0B\u300D\u5206\u9801 \u2192 \u9084\u539F\u524D\u4E00\u7248\u3002"), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u7CFB\u7D71\u5168\u58DE"), "\uFF1A\u5148\u7528\u820A LINE \u6D41\u7A0B\u7A69\u5B9A\u6536\u8A02\u55AE\uFF0C\u56DE\u4F86\u518D\u4FEE\u3002"), /*#__PURE__*/React.createElement("p", null, /*#__PURE__*/React.createElement("strong", null, "\u9700\u8981\u5099\u4EFD"), "\uFF1A\u6BCF\u5929\u9001\u55AE\u5F8C\u624B\u52D5\u628A SUMMARY \u7D14\u6587\u5B57\u5B58\u5230 LINE \u7FA4\u7D44\u3002"))
+    },
+    contact: {
+      title: '聯絡',
+      icon: '📞',
+      roles: ['parent', 'admin', 'super-admin'],
+      content: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", null, "\u6709\u4EFB\u4F55\u554F\u984C\u8ACB\u806F\u7D61 ", /*#__PURE__*/React.createElement("strong", null, "\u738B\u6559\u7DF4"), "\u3002"), /*#__PURE__*/React.createElement("p", {
+        style: {
+          color: 'var(--mute)',
+          fontSize: '11px'
+        }
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.6.7"))
+    }
+  };
+  const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.5)'
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-x-2 top-4 sm:inset-4 sm:max-w-2xl sm:mx-auto slide-up flex flex-col",
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)',
+      maxHeight: '92vh'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b flex items-center justify-between flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--bg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "HELP \xB7 \u4F7F\u7528\u8AAA\u660E"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl"
+  }, "\u600E\u9EBC\u7528\u9019\u500B App")), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "btn-tactile px-3 py-1.5 text-sm",
+    style: {
+      border: '1.5px solid var(--ink)'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col sm:flex-row flex-1 min-h-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "border-b sm:border-b-0 sm:border-r overflow-y-auto scroll-y flex sm:flex-col flex-row sm:w-44 shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--bg)'
+    }
+  }, visibleSections.map(([k, s]) => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    onClick: () => setSection(k),
+    className: "btn-tactile text-left px-3 py-2 text-sm whitespace-nowrap sm:whitespace-normal flex items-center gap-2 shrink-0",
+    style: {
+      background: section === k ? 'var(--paper)' : 'transparent',
+      borderRight: section === k ? '3px solid var(--red)' : 'none',
+      color: section === k ? 'var(--ink)' : 'var(--ink-2)',
+      fontWeight: section === k ? 700 : 400
+    }
+  }, /*#__PURE__*/React.createElement("span", null, s.icon), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, s.title)))), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 overflow-y-auto scroll-y p-4 sm:p-5 help-content"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg mb-3 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-2xl"
+  }, sections[section]?.icon), sections[section]?.title), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm leading-relaxed space-y-2.5",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, sections[section]?.content)))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   FIRST-TIME TOUR — overlay shown on first login
+   ════════════════════════════════════════════════════════════ */
+function FirstTimeTour({
+  account,
+  onDismiss
+}) {
+  const [step, setStep] = useState(0);
+  const role = account?.role || 'parent';
+  const steps = role === 'parent' ? [{
+    icon: '👋',
+    title: `歡迎，${account.name?.split(' ')[0] || '家長'}！`,
+    body: '您現在可以幫自家小孩訂明早的早餐。讓我帶您快速看一下怎麼用。'
+  }, {
+    icon: '🍽',
+    title: '怎麼下單',
+    body: '進 ORDER 分頁，點品項旁邊的價格按鈕（如 [M]$25）就會 +1。多位家庭成員可以隨意多點。'
+  }, {
+    icon: '✓',
+    title: '一定要提交！',
+    body: '選好之後務必按底部的「✓ 提交訂單」。「已自動儲存」只是畫面記住了，不等於送出！'
+  }, {
+    icon: '🔒',
+    title: '截單 21:00',
+    body: '每天晚上 9:00 截單。9 點後無法修改，特殊情況請聯絡教練。'
+  }, {
+    icon: '❓',
+    title: '隨時看說明',
+    body: '右上角的 ❓ 按鈕可以隨時打開完整使用說明。'
+  }] : [{
+    icon: '👋',
+    title: `歡迎，${account.name?.split(' ')[0] || ''}教練！`,
+    body: `您是${role === 'super-admin' ? '👑 Super-Admin' : '🎖 Admin'}，可以管理訂餐流程。`
+  }, {
+    icon: '🏪',
+    title: '選店',
+    body: 'SHOP 分頁選明日早餐店。注意：換店會清空所有已下訂單。'
+  }, {
+    icon: '👁',
+    title: '監看訂單',
+    body: 'ORDER 分頁顯示 33 位隊員格子，可即時看誰下了單。也可幫任何隊員下單。'
+  }, {
+    icon: '📤',
+    title: '送單給店家',
+    body: '截單後進 SUMMARY 分頁，點「📋 複製訂單純文字」貼給店家。'
+  }, {
+    icon: '👥',
+    title: '管理家長',
+    body: 'PEOPLE 分頁處理新註冊家長：點「設定為家長」並綁定她的小孩。'
+  }, {
+    icon: '❓',
+    title: '隨時看說明',
+    body: '右上角 ❓ 按鈕可以打開完整管理員手冊。'
+  }];
+  const cur = steps[step];
+  const isLast = step === steps.length - 1;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in flex items-center justify-center",
+    style: {
+      background: 'rgba(0,0,0,0.65)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mx-4 max-w-md w-full slide-up p-6",
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-5xl mb-3"
+  }, cur.icon), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl mb-2"
+  }, cur.title), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm leading-relaxed",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, cur.body)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-center gap-1 mb-4"
+  }, steps.map((_, i) => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    className: "block transition-all",
+    style: {
+      width: i === step ? 18 : 6,
+      height: 6,
+      background: i === step ? 'var(--red)' : 'var(--line)'
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onDismiss,
+    className: "btn-tactile flex-1 py-2 text-sm",
+    style: {
+      border: '1.5px solid var(--mute)',
+      color: 'var(--mute)',
+      background: 'transparent'
+    }
+  }, "\u7565\u904E"), step > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setStep(s => s - 1),
+    className: "btn-tactile px-4 py-2 text-sm",
+    style: {
+      border: '1.5px solid var(--ink-2)',
+      color: 'var(--ink-2)',
+      background: 'transparent'
+    }
+  }, "\u4E0A\u4E00\u6B65"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (isLast) onDismiss();else setStep(s => s + 1);
+    },
+    className: "btn-tactile flex-1 py-2 text-sm",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, isLast ? '開始使用 →' : '下一步 →'))));
+}
 /* ════════════════════════════════════════════════════════════
    APP — Firestore wiring with NEW SCHEMA:
    orders/{date}/swimmers/{swimmerId}  ← single doc with items map
@@ -8120,6 +8640,8 @@ function App() {
   const [notifications, setNotifications] = useState([]);
   const [tab, setTab] = useState('order');
   const [showNotif, setShowNotif] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [seedBusy, setSeedBusy] = useState(false);
   const [seedError, setSeedError] = useState('');
   const [, setNow] = useState(Date.now());
@@ -8382,6 +8904,28 @@ function App() {
     }, err => console.error('notif subscribe error', err)));
     return () => unsubs.forEach(u => u());
   }, [account]);
+
+  /* ─── first-time tour: show tour if user hasn't seen it for current role ─── */
+  useEffect(() => {
+    if (!account) return;
+    try {
+      const seenKey = `tour_seen_${account.uid}_${account.role}`;
+      const seen = window.localStorage.getItem(seenKey);
+      if (!seen) {
+        // small delay to let UI settle
+        const t = setTimeout(() => setShowTour(true), 600);
+        return () => clearTimeout(t);
+      }
+    } catch (e) {/* localStorage might be blocked, that's fine */}
+  }, [account?.uid, account?.role]);
+  const dismissTour = () => {
+    setShowTour(false);
+    try {
+      if (account) {
+        window.localStorage.setItem(`tour_seen_${account.uid}_${account.role}`, '1');
+      }
+    } catch (e) {}
+  };
 
   /* ════════════════════════════════════════════════════════════
      ACTIONS
@@ -8791,7 +9335,8 @@ function App() {
       isCutoff: isCutoff,
       notifCount: unreadNotif,
       onNotifClick: () => setShowNotif(true),
-      onLogout: handleLogout
+      onLogout: handleLogout,
+      onHelp: () => setShowHelp(true)
     }), /*#__PURE__*/React.createElement(Tabs, {
       tab: tab,
       setTab: setTab,
@@ -8827,6 +9372,12 @@ function App() {
       onMarkRead: () => dispatch({
         type: 'mark_notif_read'
       })
+    }), showHelp && /*#__PURE__*/React.createElement(HelpSheet, {
+      account: account,
+      onClose: () => setShowHelp(false)
+    }), showTour && /*#__PURE__*/React.createElement(FirstTimeTour, {
+      account: account,
+      onDismiss: dismissTour
     }));
   }
   return /*#__PURE__*/React.createElement("div", {
@@ -8839,7 +9390,8 @@ function App() {
     isCutoff: isCutoff,
     notifCount: unreadNotif,
     onNotifClick: () => setShowNotif(true),
-    onLogout: handleLogout
+    onLogout: handleLogout,
+    onHelp: () => setShowHelp(true)
   }), /*#__PURE__*/React.createElement(Tabs, {
     tab: tab,
     setTab: setTab,
@@ -8892,6 +9444,12 @@ function App() {
     onMarkRead: () => dispatch({
       type: 'mark_notif_read'
     })
+  }), showHelp && /*#__PURE__*/React.createElement(HelpSheet, {
+    account: account,
+    onClose: () => setShowHelp(false)
+  }), showTour && /*#__PURE__*/React.createElement(FirstTimeTour, {
+    account: account,
+    onDismiss: dismissTour
   }));
 }
 const root = ReactDOM.createRoot(document.getElementById('app'));
