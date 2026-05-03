@@ -5219,6 +5219,28 @@ function OrderEditorDrawer({
   };
   const canEdit = canEditOrder(account, member.id, isCutoff);
   const isOverride = isOverrideAction(account, member.id, isCutoff);
+
+  // Detect external changes (someone else submitted while drawer was open)
+  const [lastSeenSubmittedAt, setLastSeenSubmittedAt] = useState(existingOrder?.submittedAt || null);
+  const [externalChangeNotice, setExternalChangeNotice] = useState(null);
+  useEffect(() => {
+    if (!existingOrder) return;
+    const newAt = existingOrder.submittedAt;
+    const newBy = existingOrder.submittedByName;
+    const newByUid = existingOrder.submittedBy;
+    if (!lastSeenSubmittedAt) {
+      setLastSeenSubmittedAt(newAt);
+      return;
+    }
+    const newAtMs = newAt?.toMillis?.() || newAt?.seconds * 1000 || 0;
+    const oldAtMs = lastSeenSubmittedAt?.toMillis?.() || lastSeenSubmittedAt?.seconds * 1000 || 0;
+    if (newAtMs > oldAtMs && newByUid !== account.uid) {
+      setExternalChangeNotice({
+        byName: newBy || '其他人'
+      });
+    }
+    setLastSeenSubmittedAt(newAt);
+  }, [existingOrder?.submittedAt, existingOrder?.submittedBy]);
   const applyLastOrder = () => {
     if (!lastOrder?.items) return;
     const newDraft = {};
@@ -5444,7 +5466,32 @@ function OrderEditorDrawer({
     }
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "flex-1 overflow-y-auto scroll-y px-3 sm:px-5 py-3 pb-32"
-  }, cartLines.length === 0 && canEdit && /*#__PURE__*/React.createElement(ReuseLastOrderButton, {
+  }, externalChangeNotice && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3 text-sm pop-in flex items-start gap-2",
+    style: {
+      background: 'var(--note-bg)',
+      border: '2px solid var(--note)',
+      color: 'var(--note)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-lg shrink-0"
+  }, "\uD83D\uDD14"), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn"
+  }, "\u9019\u7B46\u8A02\u55AE\u525B\u88AB ", externalChangeNotice.byName, " \u6539\u904E"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] mt-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u60A8\u6B63\u5728\u7DE8\u8F2F\u7684\u5167\u5BB9\u53EF\u80FD\u5DF2\u904E\u6642\u3002\u63D0\u4EA4\u5C07\u8986\u84CB\u5C0D\u65B9\u7684\u7248\u672C")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setExternalChangeNotice(null),
+    className: "text-lg shrink-0",
+    style: {
+      color: 'var(--note)',
+      padding: '0 4px'
+    }
+  }, "\u2715")), cartLines.length === 0 && canEdit && /*#__PURE__*/React.createElement(ReuseLastOrderButton, {
     lastOrder: lastOrder,
     currentShopId: shop.id,
     onApply: applyLastOrder
@@ -5577,6 +5624,11 @@ function ParentOrderFlow({
 }) {
   const swimmers = (account.swimmers || []).filter(sid => ROSTER_BY_ID[sid]);
   const [activeChildId, setActiveChildId] = useState(swimmers[0] || null);
+
+  // Per-swimmer drafts and modes — survive child switching
+  const [draftsBySwimmer, setDraftsBySwimmer] = useState({}); // {sid: {itemKey: line}}
+  const [modesBySwimmer, setModesBySwimmer] = useState({}); // {sid: 'view'|'edit'}
+
   useEffect(() => {
     if (activeChildId && !swimmers.includes(activeChildId)) {
       setActiveChildId(swimmers[0] || null);
@@ -5584,6 +5636,40 @@ function ParentOrderFlow({
       setActiveChildId(swimmers[0]);
     }
   }, [swimmers.join('|')]);
+
+  // Initialize draft for any swimmer that doesn't yet have one
+  // (default = copy of existingOrder.items, or empty)
+  // We DON'T overwrite existing drafts because user might be mid-edit
+  useEffect(() => {
+    setDraftsBySwimmer(prev => {
+      const next = {
+        ...prev
+      };
+      let changed = false;
+      swimmers.forEach(sid => {
+        if (!(sid in next)) {
+          next[sid] = orders[sid]?.items ? {
+            ...orders[sid].items
+          } : {};
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+    setModesBySwimmer(prev => {
+      const next = {
+        ...prev
+      };
+      let changed = false;
+      swimmers.forEach(sid => {
+        if (!(sid in next)) {
+          next[sid] = orders[sid] ? 'view' : 'edit';
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [swimmers.join('|'), orders]);
   if (!activeChildId || !ROSTER_BY_ID[activeChildId]) {
     return /*#__PURE__*/React.createElement("section", {
       className: "pt-10 sm:pt-16 text-center"
@@ -5599,14 +5685,56 @@ function ParentOrderFlow({
       }
     }, "\u8ACB\u806F\u7D61\u7BA1\u7406\u54E1\u8A2D\u5B9A\u60A8\u7684\u7D81\u5B9A"));
   }
+
+  // Helpers to update active swimmer's draft
+  const setDraftForActive = updater => {
+    setDraftsBySwimmer(prev => ({
+      ...prev,
+      [activeChildId]: typeof updater === 'function' ? updater(prev[activeChildId] || {}) : updater
+    }));
+  };
+  const setModeForActive = mode => {
+    setModesBySwimmer(prev => ({
+      ...prev,
+      [activeChildId]: mode
+    }));
+  };
+
+  // For the current child: how many items in draft? (for the switcher badge)
+  const draftQtyFor = sid => {
+    const d = draftsBySwimmer[sid];
+    if (!d) return 0;
+    return Object.values(d).reduce((s, l) => s + (l.qty || 0), 0);
+  };
+  const submittedQtyFor = sid => {
+    const ord = orders[sid];
+    if (!ord?.items) return 0;
+    return Object.values(ord.items).reduce((s, l) => s + (l.qty || 0), 0);
+  };
+  const isDirtyFor = sid => {
+    const d = draftsBySwimmer[sid];
+    if (!d) return false;
+    const existing = orders[sid]?.items || {};
+    const dKeys = Object.keys(d);
+    const eKeys = Object.keys(existing);
+    if (dKeys.length !== eKeys.length) return true;
+    for (const k of dKeys) {
+      const a = d[k],
+        b = existing[k];
+      if (!b) return true;
+      if (a.qty !== b.qty || (a.note || '') !== (b.note || '')) return true;
+    }
+    return false;
+  };
   return /*#__PURE__*/React.createElement("div", null, swimmers.length > 1 && /*#__PURE__*/React.createElement("div", {
     className: "mb-4 flex gap-2"
   }, swimmers.map(sid => {
     const m = ROSTER_BY_ID[sid];
     if (!m) return null;
     const on = sid === activeChildId;
-    const ord = orders[sid];
-    const childQty = ord?.items ? Object.values(ord.items).reduce((s, l) => s + (l.qty || 0), 0) : 0;
+    const dirty = isDirtyFor(sid);
+    const showQty = modesBySwimmer[sid] === 'edit' ? draftQtyFor(sid) : submittedQtyFor(sid);
+    const labelText = modesBySwimmer[sid] === 'edit' ? showQty > 0 ? `${showQty} 項${dirty ? ' ●' : ''}` : '編輯中' : showQty > 0 ? `${showQty} 項 · 已提交` : '尚未下單';
     return /*#__PURE__*/React.createElement("button", {
       key: sid,
       onClick: () => setActiveChildId(sid),
@@ -5622,21 +5750,30 @@ function ParentOrderFlow({
         fontWeight: on ? 900 : 500
       }
     }, m.name), /*#__PURE__*/React.createElement("div", {
-      className: "text-[10px] num"
-    }, childQty > 0 ? `${childQty} 項` : '尚未下單'));
+      className: "text-[10px] num",
+      style: dirty ? {
+        color: 'var(--note)',
+        fontWeight: 700
+      } : {}
+    }, labelText));
   })), /*#__PURE__*/React.createElement(ChildOrderPanel, {
-    key: activeChildId,
     shop: shop,
     member: ROSTER_BY_ID[activeChildId],
     existingOrder: orders[activeChildId],
     lastOrder: lastOrders?.[activeChildId],
     account: account,
     isCutoff: isCutoff,
-    dispatch: dispatch
+    dispatch: dispatch,
+    draft: draftsBySwimmer[activeChildId] || {},
+    setDraft: setDraftForActive,
+    mode: modesBySwimmer[activeChildId] || 'edit',
+    setMode: setModeForActive
   }));
 }
 
-/* Single-child order panel with VIEW / EDIT modes */
+/* Single-child order panel with VIEW / EDIT modes
+   draft & mode are now LIFTED up to ParentOrderFlow (per-swimmer state)
+   so switching swimmers preserves your work. */
 function ChildOrderPanel({
   shop,
   member,
@@ -5644,25 +5781,48 @@ function ChildOrderPanel({
   lastOrder,
   account,
   isCutoff,
-  dispatch
+  dispatch,
+  draft,
+  setDraft,
+  mode,
+  setMode
 }) {
-  const [mode, setMode] = useState(existingOrder ? 'view' : 'edit');
-  const [draft, setDraft] = useState(() => existingOrder?.items ? {
-    ...existingOrder.items
-  } : {});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [justSubmitted, setJustSubmitted] = useState(false);
+  // Track who/when last submitted, to detect "someone else just changed this"
+  const [lastSeenSubmittedAt, setLastSeenSubmittedAt] = useState(existingOrder?.submittedAt || null);
+  const [lastSeenSubmittedBy, setLastSeenSubmittedBy] = useState(existingOrder?.submittedByName || null);
+  const [externalChangeNotice, setExternalChangeNotice] = useState(null); // { byName, when }
   const canEdit = canEditOrder(account, member.id, isCutoff);
 
-  // sync draft when existingOrder changes externally
+  // Detect if the currently-viewed order was just changed by ANOTHER user
+  // (not us). Compare submittedAt timestamps.
   useEffect(() => {
-    if (mode === 'view') {
-      setDraft(existingOrder?.items ? {
-        ...existingOrder.items
-      } : {});
+    if (!existingOrder) return;
+    const newAt = existingOrder.submittedAt;
+    const newBy = existingOrder.submittedByName;
+    const newByUid = existingOrder.submittedBy;
+    // First time we see it — just record
+    if (!lastSeenSubmittedAt) {
+      setLastSeenSubmittedAt(newAt);
+      setLastSeenSubmittedBy(newBy);
+      return;
     }
-  }, [existingOrder, mode]);
+    // submittedAt changed — someone submitted
+    const newAtMs = newAt?.toMillis?.() || newAt?.seconds * 1000 || 0;
+    const oldAtMs = lastSeenSubmittedAt?.toMillis?.() || lastSeenSubmittedAt?.seconds * 1000 || 0;
+    if (newAtMs > oldAtMs && newByUid !== account.uid) {
+      // External submission detected
+      setExternalChangeNotice({
+        byName: newBy || '其他人',
+        whenMs: newAtMs
+      });
+      setTimeout(() => setExternalChangeNotice(null), 12000); // auto-dismiss after 12s
+    }
+    setLastSeenSubmittedAt(newAt);
+    setLastSeenSubmittedBy(newBy);
+  }, [existingOrder?.submittedAt, existingOrder?.submittedBy]);
   const applyLastOrder = () => {
     if (!lastOrder?.items) return;
     // Re-stamp items so they have current shop ID and re-key them
@@ -5843,7 +6003,32 @@ function ChildOrderPanel({
       className: "text-lg"
     }, "\u2713"), /*#__PURE__*/React.createElement("span", {
       className: "display-cn"
-    }, "\u8A02\u55AE\u5DF2\u6210\u529F\u63D0\u4EA4")), /*#__PURE__*/React.createElement("div", {
+    }, "\u8A02\u55AE\u5DF2\u6210\u529F\u63D0\u4EA4")), externalChangeNotice && !justSubmitted && /*#__PURE__*/React.createElement("div", {
+      className: "mb-4 p-3 text-sm pop-in flex items-start gap-2",
+      style: {
+        background: 'var(--note-bg)',
+        border: '2px solid var(--note)',
+        color: 'var(--note)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-lg shrink-0"
+    }, "\uD83D\uDD14"), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn"
+    }, "\u9019\u7B46\u8A02\u55AE\u525B\u88AB ", externalChangeNotice.byName, " \u6539\u904E"), /*#__PURE__*/React.createElement("div", {
+      className: "text-[11px] mt-0.5",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u60A8\u770B\u5230\u7684\u662F\u6700\u65B0\u7248\u672C\u3002\u5982\u679C\u8981\u7DE8\u8F2F\u8ACB\u6309\u4E0B\u65B9\u300C\u270F\uFE0F \u7DE8\u8F2F\u300D\u9375")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setExternalChangeNotice(null),
+      className: "text-lg shrink-0",
+      style: {
+        color: 'var(--note)',
+        padding: '0 4px'
+      }
+    }, "\u2715")), /*#__PURE__*/React.createElement("div", {
       className: "mb-4"
     }, /*#__PURE__*/React.createElement("div", {
       className: "flex items-baseline justify-between mb-2"
@@ -5954,7 +6139,32 @@ function ChildOrderPanel({
   /* ───── EDIT MODE: show menu + draft cart ───── */
   return /*#__PURE__*/React.createElement("div", {
     className: "pb-32"
+  }, externalChangeNotice && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3 text-sm pop-in flex items-start gap-2",
+    style: {
+      background: 'var(--note-bg)',
+      border: '2px solid var(--note)',
+      color: 'var(--note)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-lg shrink-0"
+  }, "\uD83D\uDD14"), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn"
+  }, "\u9019\u7B46\u8A02\u55AE\u525B\u88AB ", externalChangeNotice.byName, " \u6539\u904E"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] mt-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u60A8\u6B63\u5728\u7DE8\u8F2F\u7684\u5167\u5BB9\u53EF\u80FD\u8DDF\u96F2\u7AEF\u7684\u4E0D\u4E00\u6A23\u3002\u63D0\u4EA4\u5C07\u6703\u8986\u84CB\u5C0D\u65B9\u7684\u7248\u672C")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setExternalChangeNotice(null),
+    className: "text-lg shrink-0",
+    style: {
+      color: 'var(--note)',
+      padding: '0 4px'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "mb-5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-baseline justify-between mb-2"
