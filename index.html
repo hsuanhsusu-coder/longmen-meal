@@ -6096,70 +6096,133 @@ function SummaryView({
     }, "\u8ACB\u5148\u9078\u5E97"));
   }
 
-  // Aggregate: itemKey → {name, variant, price, qty, buyers: [{name, qty, note}]}
-  const grouped = useMemo(() => {
-    const out = {};
+  // Detect ambiguous item names: items with same name in multiple categories.
+  // These need category prefix to disambiguate.
+  // (Looks at the SHOP MENU, not the orders — so prefix rules are stable regardless of who ordered what.)
+  const ambiguousNames = useMemo(() => {
+    const nameToCategories = {};
+    (shop.items || []).forEach(it => {
+      if (!nameToCategories[it.name]) nameToCategories[it.name] = new Set();
+      nameToCategories[it.name].add(it.cat);
+    });
+    const ambig = new Set();
+    Object.entries(nameToCategories).forEach(([name, cats]) => {
+      if (cats.size > 1) ambig.add(name);
+    });
+    return ambig;
+  }, [shop]);
+
+  // Map cat ID → cat name (for prefix)
+  const catNames = useMemo(() => {
+    const m = {};
+    (shop.categories || []).forEach(c => {
+      m[c.id] = c.name;
+    });
+    return m;
+  }, [shop]);
+
+  // Per-swimmer rows: one row per (swimmerId, submissionTime) — but our schema only allows ONE
+  // doc per swimmer per date, so each swimmer = max one row.
+  // Format: { swimmerId, name, items: [...lines], totalQty, totalPrice }
+  const rows = useMemo(() => {
+    const out = [];
     Object.entries(orders).forEach(([sid, ord]) => {
       const swimmer = ROSTER_BY_ID[sid];
-      if (!swimmer || !ord.items) return;
-      Object.values(ord.items).forEach(line => {
-        const k = itemKey(shop.id, line.cat, line.name, line.variant);
-        if (!out[k]) {
-          out[k] = {
-            cat: line.cat,
-            name: line.name,
-            variant: line.variant,
-            price: line.price,
-            totalQty: 0,
-            buyers: []
-          };
-        }
-        out[k].totalQty += line.qty || 0;
-        out[k].buyers.push({
-          name: swimmer.name,
-          qty: line.qty || 0,
-          note: line.note || ''
-        });
+      if (!swimmer || !ord.items || Object.keys(ord.items).length === 0) return;
+      // Sort items: first by category order in shop.categories, then by name
+      const catOrder = {};
+      (shop.categories || []).forEach((c, idx) => {
+        catOrder[c.id] = idx;
       });
+      const items = Object.values(ord.items).slice().sort((a, b) => {
+        const ai = catOrder[a.cat] ?? 999;
+        const bi = catOrder[b.cat] ?? 999;
+        if (ai !== bi) return ai - bi;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      const totalQty = items.reduce((s, l) => s + (l.qty || 0), 0);
+      const totalPrice = items.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+      out.push({
+        swimmerId: sid,
+        name: swimmer.name,
+        items,
+        totalQty,
+        totalPrice
+      });
+    });
+    // Sort rows by swimmer name (or by ID/seat — keep stable)
+    out.sort((a, b) => {
+      const ma = ROSTER_BY_ID[a.swimmerId];
+      const mb = ROSTER_BY_ID[b.swimmerId];
+      const aIdx = ROSTER.findIndex(m => m.id === a.swimmerId);
+      const bIdx = ROSTER.findIndex(m => m.id === b.swimmerId);
+      return aIdx - bIdx;
     });
     return out;
   }, [orders, shop]);
-  const groupedByCategory = useMemo(() => {
-    const cats = {};
-    Object.values(grouped).forEach(g => {
-      if (!cats[g.cat]) cats[g.cat] = [];
-      cats[g.cat].push(g);
-    });
-    return cats;
-  }, [grouped]);
-  const totalQty = Object.values(grouped).reduce((s, g) => s + g.totalQty, 0);
-  const totalPrice = Object.values(grouped).reduce((s, g) => s + g.totalQty * g.price, 0);
-  const orderedCount = Object.keys(orders).filter(sid => orders[sid]?.items && Object.keys(orders[sid].items).length > 0).length;
+  const grandQty = rows.reduce((s, r) => s + r.totalQty, 0);
+  const grandPrice = rows.reduce((s, r) => s + r.totalPrice, 0);
+
+  // Format a single line item for the COPIED TEXT output:
+  // "[分類] 品名(變體) $單價" or "[分類] 品名(變體) ×N $小計"
+  // - prefix `[cat]` only if name is ambiguous
+  // - variant in parentheses, only if not 'default'
+  // - note in 「」 quotes if present
+  const formatItem = line => {
+    const parts = [];
+    if (ambiguousNames.has(line.name)) {
+      const catName = catNames[line.cat] || line.cat;
+      parts.push(`[${catName}]`);
+    }
+    let nameStr = line.name;
+    if (line.variant && line.variant !== 'default') {
+      nameStr += `(${line.variant})`;
+    }
+    parts.push(nameStr);
+    const lineSubtotal = (line.qty || 0) * (line.price || 0);
+    if ((line.qty || 0) > 1) {
+      parts.push(`$${line.price}×${line.qty}=$${lineSubtotal}`);
+    } else {
+      parts.push(`$${line.price}`);
+    }
+    if (line.note && line.note.trim()) {
+      parts.push(`「${line.note.trim()}」`);
+    }
+    return parts.join(' ');
+  };
+
+  // Get last name only — split surname out
+  // For Chinese names: first char is surname, rest is given name
+  const getGivenName = fullName => {
+    if (!fullName) return '';
+    const trimmed = fullName.trim();
+    // Compound surnames (歐陽 / 司馬 / 上官 etc) are rare; if any surfaces just take chars 2+
+    const compoundSurnames = ['歐陽', '司馬', '上官', '諸葛', '東方', '夏侯', '令狐', '慕容', '尉遲', '皇甫', '宇文'];
+    for (const cs of compoundSurnames) {
+      if (trimmed.startsWith(cs)) return trimmed.slice(2);
+    }
+    if (trimmed.length <= 1) return trimmed;
+    return trimmed.slice(1);
+  };
   const buildText = () => {
     const today = getToday();
+    const dayLabel = getDayLabel(today);
     const lines = [];
-    lines.push(`【龍門泳隊 早餐訂單】${today} ${getDayLabel(today)}`);
-    lines.push(`【${shop.name}】${shop.branch}`);
+    // Header line - shorter, like the example user shared
+    const dateShort = today.slice(5).replace('-', '/'); // "5/04"
+    lines.push(`${dateShort} ${dayLabel}　${shop.name}　共 ${rows.length} 位 / NT$ ${grandPrice}`);
     lines.push('');
-    lines.push(`共 ${orderedCount} 位 · ${totalQty} 份 · 合計 NT$ ${totalPrice}`);
-    lines.push('═══════════════════════');
-    shop.categories.forEach(cat => {
-      const items = groupedByCategory[cat.id];
-      if (!items || items.length === 0) return;
-      lines.push('');
-      lines.push(`◆ ${cat.name}`);
-      items.forEach(g => {
-        const variantStr = g.variant === 'default' ? '' : ` (${g.variant})`;
-        lines.push(`  ${g.name}${variantStr} × ${g.totalQty}　$${g.price}`);
-        g.buyers.forEach(b => {
-          const n = b.note ? `「${b.note}」` : '';
-          lines.push(`    · ${b.name} × ${b.qty}${n}`);
-        });
-      });
+    let n = 1;
+    rows.forEach(r => {
+      const given = getGivenName(r.name);
+      const itemTexts = r.items.map(l => formatItem(l));
+      const joined = itemTexts.join(' + ');
+      lines.push(`${n}. ${given}：${joined} = $${r.totalPrice}`);
+      n++;
     });
     lines.push('');
-    lines.push('═══════════════════════');
-    lines.push(`合計：NT$ ${totalPrice}`);
+    lines.push('═══════════════');
+    lines.push(`合計：NT$ ${grandPrice}`);
     return lines.join('\n');
   };
   const onCopy = async () => {
@@ -6189,18 +6252,20 @@ function SummaryView({
     style: {
       color: 'var(--ink-2)'
     }
-  }, orderedCount, " swimmers \xB7 ", totalQty, " items \xB7 NT$ ", totalPrice)), /*#__PURE__*/React.createElement("button", {
+  }, rows.length, " swimmers \xB7 ", grandQty, " items \xB7 NT$ ", grandPrice)), /*#__PURE__*/React.createElement("button", {
     onClick: onCopy,
+    disabled: rows.length === 0,
     className: "btn-tactile px-4 py-2 text-sm flex items-center gap-2",
     style: {
-      background: copied ? 'var(--plus)' : 'var(--ink)',
-      color: 'var(--paper)'
+      background: copied ? 'var(--plus)' : rows.length === 0 ? 'var(--mute)' : 'var(--ink)',
+      color: 'var(--paper)',
+      opacity: rows.length === 0 ? 0.5 : 1
     }
   }, /*#__PURE__*/React.createElement("span", null, copied ? '✓' : '📋'), /*#__PURE__*/React.createElement("span", {
     className: "display-cn"
   }, copied ? '已複製' : '複製訂單純文字')))), /*#__PURE__*/React.createElement("div", {
     className: "hl-strong mb-4"
-  }), Object.keys(grouped).length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }), rows.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "py-10 text-center",
     style: {
       background: 'var(--paper)',
@@ -6212,73 +6277,100 @@ function SummaryView({
       color: 'var(--mute)'
     }
   }, "\u5C1A\u7121\u8A02\u55AE")) : /*#__PURE__*/React.createElement("div", {
-    className: "space-y-4"
-  }, shop.categories.map(cat => {
-    const items = groupedByCategory[cat.id];
-    if (!items || items.length === 0) return null;
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--line-strong)'
+    }
+  }, rows.map((r, idx) => {
+    const given = getGivenName(r.name);
     return /*#__PURE__*/React.createElement("div", {
-      key: cat.id,
+      key: r.swimmerId,
+      className: "px-3 sm:px-4 py-3 border-b last:border-b-0",
       style: {
-        background: 'var(--paper)',
-        border: '1.5px solid var(--line-strong)'
+        borderColor: 'var(--line)'
       }
     }, /*#__PURE__*/React.createElement("div", {
-      className: "px-3 py-2",
-      style: {
-        background: shop.themeBg,
-        borderBottom: `1.5px solid ${shop.themeColor}`
-      }
+      className: "flex items-baseline justify-between mb-1.5 gap-2"
     }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-base",
+      className: "flex items-baseline gap-2 min-w-0"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num text-sm",
       style: {
-        color: shop.themeColor
+        color: 'var(--mute)',
+        width: 24,
+        textAlign: 'right'
       }
-    }, "\u25C6 ", cat.name)), /*#__PURE__*/React.createElement("div", null, items.map(g => {
-      const variantStr = g.variant === 'default' ? '' : ` (${g.variant})`;
+    }, idx + 1, "."), /*#__PURE__*/React.createElement("span", {
+      className: "display-cn text-base sm:text-lg",
+      style: {
+        color: 'var(--ink)'
+      }
+    }, r.name), given !== r.name && /*#__PURE__*/React.createElement("span", {
+      className: "text-[10px]",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\xB7 ", given)), /*#__PURE__*/React.createElement("div", {
+      className: "text-right shrink-0"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num text-base",
+      style: {
+        color: shop.themeColor,
+        fontWeight: 900
+      }
+    }, "$", r.totalPrice))), /*#__PURE__*/React.createElement("div", {
+      className: "pl-7 space-y-0.5"
+    }, r.items.map((l, i) => {
+      const showCatPrefix = ambiguousNames.has(l.name);
+      const variantStr = l.variant && l.variant !== 'default' ? `(${l.variant})` : '';
+      const lineSubtotal = (l.qty || 0) * (l.price || 0);
       return /*#__PURE__*/React.createElement("div", {
-        key: g.name + g.variant,
-        className: "px-3 py-2 border-b last:border-b-0",
-        style: {
-          borderColor: 'var(--line)'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        className: "flex items-baseline justify-between mb-1"
-      }, /*#__PURE__*/React.createElement("div", {
-        className: "display-cn text-sm"
-      }, g.name, /*#__PURE__*/React.createElement("span", {
-        className: "text-xs",
-        style: {
-          color: 'var(--mute)'
-        }
-      }, variantStr)), /*#__PURE__*/React.createElement("div", {
-        className: "num text-sm"
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: shop.themeColor,
-          fontWeight: 900
-        }
-      }, "\xD7", g.totalQty), /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: 'var(--mute)'
-        },
-        className: "ml-2"
-      }, "$", g.price))), /*#__PURE__*/React.createElement("div", {
-        className: "pl-3 text-[11px] space-y-0.5"
-      }, g.buyers.map((b, i) => /*#__PURE__*/React.createElement("div", {
         key: i,
-        className: "flex items-baseline gap-1.5",
+        className: "text-xs flex items-baseline gap-1.5 flex-wrap",
         style: {
           color: 'var(--ink-2)'
         }
-      }, /*#__PURE__*/React.createElement("span", {
+      }, showCatPrefix && /*#__PURE__*/React.createElement("span", {
+        className: "text-[10px] num-mono px-1",
+        style: {
+          color: shop.themeColor,
+          background: shop.themeBg,
+          border: `1px solid ${shop.themeColor}`
+        }
+      }, catNames[l.cat] || l.cat), /*#__PURE__*/React.createElement("span", {
         className: "display-cn"
-      }, b.name), /*#__PURE__*/React.createElement("span", {
-        className: "num"
-      }, "\xD7", b.qty), b.note && /*#__PURE__*/React.createElement("span", {
+      }, l.name, variantStr && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: 'var(--mute)'
+        }
+      }, variantStr)), /*#__PURE__*/React.createElement("span", {
+        className: "num text-[11px]",
+        style: {
+          color: 'var(--mute)'
+        }
+      }, "$", l.price, (l.qty || 0) > 1 ? ` × ${l.qty} = $${lineSubtotal}` : ''), l.note && l.note.trim() && /*#__PURE__*/React.createElement("span", {
         className: "note-badge"
-      }, "\uD83D\uDCDD ", b.note)))));
+      }, "\uD83D\uDCDD ", l.note.trim()));
     })));
-  })));
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "px-3 sm:px-4 py-2.5 flex items-baseline justify-between",
+    style: {
+      background: 'var(--bg)',
+      borderTop: '2px solid var(--ink)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-sm"
+  }, "\u5408\u8A08"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl",
+    style: {
+      color: shop.themeColor
+    }
+  }, "$", grandPrice), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] num ml-2",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5171 ", grandQty, " \u4EFD / ", rows.length, " \u4F4D")))));
 }
 /* ════════════════════════════════════════════════════════════
    MENU ADMIN VIEW (admin only)
