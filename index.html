@@ -4092,7 +4092,7 @@ function SeedDataPage({
   }, error)));
 }
 /* ════════════════════════════════════════════════════════════
-   HEADER (modified — no preview bar, has logout)
+   HEADER
    ════════════════════════════════════════════════════════════ */
 function Header({
   date,
@@ -4276,7 +4276,7 @@ function Header({
 }
 
 /* ════════════════════════════════════════════════════════════
-   TABS (role-based; admin gets accounts/menu/log)
+   TABS
    ════════════════════════════════════════════════════════════ */
 const TAB_DEFS = [{
   id: 'shop',
@@ -4321,7 +4321,7 @@ function Tabs({
   badges
 }) {
   const visible = TAB_DEFS.filter(t => t.roles.includes(role));
-  if (visible.length <= 1) return null; // parent only sees one tab — no need for nav bar
+  if (visible.length <= 1) return null;
   return /*#__PURE__*/React.createElement("nav", {
     className: "border-b sticky top-0 z-30 backdrop-blur",
     style: {
@@ -4496,9 +4496,8 @@ function ShopView({
 }
 
 /* ════════════════════════════════════════════════════════════
-   ORDER VIEW (roster grid + permission gating)
+   SUB-TAB SWITCHER (for admin who's also a parent)
    ════════════════════════════════════════════════════════════ */
-/* Sub-tab switcher for admin who's also a parent (toggles between own kids vs full roster) */
 function SubTabSwitcher({
   subtab,
   setSubtab,
@@ -4546,20 +4545,23 @@ function SubTabSwitcher({
     }, t.en, " \xB7 ", t.count))));
   }));
 }
+
+/* ════════════════════════════════════════════════════════════
+   ORDER VIEW (admin) — 33 swimmer grid → opens OrderEditor on click
+   For admin who has own kids, switches between "my kids" mode (ParentOrderEditor) and "all" mode
+   ════════════════════════════════════════════════════════════ */
 function OrderView({
   shop,
-  carts,
+  orders,
   account,
   isCutoff,
-  dispatch,
-  openSwimmer,
-  setOpenSwimmer
+  dispatch
 }) {
-  const [filter, setFilter] = useState('all');
   const myKids = (account?.swimmers || []).filter(sid => ROSTER_BY_ID[sid]);
   const hasMyKids = myKids.length > 0;
   const [subtab, setSubtab] = useState(hasMyKids ? 'mine' : 'all');
-  // re-pin when myKids changes
+  const [filter, setFilter] = useState('all');
+  const [openSwimmer, setOpenSwimmer] = useState(null);
   useEffect(() => {
     if (hasMyKids && subtab !== 'mine' && subtab !== 'all') setSubtab('mine');
     if (!hasMyKids && subtab === 'mine') setSubtab('all');
@@ -4584,7 +4586,7 @@ function OrderView({
     }, "SHOP \u9078\u5E97"), "\u300D\u5206\u9801\u6311\u9078\u660E\u65E5\u65E9\u9910\u5E97") : '等管理員選店後，您就能下單了'));
   }
 
-  // If admin has their own kids and is on "我的孩子" subtab, render ParentOrderView
+  // If admin has kids, "我的孩子" mode → render parent-style
   if (hasMyKids && subtab === 'mine') {
     return /*#__PURE__*/React.createElement("section", {
       className: "pt-5 sm:pt-7"
@@ -4594,9 +4596,9 @@ function OrderView({
       myKidsCount: myKids.length,
       totalCount: ROSTER.length,
       shop: shop
-    }), /*#__PURE__*/React.createElement(ParentOrderView, {
+    }), /*#__PURE__*/React.createElement(ParentOrderFlow, {
       shop: shop,
-      carts: carts,
+      orders: orders,
       account: account,
       isCutoff: isCutoff,
       dispatch: dispatch
@@ -4609,24 +4611,26 @@ function OrderView({
   const memberStats = useMemo(() => {
     const stats = {};
     ROSTER.forEach(m => {
-      const c = carts[m.id] || {};
+      const ord = orders[m.id];
       let n = 0,
         sub = 0,
         hasNote = false;
-      Object.values(c).forEach(line => {
-        n += line.qty;
-        sub += line.qty * line.price;
-        if (line.note?.trim()) hasNote = true;
-      });
+      if (ord && ord.items) {
+        Object.values(ord.items).forEach(line => {
+          n += line.qty || 0;
+          sub += (line.qty || 0) * (line.price || 0);
+          if (line.note?.trim()) hasNote = true;
+        });
+      }
       stats[m.id] = {
         itemCount: n,
         subtotal: sub,
-        hasNote
+        hasNote,
+        submitted: !!ord
       };
     });
     return stats;
-  }, [carts]);
-  const isParent = account?.role === 'parent';
+  }, [orders]);
   const isAdmin = isAdminRole(account);
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
@@ -4659,19 +4663,7 @@ function OrderView({
     style: {
       color: 'var(--ink-2)'
     }
-  }, shop.branch))), isParent && /*#__PURE__*/React.createElement("div", {
-    className: "text-right"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-[10px] tk-x",
-    style: {
-      color: shop.themeColor
-    }
-  }, "\u60A8\u53EF\u4E0B\u55AE"), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs num",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, (account.swimmers || []).map(sid => ROSTER_BY_ID[sid]?.name).filter(Boolean).join(' + ') || '（管理員尚未綁定隊員）')), isAdmin && /*#__PURE__*/React.createElement("div", {
+  }, shop.branch))), /*#__PURE__*/React.createElement("div", {
     className: "text-right"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] tk-x",
@@ -4729,7 +4721,7 @@ function OrderView({
     style: {
       color: 'var(--red)'
     }
-  }, Object.values(memberStats).filter(s => s.itemCount > 0).length), /*#__PURE__*/React.createElement("span", {
+  }, Object.values(memberStats).filter(s => s.submitted).length), /*#__PURE__*/React.createElement("span", {
     style: {
       color: 'var(--mute)'
     }
@@ -4737,28 +4729,17 @@ function OrderView({
     className: "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3"
   }, filtered.map(m => {
     const st = memberStats[m.id];
-    const has = st.itemCount > 0;
+    const has = st.submitted;
     const grade = GRADE_INFO[m.grade];
-    const isOwn = (account?.swimmers || []).includes(m.id);
-    const isLocked = isParent && !isOwn;
     return /*#__PURE__*/React.createElement("button", {
       key: m.id,
       onClick: () => setOpenSwimmer(m.id),
-      className: `card-hover btn-tactile text-left p-3 relative ${isLocked ? 'lock-overlay' : ''}`,
+      className: "card-hover btn-tactile text-left p-3 relative",
       style: {
         background: has ? 'var(--paper)' : 'var(--bg)',
-        border: `1.5px solid ${has ? shop.themeColor : isOwn ? 'var(--parent)' : 'var(--line)'}`,
-        opacity: isLocked ? 0.85 : 1
+        border: `1.5px solid ${has ? shop.themeColor : 'var(--line)'}`
       }
-    }, isOwn && isParent && /*#__PURE__*/React.createElement("div", {
-      className: "absolute -top-1.5 -right-1.5 role-chip",
-      style: {
-        background: 'var(--parent-bg)',
-        color: 'var(--parent)',
-        border: '1.5px solid var(--parent)',
-        fontSize: 9
-      }
-    }, "\u6211\u7684\u5B69\u5B50"), /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("div", {
       className: "flex items-center justify-between mb-1.5"
     }, /*#__PURE__*/React.createElement("div", {
       className: "flex items-center gap-1.5 num text-xs",
@@ -4798,9 +4779,9 @@ function OrderView({
     }, "$", st.subtotal), /*#__PURE__*/React.createElement("span", {
       className: "text-[10px]",
       style: {
-        color: isLocked ? 'var(--mute)' : shop.themeColor
+        color: shop.themeColor
       }
-    }, isLocked ? '檢視 →' : '編輯 →')) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    }, "\u7DE8\u8F2F \u2192")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
       className: "text-xs",
       style: {
         color: 'var(--mute)'
@@ -4810,11 +4791,11 @@ function OrderView({
       style: {
         color: 'var(--mute)'
       }
-    }, isLocked ? '檢視 →' : '點選下單 →'))));
-  })), openSwimmer && /*#__PURE__*/React.createElement(MenuDrawer, {
+    }, "\u4E0B\u55AE \u2192"))));
+  })), openSwimmer && /*#__PURE__*/React.createElement(OrderEditorDrawer, {
     shop: shop,
     member: ROSTER_BY_ID[openSwimmer],
-    cart: carts[openSwimmer] || {},
+    existingOrder: orders[openSwimmer],
     account: account,
     isCutoff: isCutoff,
     dispatch: dispatch,
@@ -4822,341 +4803,14 @@ function OrderView({
   }));
 }
 /* ════════════════════════════════════════════════════════════
-   MENU DRAWER (per swimmer) - with permission lock
+   ORDER EDITOR — used by both admin (drawer) and parent (inline)
+   Core principle: edit in LOCAL state, batch-submit to Firestore
    ════════════════════════════════════════════════════════════ */
-function MenuDrawer({
-  shop,
-  member,
-  cart,
-  account,
-  isCutoff,
-  dispatch,
-  onClose
-}) {
-  const grade = GRADE_INFO[member.grade];
-  const [activeCat, setActiveCat] = useState(shop.categories[0]?.id);
-  const [showCart, setShowCart] = useState(false);
-  const scrollRef = useRef(null);
-  const catRefs = useRef({});
-  const canEdit = canEditOrder(account, member.id, isCutoff);
-  const isOverride = isOverrideAction(account, member.id, isCutoff);
-  const lockReason = (() => {
-    if (canEdit) return null;
-    if (account?.role === 'parent' && !account.swimmers.includes(member.id)) return '您只能編輯自己孩子的訂單，這是其他隊員的訂單（僅供檢視）';
-    if (account?.role === 'parent' && isCutoff) return '已過 21:00 截單時間，您無法再修改。如有特殊狀況請聯絡管理員';
-    return null;
-  })();
-  const itemsByCat = useMemo(() => {
-    const map = {};
-    shop.categories.forEach(c => {
-      map[c.id] = [];
-    });
-    shop.items.forEach(it => {
-      if (map[it.cat]) map[it.cat].push(it);
-    });
-    return map;
-  }, [shop]);
-  const cartLines = Object.values(cart);
-  const totalQty = cartLines.reduce((s, l) => s + l.qty, 0);
-  const subtotal = cartLines.reduce((s, l) => s + l.qty * l.price, 0);
-  const scrollToCat = catId => {
-    const el = catRefs.current[catId];
-    if (el && scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: el.offsetTop - 12,
-        behavior: 'smooth'
-      });
-      setActiveCat(catId);
-    }
-  };
-  useEffect(() => {
-    const sc = scrollRef.current;
-    if (!sc) return;
-    const onScroll = () => {
-      const sy = sc.scrollTop + 80;
-      let cur = shop.categories[0]?.id;
-      for (const c of shop.categories) {
-        const el = catRefs.current[c.id];
-        if (el && el.offsetTop <= sy) cur = c.id;
-      }
-      setActiveCat(cur);
-    };
-    sc.addEventListener('scroll', onScroll, {
-      passive: true
-    });
-    return () => sc.removeEventListener('scroll', onScroll);
-  }, [shop]);
-  return /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 fade-in",
-    style: {
-      background: 'rgba(0,0,0,0.4)'
-    },
-    onClick: onClose
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "absolute inset-0 sm:inset-4 sm:max-w-4xl sm:mx-auto slide-up flex flex-col",
-    style: {
-      background: 'var(--bg)',
-      border: '2px solid var(--ink)'
-    },
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "border-b px-4 py-3 flex items-center justify-between flex-shrink-0",
-    style: {
-      borderColor: 'var(--line-strong)',
-      background: shop.themeBg
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2 num text-xs mb-0.5",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: grade.color,
-      fontWeight: 900
-    }
-  }, grade.label, "\u5E74"), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, member.cls), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "/"), /*#__PURE__*/React.createElement("span", null, member.seat), isOverride && canEdit && /*#__PURE__*/React.createElement("span", {
-    className: "override-badge ml-2"
-  }, "\u26A0 \u8D8A\u6B0A\u7DE8\u8F2F")), /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-xl sm:text-2xl",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, member.name, /*#__PURE__*/React.createElement("span", {
-    className: "text-sm ml-2 font-normal",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, "\u7684\u8A02\u55AE")), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs",
-    style: {
-      color: shop.themeColor
-    }
-  }, shop.name, " \xB7 ", shop.branch)), /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    className: "btn-tactile px-4 py-2 text-sm flex items-center gap-1.5",
-    style: {
-      border: '1.5px solid var(--ink)',
-      background: 'var(--ink)',
-      color: 'var(--paper)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontWeight: 900
-    }
-  }, "\u2713"), /*#__PURE__*/React.createElement("span", {
-    className: "display-cn"
-  }, "\u5B8C\u6210"))), lockReason && /*#__PURE__*/React.createElement("div", {
-    className: "px-4 py-2 text-xs flex items-center gap-2 flex-shrink-0",
-    style: {
-      background: 'var(--lock-bg)',
-      borderBottom: '1.5px solid var(--lock)',
-      color: 'var(--lock)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-base"
-  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", null, lockReason)), /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 flex overflow-hidden"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-20 sm:w-32 border-r flex-shrink-0 overflow-y-auto scroll-y",
-    style: {
-      borderColor: 'var(--line-strong)',
-      background: 'var(--paper)'
-    }
-  }, shop.categories.map(c => {
-    const cnt = itemsByCat[c.id]?.length || 0;
-    const on = activeCat === c.id;
-    return /*#__PURE__*/React.createElement("button", {
-      key: c.id,
-      onClick: () => scrollToCat(c.id),
-      className: "btn-tactile w-full text-left px-2 py-2.5 border-b text-xs sm:text-sm",
-      style: {
-        background: on ? shop.themeBg : 'transparent',
-        color: on ? shop.themeColor : 'var(--ink-2)',
-        borderColor: 'var(--line)',
-        fontWeight: on ? 700 : 400,
-        borderLeft: on ? `3px solid ${shop.themeColor}` : '3px solid transparent'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn leading-tight"
-    }, c.name), /*#__PURE__*/React.createElement("div", {
-      className: "text-[10px] mt-0.5 num",
-      style: {
-        color: on ? shop.themeColor : 'var(--mute)'
-      }
-    }, cnt, " \u9805"));
-  })), /*#__PURE__*/React.createElement("div", {
-    ref: scrollRef,
-    className: "flex-1 overflow-y-auto scroll-y",
-    style: {
-      paddingBottom: cartLines.length > 0 ? '88px' : '16px'
-    }
-  }, shop.categories.map(c => {
-    const items = itemsByCat[c.id] || [];
-    if (items.length === 0) return null;
-    const groupedKeys = [...new Set(items.filter(it => it.group).map(it => it.group))];
-    return /*#__PURE__*/React.createElement("div", {
-      key: c.id,
-      ref: el => {
-        catRefs.current[c.id] = el;
-      },
-      className: "px-3 sm:px-5 py-3"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "cat-sticky"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline justify-between border-b pb-1.5",
-      style: {
-        borderColor: shop.themeColor
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline gap-2"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-lg sm:text-xl",
-      style: {
-        color: shop.themeColor
-      }
-    }, c.name), c.variantLabel && /*#__PURE__*/React.createElement("div", {
-      className: "text-[10px]",
-      style: {
-        color: 'var(--mute)'
-      }
-    }, c.variantLabel)), /*#__PURE__*/React.createElement("div", {
-      className: "num text-xs",
-      style: {
-        color: 'var(--mute)'
-      }
-    }, items.length, " items"))), groupedKeys.length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, groupedKeys.map(g => /*#__PURE__*/React.createElement("div", {
-      key: g
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "text-xs serif-it mt-3 mb-1 px-1",
-      style: {
-        color: 'var(--ink-2)'
-      }
-    }, "\u2500 ", g, " \u2500"), items.filter(it => it.group === g).map(it => /*#__PURE__*/React.createElement(ItemRow, {
-      key: it.name + '/' + g,
-      item: it,
-      cart: cart,
-      shop: shop,
-      disabled: !canEdit,
-      onAdd: v => dispatch({
-        type: 'add',
-        mid: member.id,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      }),
-      onSub: v => dispatch({
-        type: 'sub',
-        mid: member.id,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      })
-    })))), items.filter(it => !it.group).map(it => /*#__PURE__*/React.createElement(ItemRow, {
-      key: it.name,
-      item: it,
-      cart: cart,
-      shop: shop,
-      disabled: !canEdit,
-      onAdd: v => dispatch({
-        type: 'add',
-        mid: member.id,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      }),
-      onSub: v => dispatch({
-        type: 'sub',
-        mid: member.id,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      })
-    }))) : items.map(it => /*#__PURE__*/React.createElement(ItemRow, {
-      key: it.name,
-      item: it,
-      cart: cart,
-      shop: shop,
-      disabled: !canEdit,
-      onAdd: v => dispatch({
-        type: 'add',
-        mid: member.id,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      }),
-      onSub: v => dispatch({
-        type: 'sub',
-        mid: member.id,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      })
-    })));
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "px-3 sm:px-5 py-6 text-center text-xs serif-it",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\xB7 end of menu \xB7"))), cartLines.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "absolute bottom-0 left-0 right-0 border-t slide-up",
-    style: {
-      background: 'var(--ink)',
-      borderColor: shop.themeColor
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setShowCart(true),
-    className: "btn-tactile w-full px-4 py-3 flex items-center justify-between",
-    style: {
-      color: 'var(--paper)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num text-2xl",
-    style: {
-      color: shop.themeColor
-    }
-  }, "\xD7", totalQty), /*#__PURE__*/React.createElement("div", {
-    className: "text-left"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs tk-x",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "CART"), /*#__PURE__*/React.createElement("div", {
-    className: "text-sm display-cn"
-  }, member.name, " \u7684\u8A02\u55AE\u3000\xB7\u3000\u67E5\u770B\u5099\u8A3B"))), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-baseline gap-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-right"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "num text-base",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "NT$"), /*#__PURE__*/React.createElement("div", {
-    className: "num text-3xl"
-  }, subtotal)), /*#__PURE__*/React.createElement("div", {
-    className: "text-sm"
-  }, "\u25B8")))), showCart && /*#__PURE__*/React.createElement(CartSheet, {
-    shop: shop,
-    member: member,
-    cart: cart,
-    canEdit: canEdit,
-    dispatch: dispatch,
-    onClose: () => setShowCart(false)
-  })));
-}
+
+/* Single item row with +/- buttons, single price-button per variant */
 function ItemRow({
   item,
-  cart,
+  draft,
   shop,
   disabled,
   onAdd,
@@ -5187,14 +4841,14 @@ function ItemRow({
     className: "flex flex-wrap gap-1.5 justify-end shrink-0"
   }, variants.map(v => {
     const price = item.prices[v];
-    const key = safeKey(itemKey(shop.id, item.cat, item.name, v));
-    const qty = cart[key]?.qty || 0;
+    const key = itemKey(shop.id, item.cat, item.name, v);
+    const qty = draft[key]?.qty || 0;
     return /*#__PURE__*/React.createElement("div", {
       key: v,
       className: "flex items-center gap-1"
     }, qty > 0 && !disabled && /*#__PURE__*/React.createElement("button", {
       onClick: () => onSub(v),
-      className: "btn-tactile w-7 h-9 text-base font-bold",
+      className: "btn-tactile w-7 h-9 text-base font-bold pop-in",
       style: {
         border: '1.5px solid var(--minus)',
         color: 'var(--minus)',
@@ -5219,712 +4873,15 @@ function ItemRow({
   }))));
 }
 
-/* ════════════════════════════════════════════════════════════
-   CART SHEET - with notes per line
-   ════════════════════════════════════════════════════════════ */
-function CartSheet({
+/* Helper: render the menu (collapsible categories) — shared by drawer + parent */
+function MenuSections({
   shop,
-  member,
-  cart,
-  canEdit,
-  dispatch,
-  onClose
-}) {
-  const lines = Object.values(cart).sort((a, b) => a.cat.localeCompare(b.cat));
-  const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
-  return /*#__PURE__*/React.createElement("div", {
-    className: "absolute inset-0 z-10 fade-in",
-    style: {
-      background: 'rgba(0,0,0,0.5)'
-    },
-    onClick: onClose
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "absolute bottom-0 left-0 right-0 sm:bottom-4 sm:left-4 sm:right-4 sm:max-w-2xl sm:mx-auto slide-up flex flex-col",
-    style: {
-      background: 'var(--paper)',
-      border: '2px solid var(--ink)',
-      maxHeight: '90vh'
-    },
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "px-4 py-3 border-b flex items-center justify-between flex-shrink-0",
-    style: {
-      borderColor: 'var(--line-strong)',
-      background: shop.themeBg
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px]",
-    style: {
-      color: shop.themeColor
-    }
-  }, "CART \xB7 \u8A02\u55AE\u660E\u7D30"), /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-lg"
-  }, member.name, " \u7684\u8A02\u55AE")), /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    className: "btn-tactile px-3 py-1.5 text-sm",
-    style: {
-      border: '1.5px solid var(--ink)',
-      background: 'var(--paper)'
-    }
-  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 overflow-y-auto scroll-y"
-  }, lines.map(l => /*#__PURE__*/React.createElement(CartLine, {
-    key: l.key,
-    line: l,
-    shop: shop,
-    canEdit: canEdit,
-    onAdd: () => dispatch({
-      type: 'addKey',
-      mid: member.id,
-      key: l.key,
-      line: l
-    }),
-    onSub: () => dispatch({
-      type: 'subKey',
-      mid: member.id,
-      key: l.key
-    }),
-    onNote: note => dispatch({
-      type: 'note',
-      mid: member.id,
-      key: l.key,
-      note
-    })
-  })), lines.length === 0 && /*#__PURE__*/React.createElement("div", {
-    className: "py-10 text-center text-sm",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\u8CFC\u7269\u8ECA\u662F\u7A7A\u7684")), /*#__PURE__*/React.createElement("div", {
-    className: "px-4 py-3 border-t flex items-center justify-between flex-shrink-0",
-    style: {
-      borderColor: 'var(--line-strong)',
-      background: 'var(--ink)',
-      color: 'var(--paper)'
-    }
-  }, canEdit ? /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      if (confirm(`清空 ${member.name} 的所有訂單？`)) dispatch({
-        type: 'clearMember',
-        mid: member.id
-      });
-    },
-    className: "btn-tactile text-xs px-2 py-1",
-    style: {
-      color: 'rgba(250,246,236,0.7)',
-      border: '1px solid rgba(250,246,236,0.3)'
-    }
-  }, "\u6E05\u7A7A\u8A02\u55AE") : /*#__PURE__*/React.createElement("span", null), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-baseline gap-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-xs tk-x",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "TOTAL"), /*#__PURE__*/React.createElement("span", {
-    className: "num text-base",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "NT$"), /*#__PURE__*/React.createElement("span", {
-    className: "num text-3xl"
-  }, total)))));
-}
-function CartLine({
-  line,
-  shop,
-  canEdit,
+  draft,
   onAdd,
   onSub,
-  onNote
+  disabled,
+  expandAll
 }) {
-  const [editingNote, setEditingNote] = useState(false);
-  const [noteText, setNoteText] = useState(line.note || '');
-  const saveNote = () => {
-    onNote(noteText.trim());
-    setEditingNote(false);
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "px-4 py-3 border-b",
-    style: {
-      borderColor: 'var(--line)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-sm",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, line.name, line.variant !== 'default' && /*#__PURE__*/React.createElement("span", {
-    className: "ml-2 text-xs px-1.5 py-0.5",
-    style: {
-      background: shop.themeBg,
-      color: shop.themeColor
-    }
-  }, line.variant)), /*#__PURE__*/React.createElement("div", {
-    className: "num text-xs",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "$", line.price)), /*#__PURE__*/React.createElement("div", {
-    className: "qty-ctrl"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: onSub,
-    disabled: !canEdit
-  }, "\u2212"), /*#__PURE__*/React.createElement("span", {
-    className: "qv"
-  }, line.qty), /*#__PURE__*/React.createElement("button", {
-    onClick: onAdd,
-    disabled: !canEdit
-  }, "+")), /*#__PURE__*/React.createElement("div", {
-    className: "num text-base w-16 text-right",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, "$", line.qty * line.price)), /*#__PURE__*/React.createElement("div", {
-    className: "mt-2 pl-1"
-  }, editingNote && canEdit ? /*#__PURE__*/React.createElement("div", {
-    className: "flex gap-1.5 items-start slide-down"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-base",
-    style: {
-      color: 'var(--note)'
-    }
-  }, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("textarea", {
-    autoFocus: true,
-    rows: 2,
-    value: noteText,
-    onChange: e => setNoteText(e.target.value),
-    placeholder: "\u4F8B\uFF1A\u5C11\u51B0\u3001\u4E0D\u8981\u6D0B\u8525\u3001\u534A\u719F\u86CB...",
-    className: "flex-1 text-xs p-2 outline-none",
-    style: {
-      background: 'var(--note-bg)',
-      border: '1.5px solid var(--note)',
-      color: 'var(--ink)',
-      fontFamily: '"Noto Sans TC",sans-serif'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col gap-1"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: saveNote,
-    className: "btn-tactile text-xs px-2 py-1",
-    style: {
-      background: 'var(--note)',
-      color: 'var(--paper)'
-    }
-  }, "\u2713 \u5B58"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      setNoteText(line.note || '');
-      setEditingNote(false);
-    },
-    className: "btn-tactile text-xs px-2 py-1",
-    style: {
-      background: 'transparent',
-      color: 'var(--mute)',
-      border: '1px solid var(--mute)'
-    }
-  }, "\u53D6\u6D88"))) : line.note ? /*#__PURE__*/React.createElement("button", {
-    onClick: () => canEdit && setEditingNote(true),
-    className: `text-xs flex items-start gap-1 ${canEdit ? 'hover:opacity-70' : ''}`,
-    style: {
-      color: 'var(--note)',
-      cursor: canEdit ? 'pointer' : 'default'
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      background: 'var(--note-bg)',
-      padding: '2px 6px',
-      border: '1px solid var(--note)'
-    }
-  }, line.note), canEdit && /*#__PURE__*/React.createElement("span", {
-    className: "opacity-50"
-  }, "\u7DE8\u8F2F")) : canEdit ? /*#__PURE__*/React.createElement("button", {
-    onClick: () => setEditingNote(true),
-    className: "text-xs flex items-center gap-1 opacity-50 hover:opacity-100 transition",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("span", null, "\u65B0\u589E\u5099\u8A3B\uFF08\u5982\uFF1A\u5C11\u51B0\u3001\u4E0D\u52A0\u8525\uFF09")) : null));
-}
-
-/* ════════════════════════════════════════════════════════════
-   SUMMARY VIEW - new format: by-item with names + notes
-   ════════════════════════════════════════════════════════════ */
-function SummaryView({
-  shop,
-  carts,
-  account
-}) {
-  if (!shop || shop.placeholder) {
-    return /*#__PURE__*/React.createElement("section", {
-      className: "pt-10 text-center"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-2xl mb-3",
-      style: {
-        color: 'var(--ink-2)'
-      }
-    }, "\u5C1A\u672A\u958B\u59CB\u8A02\u9910"), /*#__PURE__*/React.createElement("div", {
-      className: "text-sm",
-      style: {
-        color: 'var(--mute)'
-      }
-    }, "\u8ACB\u5148\u9078\u5E97"));
-  }
-
-  // aggregate by item, with per-orderer breakdown
-  const byItem = {};
-  let grandQty = 0,
-    grandTotal = 0;
-  ROSTER.forEach(m => {
-    const c = carts[m.id] || {};
-    Object.values(c).forEach(line => {
-      const k = `${line.name}|${line.variant}`;
-      if (!byItem[k]) byItem[k] = {
-        name: line.name,
-        variant: line.variant,
-        price: line.price,
-        qty: 0,
-        orderers: []
-      };
-      byItem[k].qty += line.qty;
-      byItem[k].orderers.push({
-        memberId: m.id,
-        name: m.name,
-        cls: m.cls,
-        qty: line.qty,
-        note: line.note || ''
-      });
-      grandQty += line.qty;
-      grandTotal += line.qty * line.price;
-    });
-  });
-  const itemRows = Object.values(byItem).sort((a, b) => b.qty - a.qty);
-  const ordered = ROSTER.filter(m => Object.keys(carts[m.id] || {}).length > 0);
-  const notOrdered = ROSTER.filter(m => Object.keys(carts[m.id] || {}).length === 0);
-
-  // build copy text (verbose: with names + notes for restaurant)
-  const buildCopyText = () => {
-    const d = new Date();
-    const lines = [`龍門泳隊 ${d.getMonth() + 1}/${d.getDate()} 訂餐 @ ${shop.name}`];
-    lines.push('━━━━━━━━━━━━━━━━━━━━');
-    itemRows.forEach(r => {
-      const v = r.variant !== 'default' ? `(${r.variant})` : '';
-      lines.push(`【${r.name}${v}】×${r.qty}　$${r.price}`);
-      r.orderers.forEach(o => {
-        const noteTxt = o.note ? `　※${o.note}` : '';
-        lines.push(`　・ ${o.name} ×${o.qty}${noteTxt}`);
-      });
-    });
-    lines.push('━━━━━━━━━━━━━━━━━━━━');
-    lines.push(`共 ${grandQty} 份　·　總計 NT$ ${grandTotal.toLocaleString()}`);
-    return lines.join('\n');
-  };
-  const [copied, setCopied] = useState(false);
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(buildCopyText());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (e) {
-      alert(buildCopyText());
-    }
-  };
-  return /*#__PURE__*/React.createElement("section", {
-    className: "pt-5 sm:pt-7"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "mb-5"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px] mb-1",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "STEP 3 \xB7 TOTALS"), /*#__PURE__*/React.createElement("h2", {
-    className: "display-cn text-2xl mb-1"
-  }, "\u8A02\u55AE\u7D71\u8A08"), /*#__PURE__*/React.createElement("div", {
-    className: "text-sm flex items-baseline gap-2 flex-wrap"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "display-cn",
-    style: {
-      color: shop.themeColor
-    }
-  }, shop.name), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, shop.branch), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\xB7"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, shop.phone))), /*#__PURE__*/React.createElement("div", {
-    className: "hl-strong mb-5"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-3 gap-2 sm:gap-3 mb-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "p-3 sm:p-4",
-    style: {
-      background: 'var(--paper)',
-      border: `1.5px solid var(--line-strong)`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px]",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "ORDERED"), /*#__PURE__*/React.createElement("div", {
-    className: "num text-3xl sm:text-4xl"
-  }, ordered.length), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, "\u5DF2\u4E0B\u55AE\u4EBA\u6578")), /*#__PURE__*/React.createElement("div", {
-    className: "p-3 sm:p-4",
-    style: {
-      background: 'var(--paper)',
-      border: `1.5px solid ${shop.themeColor}`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px]",
-    style: {
-      color: shop.themeColor
-    }
-  }, "ITEMS"), /*#__PURE__*/React.createElement("div", {
-    className: "num text-3xl sm:text-4xl",
-    style: {
-      color: shop.themeColor
-    }
-  }, grandQty), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, "\u7E3D\u4EFD\u6578")), /*#__PURE__*/React.createElement("div", {
-    className: "p-3 sm:p-4",
-    style: {
-      background: 'var(--ink)',
-      color: 'var(--paper)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px]",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "NT$"), /*#__PURE__*/React.createElement("div", {
-    className: "num text-3xl sm:text-4xl"
-  }, grandTotal.toLocaleString()), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "\u7E3D\u91D1\u984D"))), grandQty === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "py-8 text-center",
-    style: {
-      background: 'var(--paper)',
-      border: '1.5px dashed var(--line-strong)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-lg",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, "\u5C1A\u7121\u8A02\u55AE")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "mb-6",
-    style: {
-      background: 'var(--paper)',
-      border: `1.5px solid var(--line-strong)`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "px-3 py-2 border-b flex items-center justify-between",
-    style: {
-      borderColor: 'var(--line-strong)',
-      background: shop.themeBg
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-base",
-    style: {
-      color: shop.themeColor
-    }
-  }, "\u7D66\u5E97\u5BB6\u7684\u8A02\u55AE\u660E\u7D30"), /*#__PURE__*/React.createElement("div", {
-    className: "text-[10px] tk-x",
-    style: {
-      color: shop.themeColor
-    }
-  }, "BY ITEM \xB7 \u542B\u5099\u8A3B\u8207\u8A02\u8CFC\u4EBA")), /*#__PURE__*/React.createElement("div", null, itemRows.map(r => /*#__PURE__*/React.createElement("div", {
-    key: r.name + '/' + r.variant,
-    className: "border-b",
-    style: {
-      borderColor: 'var(--line)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "px-3 py-2 flex items-center gap-3",
-    style: {
-      background: 'var(--paper-2)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "display-cn text-sm",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, r.name), r.variant !== 'default' && /*#__PURE__*/React.createElement("span", {
-    className: "ml-2 text-xs px-1.5 py-0.5",
-    style: {
-      background: shop.themeBg,
-      color: shop.themeColor
-    }
-  }, r.variant)), /*#__PURE__*/React.createElement("div", {
-    className: "num text-xs w-12 text-right",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "$", r.price), /*#__PURE__*/React.createElement("div", {
-    className: "num text-lg w-12 text-right",
-    style: {
-      color: shop.themeColor
-    }
-  }, "\xD7", r.qty), /*#__PURE__*/React.createElement("div", {
-    className: "num text-base w-20 text-right",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, "$", r.qty * r.price)), /*#__PURE__*/React.createElement("div", {
-    className: "bg-[var(--paper)] divide-y",
-    style: {
-      borderColor: 'var(--line)'
-    }
-  }, r.orderers.map((o, i) => /*#__PURE__*/React.createElement("div", {
-    key: o.memberId,
-    className: "px-4 py-1.5 flex items-center gap-2 text-xs"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num text-[10px] w-10",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, o.cls), /*#__PURE__*/React.createElement("span", {
-    className: "display-cn",
-    style: {
-      color: 'var(--ink)'
-    }
-  }, o.name), /*#__PURE__*/React.createElement("span", {
-    className: "num",
-    style: {
-      color: 'var(--ink-2)'
-    }
-  }, "\xD7", o.qty), o.note && /*#__PURE__*/React.createElement("span", {
-    className: "note-badge ml-auto"
-  }, "\uD83D\uDCDD ", o.note))))))), /*#__PURE__*/React.createElement("div", {
-    className: "px-3 py-2 flex justify-between items-baseline",
-    style: {
-      background: 'var(--ink)',
-      color: 'var(--paper)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "tk-x text-xs"
-  }, "GRAND TOTAL"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
-    className: "num text-sm",
-    style: {
-      color: 'rgba(250,246,236,0.7)'
-    }
-  }, "NT$ "), /*#__PURE__*/React.createElement("span", {
-    className: "num text-2xl"
-  }, grandTotal.toLocaleString())))), /*#__PURE__*/React.createElement("div", {
-    className: "mb-6 p-4",
-    style: {
-      background: 'var(--paper)',
-      border: `1.5px solid var(--line-strong)`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between mb-3"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px]",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "FOR RESTAURANT \xB7 \u542B\u5099\u8A3B\u8207\u8A02\u8CFC\u4EBA"), /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-sm"
-  }, "\uD83D\uDCCB \u8907\u88FD\u7D66\u5E97\u5BB6")), /*#__PURE__*/React.createElement("button", {
-    onClick: handleCopy,
-    className: "btn-tactile px-4 py-2 text-sm display",
-    style: {
-      background: copied ? 'var(--plus)' : 'var(--ink)',
-      color: 'var(--paper)',
-      boxShadow: '3px 3px 0 ' + shop.themeColor
-    }
-  }, copied ? '✓ COPIED' : '📋 COPY')), /*#__PURE__*/React.createElement("pre", {
-    className: "text-xs num-mono p-3 whitespace-pre-wrap",
-    style: {
-      background: 'var(--bg)',
-      border: '1px dashed var(--line-strong)',
-      color: 'var(--ink)',
-      fontFamily: '"Noto Sans TC",monospace',
-      maxHeight: '300px',
-      overflow: 'auto'
-    }
-  }, buildCopyText())), /*#__PURE__*/React.createElement("div", {
-    className: "mb-5"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px] mb-2",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "BY MEMBER \xB7 \u500B\u4EBA\u8A02\u55AE"), /*#__PURE__*/React.createElement("div", {
-    className: "grid sm:grid-cols-2 gap-2"
-  }, ordered.map(m => {
-    const c = carts[m.id] || {};
-    const lines = Object.values(c);
-    const sub = lines.reduce((s, l) => s + l.qty * l.price, 0);
-    const grade = GRADE_INFO[m.grade];
-    return /*#__PURE__*/React.createElement("div", {
-      key: m.id,
-      className: "p-3",
-      style: {
-        background: 'var(--paper)',
-        border: `1.5px solid ${shop.themeColor}`
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline justify-between mb-2"
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline gap-1.5 num text-xs",
-      style: {
-        color: 'var(--ink-2)'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: grade.color,
-        fontWeight: 900
-      }
-    }, grade.label), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, m.cls), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: 'var(--mute)'
-      }
-    }, "/"), /*#__PURE__*/React.createElement("span", null, m.seat)), /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-base"
-    }, m.name)), /*#__PURE__*/React.createElement("div", {
-      className: "num text-xl",
-      style: {
-        color: shop.themeColor
-      }
-    }, "$", sub)), /*#__PURE__*/React.createElement("div", {
-      className: "text-xs space-y-1",
-      style: {
-        color: 'var(--ink-2)'
-      }
-    }, lines.map(l => /*#__PURE__*/React.createElement("div", {
-      key: l.key
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex justify-between gap-2"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "truncate"
-    }, "\xB7 ", l.name, l.variant !== 'default' ? ` (${l.variant})` : ''), /*#__PURE__*/React.createElement("span", {
-      className: "num shrink-0",
-      style: {
-        color: 'var(--ink)'
-      }
-    }, "\xD7", l.qty)), l.note && /*#__PURE__*/React.createElement("div", {
-      className: "ml-3 mt-0.5 note-badge",
-      style: {
-        fontSize: 9
-      }
-    }, "\uD83D\uDCDD ", l.note)))));
-  }))), notOrdered.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "p-4",
-    style: {
-      background: '#FBE8E5',
-      border: '1.5px solid var(--red)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-base mb-2",
-    style: {
-      color: 'var(--red)'
-    }
-  }, "\u26A0 \u5C1A\u672A\u8A02\u9910 \xB7 ", notOrdered.length, " \u4EBA"), /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-wrap gap-1.5"
-  }, notOrdered.map(m => /*#__PURE__*/React.createElement("span", {
-    key: m.id,
-    className: "px-2 py-0.5 text-xs",
-    style: {
-      background: 'var(--paper)',
-      border: '1px solid var(--red)',
-      color: 'var(--ink)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num text-[10px] mr-1",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, m.cls), m.name))))));
-}
-
-/* ════════════════════════════════════════════════════════════
-   PARENT ORDER VIEW — inline single-page UX for parents
-   No drawer, no roster grid, cart always visible at top
-   ════════════════════════════════════════════════════════════ */
-function ParentOrderView({
-  shop,
-  carts,
-  account,
-  isCutoff,
-  dispatch
-}) {
-  const swimmers = (account.swimmers || []).filter(sid => ROSTER_BY_ID[sid]);
-  const [activeChildId, setActiveChildId] = useState(swimmers[0] || null);
-
-  // re-pick if active child got removed from binding
-  useEffect(() => {
-    if (activeChildId && !swimmers.includes(activeChildId)) {
-      setActiveChildId(swimmers[0] || null);
-    } else if (!activeChildId && swimmers.length > 0) {
-      setActiveChildId(swimmers[0]);
-    }
-  }, [swimmers.join('|')]);
-  if (!shop) {
-    return /*#__PURE__*/React.createElement("section", {
-      className: "pt-10 sm:pt-16 text-center"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-2xl mb-3",
-      style: {
-        color: 'var(--ink-2)'
-      }
-    }, "\u7B49\u7BA1\u7406\u54E1\u9078\u5E97"), /*#__PURE__*/React.createElement("div", {
-      className: "text-sm",
-      style: {
-        color: 'var(--mute)'
-      }
-    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B"));
-  }
-  if (!activeChildId || !ROSTER_BY_ID[activeChildId]) {
-    return /*#__PURE__*/React.createElement("section", {
-      className: "pt-10 sm:pt-16 text-center"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-2xl mb-3",
-      style: {
-        color: 'var(--red)'
-      }
-    }, "\u6C92\u6709\u53EF\u4E0B\u55AE\u7684\u968A\u54E1"), /*#__PURE__*/React.createElement("div", {
-      className: "text-sm",
-      style: {
-        color: 'var(--mute)'
-      }
-    }, "\u8ACB\u806F\u7D61\u7BA1\u7406\u54E1\u8A2D\u5B9A\u60A8\u7684\u7D81\u5B9A"));
-  }
-  const member = ROSTER_BY_ID[activeChildId];
-  const cart = carts[activeChildId] || {};
-  const cartLines = useMemo(() => {
-    return Object.values(cart).sort((a, b) => {
-      return (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || '');
-    });
-  }, [cart]);
-  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
-  const totalQty = cartLines.reduce((s, l) => s + (l.qty || 0), 0);
-  const canEdit = canEditOrder(account, activeChildId, isCutoff);
   const itemsByCat = useMemo(() => {
     const out = {};
     (shop.items || []).forEach(it => {
@@ -5933,173 +4890,22 @@ function ParentOrderView({
     });
     return out;
   }, [shop]);
-  return /*#__PURE__*/React.createElement("section", {
-    className: "pt-4 sm:pt-7 pb-24"
-  }, swimmers.length > 1 && /*#__PURE__*/React.createElement("div", {
-    className: "mb-4 flex gap-2"
-  }, swimmers.map(sid => {
-    const m = ROSTER_BY_ID[sid];
-    if (!m) return null;
-    const on = sid === activeChildId;
-    const childCart = carts[sid] || {};
-    const childQty = Object.values(childCart).reduce((s, l) => s + (l.qty || 0), 0);
-    return /*#__PURE__*/React.createElement("button", {
-      key: sid,
-      onClick: () => setActiveChildId(sid),
-      className: "btn-tactile flex-1 py-2 px-3 text-left",
-      style: {
-        background: on ? shop.themeBg : 'var(--paper)',
-        color: on ? shop.themeColor : 'var(--ink-2)',
-        border: `1.5px solid ${on ? shop.themeColor : 'var(--line)'}`
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "display-cn text-base",
-      style: {
-        fontWeight: on ? 900 : 500
-      }
-    }, m.name), /*#__PURE__*/React.createElement("div", {
-      className: "text-[10px] num"
-    }, childQty > 0 ? `${childQty} 項` : '尚未點餐'));
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "mb-5"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-baseline justify-between mb-2"
-  }, /*#__PURE__*/React.createElement("h2", {
-    className: "display-cn text-xl"
-  }, member.name, " \u7684\u8A02\u55AE"), totalQty > 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "flex items-baseline gap-1.5"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num text-base",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\xD7", totalQty), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\xB7"), /*#__PURE__*/React.createElement("span", {
-    className: "num text-2xl",
-    style: {
-      color: shop.themeColor
-    }
-  }, "$", subtotal)) : /*#__PURE__*/React.createElement("div", {
-    className: "text-xs",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\u5C1A\u672A\u9EDE\u9910")), cartLines.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "p-4 text-center text-sm fade-in",
-    style: {
-      background: 'var(--paper)',
-      border: '1.5px dashed var(--line-strong)',
-      color: 'var(--mute)'
-    }
-  }, "\u2193 \u5F9E\u4E0B\u65B9\u83DC\u55AE\u958B\u59CB\u9EDE\u9910 \u2193") : /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: 'var(--paper)',
-      border: '2px solid var(--ink)'
-    }
-  }, cartLines.map(l => /*#__PURE__*/React.createElement(CartLine, {
-    key: l.key,
-    line: l,
-    shop: shop,
-    canEdit: canEdit,
-    onAdd: () => dispatch({
-      type: 'addKey',
-      mid: activeChildId,
-      key: l.key,
-      line: l
-    }),
-    onSub: () => dispatch({
-      type: 'subKey',
-      mid: activeChildId,
-      key: l.key
-    }),
-    onNote: note => dispatch({
-      type: 'note',
-      mid: activeChildId,
-      key: l.key,
-      note
-    })
-  })), canEdit && /*#__PURE__*/React.createElement("div", {
-    className: "px-3 py-2 border-t flex items-center justify-between",
-    style: {
-      borderColor: 'var(--line-strong)',
-      background: 'var(--bg)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] serif-it",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "\xB7 \u8A02\u55AE\u6703\u81EA\u52D5\u5132\u5B58\uFF0C\u7121\u9700\u6309\u78BA\u8A8D \xB7"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      if (confirm(`確定清空 ${member.name} 的訂單？`)) dispatch({
-        type: 'clearMember',
-        mid: activeChildId
-      });
-    },
-    className: "btn-tactile text-xs px-2 py-1",
-    style: {
-      border: '1px solid var(--red)',
-      color: 'var(--red)'
-    }
-  }, "\u5168\u90E8\u6E05\u7A7A")))), isCutoff && /*#__PURE__*/React.createElement("div", {
-    className: "mb-4 p-3 text-sm flex items-center gap-2",
-    style: {
-      background: 'var(--lock-bg)',
-      border: '1.5px solid var(--lock)',
-      color: 'var(--lock)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-base"
-  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", null, "\u5DF2\u622A\u55AE\uFF0821:00 \u5F8C\u5BB6\u9577\u7121\u6CD5\u4FEE\u6539\uFF09\u3002\u5982\u9700\u66F4\u52D5\uFF0C\u8ACB\u806F\u7D61\u6559\u7DF4")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "mb-3 flex items-baseline justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "tk-x text-[10px] mb-0.5",
-    style: {
-      color: shop.themeColor
-    }
-  }, shop.nameEn || '', " \xB7 MENU"), /*#__PURE__*/React.createElement("h2", {
-    className: "display-cn text-lg"
-  }, shop.name, " \xB7 \u9EDE\u9910")), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "num"
-  }, (shop.items || []).length), " \u500B\u54C1\u9805")), shop.note && /*#__PURE__*/React.createElement("div", {
-    className: "mb-3 p-2 text-[11px]",
-    style: {
-      background: 'var(--paper)',
-      border: '1px dashed var(--line-strong)',
-      color: 'var(--ink-2)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "serif-it",
-    style: {
-      color: 'var(--mute)'
-    }
-  }, "note \xB7"), " ", shop.note), /*#__PURE__*/React.createElement("div", {
-    className: "hl-strong mb-2"
-  }), (shop.categories || []).map((cat, idx) => {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, (shop.categories || []).map((cat, idx) => {
     const items = itemsByCat[cat.id] || [];
     if (items.length === 0) return null;
     const groupedKeys = [...new Set(items.filter(it => it.group).map(it => it.group))];
-    // count how many of this cat's items are already in cart (helps user navigate)
     const itemsOrderedFromCat = items.reduce((n, it) => {
       Object.keys(it.prices).forEach(v => {
-        const k = safeKey(itemKey(shop.id, cat.id, it.name, v));
-        n += cart[k]?.qty || 0;
+        const k = itemKey(shop.id, cat.id, it.name, v);
+        n += draft[k]?.qty || 0;
       });
       return n;
     }, 0);
+    const defaultOpen = expandAll || idx === 0 || itemsOrderedFromCat > 0;
     return /*#__PURE__*/React.createElement("details", {
       key: cat.id,
-      className: "mb-2 group",
-      open: idx === 0 || itemsOrderedFromCat > 0
+      className: "mb-2",
+      open: defaultOpen
     }, /*#__PURE__*/React.createElement("summary", {
       className: "cursor-pointer list-none flex items-center justify-between py-2 px-1 sm:px-2 select-none",
       style: {
@@ -6109,7 +4915,7 @@ function ParentOrderView({
     }, /*#__PURE__*/React.createElement("div", {
       className: "flex items-baseline gap-2 flex-1 min-w-0"
     }, /*#__PURE__*/React.createElement("span", {
-      className: "text-xs transition-transform",
+      className: "text-xs",
       style: {
         color: shop.themeColor
       }
@@ -6150,106 +4956,1239 @@ function ParentOrderView({
     }, "\u2500 ", g, " \u2500"), items.filter(it => it.group === g).map(it => /*#__PURE__*/React.createElement(ItemRow, {
       key: it.name + '/' + g,
       item: it,
-      cart: cart,
+      draft: draft,
       shop: shop,
-      disabled: !canEdit,
-      onAdd: v => dispatch({
-        type: 'add',
-        mid: activeChildId,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      }),
-      onSub: v => dispatch({
-        type: 'sub',
-        mid: activeChildId,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      })
+      disabled: disabled,
+      onAdd: v => onAdd(it, v),
+      onSub: v => onSub(it, v)
     })))), items.filter(it => !it.group).map(it => /*#__PURE__*/React.createElement(ItemRow, {
       key: it.name,
       item: it,
-      cart: cart,
+      draft: draft,
       shop: shop,
-      disabled: !canEdit,
-      onAdd: v => dispatch({
-        type: 'add',
-        mid: activeChildId,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      }),
-      onSub: v => dispatch({
-        type: 'sub',
-        mid: activeChildId,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      })
+      disabled: disabled,
+      onAdd: v => onAdd(it, v),
+      onSub: v => onSub(it, v)
     }))) : items.map(it => /*#__PURE__*/React.createElement(ItemRow, {
       key: it.name,
       item: it,
-      cart: cart,
+      draft: draft,
       shop: shop,
-      disabled: !canEdit,
-      onAdd: v => dispatch({
-        type: 'add',
-        mid: activeChildId,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      }),
-      onSub: v => dispatch({
-        type: 'sub',
-        mid: activeChildId,
-        shopId: shop.id,
-        item: it,
-        variant: v
-      })
+      disabled: disabled,
+      onAdd: v => onAdd(it, v),
+      onSub: v => onSub(it, v)
     }))));
+  }));
+}
+
+/* Cart line — show in summary view (after submit) */
+function CartLine({
+  line,
+  shop,
+  canEdit,
+  onAdd,
+  onSub,
+  onNote
+}) {
+  const [editingNote, setEditingNote] = useState(false);
+  const [tempNote, setTempNote] = useState(line.note || '');
+  const variantLabel = line.variant === 'default' ? '' : ` (${line.variant})`;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "border-b last:border-b-0 px-3 py-2",
+    style: {
+      borderColor: 'var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-sm",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, line.name, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, variantLabel)), /*#__PURE__*/React.createElement("div", {
+    className: "num text-xs mt-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "$", line.price, " \xD7 ", line.qty, " = ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: shop.themeColor,
+      fontWeight: 700
+    }
+  }, "$", line.qty * line.price)), line.note && !editingNote && /*#__PURE__*/React.createElement("div", {
+    className: "mt-1 text-[11px] flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "note-badge"
+  }, "\uD83D\uDCDD ", line.note), canEdit && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setEditingNote(true);
+      setTempNote(line.note);
+    },
+    className: "text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u6539")), editingNote ? /*#__PURE__*/React.createElement("div", {
+    className: "mt-1.5 flex gap-1"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: tempNote,
+    onChange: e => setTempNote(e.target.value),
+    placeholder: "\u4F8B:\u5C11\u51B0\u3001\u4E0D\u8981\u6D0B\u8525",
+    className: "flex-1 px-2 py-1 text-xs",
+    style: {
+      border: '1.5px solid var(--note)',
+      background: 'var(--note-bg)'
+    },
+    autoFocus: true
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      onNote(tempNote);
+      setEditingNote(false);
+    },
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      background: 'var(--note)',
+      color: 'var(--paper)'
+    }
+  }, "\u5B58"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setEditingNote(false);
+      setTempNote(line.note || '');
+    },
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      background: 'transparent',
+      color: 'var(--mute)',
+      border: '1px solid var(--line)'
+    }
+  }, "\u53D6\u6D88")) : !line.note && canEdit && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditingNote(true),
+    className: "mt-1 text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "+ \u52A0\u5099\u8A3B")), canEdit && /*#__PURE__*/React.createElement("div", {
+    className: "qty-ctrl shrink-0"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onSub
+  }, "\u2212"), /*#__PURE__*/React.createElement("span", {
+    className: "qv"
+  }, line.qty), /*#__PURE__*/React.createElement("button", {
+    onClick: onAdd
+  }, "+"))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   ORDER EDITOR DRAWER — used by admin clicking on a swimmer
+   ════════════════════════════════════════════════════════════ */
+function OrderEditorDrawer({
+  shop,
+  member,
+  existingOrder,
+  account,
+  isCutoff,
+  dispatch,
+  onClose
+}) {
+  // Local draft state (not synced to Firestore until submit)
+  const [draft, setDraft] = useState(() => existingOrder?.items ? {
+    ...existingOrder.items
+  } : {});
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const grade = GRADE_INFO[member.grade] || {
+    label: '?',
+    color: 'var(--mute)'
+  };
+  const canEdit = canEditOrder(account, member.id, isCutoff);
+  const isOverride = isOverrideAction(account, member.id, isCutoff);
+  const onAdd = (item, variant) => {
+    const k = itemKey(shop.id, item.cat, item.name, variant);
+    setDraft(d => {
+      const cur = d[k];
+      return {
+        ...d,
+        [k]: {
+          shop: shop.id,
+          cat: item.cat,
+          name: item.name,
+          variant,
+          price: item.prices[variant],
+          qty: (cur?.qty || 0) + 1,
+          note: cur?.note || ''
+        }
+      };
+    });
+  };
+  const onSub = (item, variant) => {
+    const k = itemKey(shop.id, item.cat, item.name, variant);
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      const newQty = cur.qty - 1;
+      const next = {
+        ...d
+      };
+      if (newQty <= 0) delete next[k];else next[k] = {
+        ...cur,
+        qty: newQty
+      };
+      return next;
+    });
+  };
+  const onAddKey = k => {
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      return {
+        ...d,
+        [k]: {
+          ...cur,
+          qty: cur.qty + 1
+        }
+      };
+    });
+  };
+  const onSubKey = k => {
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      const newQty = cur.qty - 1;
+      const next = {
+        ...d
+      };
+      if (newQty <= 0) delete next[k];else next[k] = {
+        ...cur,
+        qty: newQty
+      };
+      return next;
+    });
+  };
+  const onNoteKey = (k, note) => {
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      return {
+        ...d,
+        [k]: {
+          ...cur,
+          note: (note || '').trim()
+        }
+      };
+    });
+  };
+  const cartLines = Object.entries(draft).map(([k, v]) => ({
+    key: k,
+    ...v
+  })).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || ''));
+  const totalQty = cartLines.reduce((s, l) => s + (l.qty || 0), 0);
+  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+
+  // dirty = local draft differs from existingOrder
+  const dirty = useMemo(() => {
+    const existing = existingOrder?.items || {};
+    const draftKeys = Object.keys(draft);
+    const existingKeys = Object.keys(existing);
+    if (draftKeys.length !== existingKeys.length) return true;
+    for (const k of draftKeys) {
+      const a = draft[k],
+        b = existing[k];
+      if (!b) return true;
+      if (a.qty !== b.qty || (a.note || '') !== (b.note || '')) return true;
+    }
+    return false;
+  }, [draft, existingOrder]);
+  const onSubmit = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await dispatch({
+        type: 'submit_order',
+        swimmerId: member.id,
+        items: draft
+      });
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setError(e.message || '提交失敗');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const onClearAll = () => {
+    if (!confirm(`確定清空 ${member.name} 的訂單？`)) return;
+    setDraft({});
+  };
+  const onDelete = async () => {
+    if (!confirm(`確定刪除 ${member.name} 的整筆訂單？`)) return;
+    setSubmitting(true);
+    try {
+      await dispatch({
+        type: 'delete_order',
+        swimmerId: member.id
+      });
+      onClose();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const tryClose = () => {
+    if (dirty) {
+      if (!confirm('您有未提交的變更，確定關閉？變更會遺失')) return;
+    }
+    onClose();
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.4)'
+    },
+    onClick: tryClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 sm:inset-4 sm:max-w-4xl sm:mx-auto slide-up flex flex-col",
+    style: {
+      background: 'var(--bg)',
+      border: '2px solid var(--ink)'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "border-b px-4 py-3 flex items-center justify-between flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: shop.themeBg
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 num text-xs mb-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: grade.color,
+      fontWeight: 900
+    }
+  }, grade.label, "\u5E74"), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, member.cls), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "/"), /*#__PURE__*/React.createElement("span", null, member.seat), isOverride && canEdit && /*#__PURE__*/React.createElement("span", {
+    className: "override-badge ml-2"
+  }, "\u26A0 \u8D8A\u6B0A\u7DE8\u8F2F"), dirty && /*#__PURE__*/React.createElement("span", {
+    className: "role-chip ml-2",
+    style: {
+      background: 'var(--note-bg)',
+      color: 'var(--note)',
+      border: '1px solid var(--note)',
+      fontSize: 10
+    }
+  }, "\u25CF \u672A\u63D0\u4EA4")), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl sm:text-2xl",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, member.name, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm ml-2 font-normal",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u7684\u8A02\u55AE")), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: shop.themeColor
+    }
+  }, shop.name, " \xB7 ", shop.branch)), /*#__PURE__*/React.createElement("button", {
+    onClick: tryClose,
+    className: "btn-tactile px-3 py-2 text-sm",
+    style: {
+      border: '1.5px solid var(--ink-2)',
+      background: 'var(--paper)',
+      color: 'var(--ink-2)'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 overflow-y-auto scroll-y px-3 sm:px-5 py-3 pb-32"
+  }, cartLines.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "\u76EE\u524D\u9078\u4E86"), /*#__PURE__*/React.createElement("div", {
+    className: "num text-base",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\xD7", totalQty, "\u3000", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: shop.themeColor,
+      fontWeight: 700
+    }
+  }, "$", subtotal))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)'
+    }
+  }, cartLines.map(l => /*#__PURE__*/React.createElement(CartLine, {
+    key: l.key,
+    line: l,
+    shop: shop,
+    canEdit: canEdit,
+    onAdd: () => onAddKey(l.key),
+    onSub: () => onSubKey(l.key),
+    onNote: n => onNoteKey(l.key, n)
+  })), canEdit && /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 border-t flex items-center justify-end",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--bg)'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClearAll,
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      border: '1px solid var(--red)',
+      color: 'var(--red)'
+    }
+  }, "\u5168\u90E8\u6E05\u7A7A")))), canEdit ? /*#__PURE__*/React.createElement(MenuSections, {
+    shop: shop,
+    draft: draft,
+    onAdd: onAdd,
+    onSub: onSub,
+    disabled: false
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "p-4 text-center text-sm",
+    style: {
+      background: 'var(--lock-bg)',
+      border: '1.5px solid var(--lock)',
+      color: 'var(--lock)'
+    }
+  }, "\uD83D\uDD12 \u5DF2\u622A\u55AE \xB7 \u7121\u6CD5\u7DE8\u8F2F")), /*#__PURE__*/React.createElement("div", {
+    className: "border-t px-4 py-3 flex-shrink-0 flex items-center gap-2",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--paper)'
+    }
+  }, error && /*#__PURE__*/React.createElement("div", {
+    className: "absolute bottom-full left-0 right-0 px-4 py-2 text-xs",
+    style: {
+      background: 'var(--override-bg)',
+      borderTop: '1px solid var(--override)',
+      color: 'var(--override)'
+    }
+  }, error), existingOrder && canEdit && /*#__PURE__*/React.createElement("button", {
+    onClick: onDelete,
+    disabled: submitting,
+    className: "btn-tactile text-xs px-2 py-2",
+    style: {
+      border: '1.5px solid var(--red)',
+      color: 'var(--red)'
+    }
+  }, "\uD83D\uDDD1 \u522A\u9664"), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1"
+  }), dirty && /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] num pulse-dot",
+    style: {
+      color: 'var(--note)'
+    }
+  }, "\u25CF \u8B8A\u66F4\u672A\u63D0\u4EA4"), /*#__PURE__*/React.createElement("button", {
+    onClick: tryClose,
+    disabled: submitting,
+    className: "btn-tactile px-3 py-2 text-sm",
+    style: {
+      border: '1.5px solid var(--ink-2)',
+      color: 'var(--ink-2)',
+      background: 'transparent'
+    }
+  }, "\u53D6\u6D88"), canEdit && /*#__PURE__*/React.createElement("button", {
+    onClick: onSubmit,
+    disabled: !dirty || submitting,
+    className: "btn-tactile px-4 py-2 text-sm flex items-center gap-2",
+    style: {
+      background: dirty && !submitting ? 'var(--ink)' : 'var(--mute)',
+      color: 'var(--paper)',
+      opacity: !dirty || submitting ? 0.5 : 1
+    }
+  }, submitting ? '提交中...' : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900
+    }
+  }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, existingOrder ? '更新訂單' : '提交訂單'))))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   PARENT ORDER FLOW — full-page UX for parents (and admin in "我的孩子" mode)
+   Two states per child:
+   - VIEW: showing submitted order (read-only, with "編輯" button to enter EDIT)
+   - EDIT: in-place editing with menu, with "✓ 提交" button
+   ════════════════════════════════════════════════════════════ */
+function ParentOrderFlow({
+  shop,
+  orders,
+  account,
+  isCutoff,
+  dispatch
+}) {
+  const swimmers = (account.swimmers || []).filter(sid => ROSTER_BY_ID[sid]);
+  const [activeChildId, setActiveChildId] = useState(swimmers[0] || null);
+  useEffect(() => {
+    if (activeChildId && !swimmers.includes(activeChildId)) {
+      setActiveChildId(swimmers[0] || null);
+    } else if (!activeChildId && swimmers.length > 0) {
+      setActiveChildId(swimmers[0]);
+    }
+  }, [swimmers.join('|')]);
+  if (!activeChildId || !ROSTER_BY_ID[activeChildId]) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 sm:pt-16 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u6C92\u6709\u53EF\u4E0B\u55AE\u7684\u968A\u54E1"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u8ACB\u806F\u7D61\u7BA1\u7406\u54E1\u8A2D\u5B9A\u60A8\u7684\u7D81\u5B9A"));
+  }
+  return /*#__PURE__*/React.createElement("div", null, swimmers.length > 1 && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 flex gap-2"
+  }, swimmers.map(sid => {
+    const m = ROSTER_BY_ID[sid];
+    if (!m) return null;
+    const on = sid === activeChildId;
+    const ord = orders[sid];
+    const childQty = ord?.items ? Object.values(ord.items).reduce((s, l) => s + (l.qty || 0), 0) : 0;
+    return /*#__PURE__*/React.createElement("button", {
+      key: sid,
+      onClick: () => setActiveChildId(sid),
+      className: "btn-tactile flex-1 py-2 px-3 text-left",
+      style: {
+        background: on ? shop.themeBg : 'var(--paper)',
+        color: on ? shop.themeColor : 'var(--ink-2)',
+        border: `1.5px solid ${on ? shop.themeColor : 'var(--line)'}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base",
+      style: {
+        fontWeight: on ? 900 : 500
+      }
+    }, m.name), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num"
+    }, childQty > 0 ? `${childQty} 項` : '尚未下單'));
+  })), /*#__PURE__*/React.createElement(ChildOrderPanel, {
+    key: activeChildId,
+    shop: shop,
+    member: ROSTER_BY_ID[activeChildId],
+    existingOrder: orders[activeChildId],
+    account: account,
+    isCutoff: isCutoff,
+    dispatch: dispatch
+  }));
+}
+
+/* Single-child order panel with VIEW / EDIT modes */
+function ChildOrderPanel({
+  shop,
+  member,
+  existingOrder,
+  account,
+  isCutoff,
+  dispatch
+}) {
+  const [mode, setMode] = useState(existingOrder ? 'view' : 'edit');
+  const [draft, setDraft] = useState(() => existingOrder?.items ? {
+    ...existingOrder.items
+  } : {});
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const canEdit = canEditOrder(account, member.id, isCutoff);
+
+  // sync draft when existingOrder changes externally
+  useEffect(() => {
+    if (mode === 'view') {
+      setDraft(existingOrder?.items ? {
+        ...existingOrder.items
+      } : {});
+    }
+  }, [existingOrder, mode]);
+  const onAdd = (item, variant) => {
+    const k = itemKey(shop.id, item.cat, item.name, variant);
+    setDraft(d => {
+      const cur = d[k];
+      return {
+        ...d,
+        [k]: {
+          shop: shop.id,
+          cat: item.cat,
+          name: item.name,
+          variant,
+          price: item.prices[variant],
+          qty: (cur?.qty || 0) + 1,
+          note: cur?.note || ''
+        }
+      };
+    });
+  };
+  const onSub = (item, variant) => {
+    const k = itemKey(shop.id, item.cat, item.name, variant);
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      const newQty = cur.qty - 1;
+      const next = {
+        ...d
+      };
+      if (newQty <= 0) delete next[k];else next[k] = {
+        ...cur,
+        qty: newQty
+      };
+      return next;
+    });
+  };
+  const onAddKey = k => {
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      return {
+        ...d,
+        [k]: {
+          ...cur,
+          qty: cur.qty + 1
+        }
+      };
+    });
+  };
+  const onSubKey = k => {
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      const newQty = cur.qty - 1;
+      const next = {
+        ...d
+      };
+      if (newQty <= 0) delete next[k];else next[k] = {
+        ...cur,
+        qty: newQty
+      };
+      return next;
+    });
+  };
+  const onNoteKey = (k, note) => {
+    setDraft(d => {
+      const cur = d[k];
+      if (!cur) return d;
+      return {
+        ...d,
+        [k]: {
+          ...cur,
+          note: (note || '').trim()
+        }
+      };
+    });
+  };
+  const dirty = useMemo(() => {
+    const existing = existingOrder?.items || {};
+    const draftKeys = Object.keys(draft);
+    const existingKeys = Object.keys(existing);
+    if (draftKeys.length !== existingKeys.length) return true;
+    for (const k of draftKeys) {
+      const a = draft[k],
+        b = existing[k];
+      if (!b) return true;
+      if (a.qty !== b.qty || (a.note || '') !== (b.note || '')) return true;
+    }
+    return false;
+  }, [draft, existingOrder]);
+  const cartLines = Object.entries(draft).map(([k, v]) => ({
+    key: k,
+    ...v
+  })).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || ''));
+  const totalQty = cartLines.reduce((s, l) => s + (l.qty || 0), 0);
+  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+  const onSubmit = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await dispatch({
+        type: 'submit_order',
+        swimmerId: member.id,
+        items: draft
+      });
+      setMode('view');
+      setJustSubmitted(true);
+      setTimeout(() => setJustSubmitted(false), 2500);
+    } catch (e) {
+      console.error(e);
+      setError(e.message || '提交失敗');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const onCancelEdit = () => {
+    if (dirty && !confirm('確定取消？變更會遺失')) return;
+    setDraft(existingOrder?.items ? {
+      ...existingOrder.items
+    } : {});
+    if (existingOrder) setMode('view');
+  };
+  const onDelete = async () => {
+    if (!confirm(`確定刪除整筆訂單？`)) return;
+    setSubmitting(true);
+    try {
+      await dispatch({
+        type: 'delete_order',
+        swimmerId: member.id
+      });
+      setDraft({});
+      setMode('edit');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const onClearDraft = () => {
+    if (!confirm('清空目前編輯中的訂單？')) return;
+    setDraft({});
+  };
+
+  /* ───── VIEW MODE: show submitted order, with edit button ───── */
+  if (mode === 'view' && existingOrder) {
+    const submittedItems = Object.entries(existingOrder.items || {}).map(([k, v]) => ({
+      key: k,
+      ...v
+    })).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || ''));
+    const submittedQty = submittedItems.reduce((s, l) => s + (l.qty || 0), 0);
+    const submittedSub = submittedItems.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "pb-24"
+    }, justSubmitted && /*#__PURE__*/React.createElement("div", {
+      className: "mb-4 p-3 text-sm pop-in flex items-center gap-2",
+      style: {
+        background: '#E0EFD8',
+        border: '2px solid var(--plus)',
+        color: 'var(--plus)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-lg"
+    }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+      className: "display-cn"
+    }, "\u8A02\u55AE\u5DF2\u6210\u529F\u63D0\u4EA4")), /*#__PURE__*/React.createElement("div", {
+      className: "mb-4"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between mb-2"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "tk-x text-[10px]",
+      style: {
+        color: shop.themeColor
+      }
+    }, "SUBMITTED \xB7 \u5DF2\u63D0\u4EA4\u8A02\u55AE"), /*#__PURE__*/React.createElement("h2", {
+      className: "display-cn text-xl"
+    }, member.name, " \u7684\u8A02\u55AE")), /*#__PURE__*/React.createElement("div", {
+      className: "text-right"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "num text-3xl",
+      style: {
+        color: shop.themeColor,
+        lineHeight: 1
+      }
+    }, "$", submittedSub), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u5171 ", submittedQty, " \u9805"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: 'var(--paper)',
+        border: '2px solid var(--ink)'
+      }
+    }, submittedItems.map(l => /*#__PURE__*/React.createElement("div", {
+      key: l.key,
+      className: "px-3 py-2 border-b last:border-b-0",
+      style: {
+        borderColor: 'var(--line)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-sm"
+    }, l.name, l.variant !== 'default' && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs ml-1",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "(", l.variant, ")")), l.note && /*#__PURE__*/React.createElement("div", {
+      className: "mt-1 text-[11px]"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "note-badge"
+    }, "\uD83D\uDCDD ", l.note))), /*#__PURE__*/React.createElement("div", {
+      className: "text-right shrink-0 ml-3"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "num text-base",
+      style: {
+        color: 'var(--ink)'
+      }
+    }, "\xD7", l.qty), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "$", l.price * l.qty)))))), existingOrder.submittedAt && /*#__PURE__*/React.createElement("div", {
+      className: "mt-2 text-[11px] num-mono",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u63D0\u4EA4\u65BC ", fmtDateTime(existingOrder.submittedAt), " ", existingOrder.submittedByName && ` · ${existingOrder.submittedByName}`)), /*#__PURE__*/React.createElement("div", {
+      className: "fixed bottom-0 left-0 right-0 z-30 px-4 py-3 flex items-center justify-between gap-2",
+      style: {
+        background: 'var(--ink)',
+        color: 'var(--paper)',
+        borderTop: `3px solid ${shop.themeColor}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-base"
+    }, canEdit ? '✓' : '🔒'), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] tk-x",
+      style: {
+        color: 'rgba(250,246,236,0.7)'
+      }
+    }, canEdit ? '已提交' : '已截單 · 無法修改'), /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-xs"
+    }, member.name))), /*#__PURE__*/React.createElement("div", {
+      className: "flex gap-2"
+    }, canEdit && /*#__PURE__*/React.createElement("button", {
+      onClick: onDelete,
+      disabled: submitting,
+      className: "btn-tactile text-xs px-2 py-2",
+      style: {
+        border: '1.5px solid var(--red)',
+        color: 'var(--red)',
+        background: 'var(--paper)'
+      }
+    }, "\uD83D\uDDD1"), canEdit && /*#__PURE__*/React.createElement("button", {
+      onClick: () => setMode('edit'),
+      className: "btn-tactile px-4 py-2 text-sm flex items-center gap-1.5",
+      style: {
+        background: shop.themeColor,
+        color: 'var(--paper)'
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("span", {
+      className: "display-cn"
+    }, "\u7DE8\u8F2F")))));
+  }
+
+  /* ───── EDIT MODE: show menu + draft cart ───── */
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pb-32"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-xl"
+  }, member.name, " \u7684\u8A02\u55AE", /*#__PURE__*/React.createElement("span", {
+    className: "ml-2 text-xs serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7 editing")), totalQty > 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-base",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xD7", totalQty), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl",
+    style: {
+      color: shop.themeColor
+    }
+  }, "$", subtotal)) : /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5C1A\u672A\u9078\u9910")), cartLines.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "p-4 text-center text-sm",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)',
+      color: 'var(--mute)'
+    }
+  }, "\u2193 \u5F9E\u4E0B\u65B9\u83DC\u55AE\u9078\u9910 \u2193") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)'
+    }
+  }, cartLines.map(l => /*#__PURE__*/React.createElement(CartLine, {
+    key: l.key,
+    line: l,
+    shop: shop,
+    canEdit: canEdit,
+    onAdd: () => onAddKey(l.key),
+    onSub: () => onSubKey(l.key),
+    onNote: n => onNoteKey(l.key, n)
+  })), canEdit && /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 border-t flex items-center justify-end",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--bg)'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClearDraft,
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      border: '1px solid var(--red)',
+      color: 'var(--red)'
+    }
+  }, "\u5168\u90E8\u6E05\u7A7A")))), isCutoff && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3 text-sm flex items-center gap-2",
+    style: {
+      background: 'var(--lock-bg)',
+      border: '1.5px solid var(--lock)',
+      color: 'var(--lock)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", null, "\u5DF2\u622A\u55AE\uFF0821:00 \u5F8C\u5BB6\u9577\u7121\u6CD5\u4FEE\u6539\uFF09\u3002\u5982\u9700\u66F4\u52D5\uFF0C\u8ACB\u806F\u7D61\u6559\u7DF4")), /*#__PURE__*/React.createElement("div", {
+    className: "mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-0.5",
+    style: {
+      color: shop.themeColor
+    }
+  }, shop.nameEn || '', " \xB7 MENU"), /*#__PURE__*/React.createElement("h3", {
+    className: "display-cn text-lg"
+  }, shop.name, " \u83DC\u55AE")), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, (shop.items || []).length), " \u500B\u54C1\u9805")), shop.note && /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 mb-3 p-2 text-[11px]",
+    style: {
+      background: 'var(--paper)',
+      border: '1px dashed var(--line-strong)',
+      color: 'var(--ink-2)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "note \xB7"), " ", shop.note), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mt-2 mb-2"
+  })), /*#__PURE__*/React.createElement(MenuSections, {
+    shop: shop,
+    draft: draft,
+    onAdd: onAdd,
+    onSub: onSub,
+    disabled: !canEdit
   }), /*#__PURE__*/React.createElement("div", {
     className: "py-6 text-center text-xs serif-it",
     style: {
       color: 'var(--mute)'
     }
-  }, "\xB7 end of menu \xB7")), /*#__PURE__*/React.createElement("div", {
-    className: "fixed bottom-0 left-0 right-0 z-30 px-4 py-2 flex items-center justify-between",
+  }, "\xB7 end of menu \xB7"), /*#__PURE__*/React.createElement("div", {
+    className: "fixed bottom-0 left-0 right-0 z-30 px-4 py-3 flex items-center justify-between gap-2",
     style: {
       background: 'var(--ink)',
       color: 'var(--paper)',
       borderTop: `3px solid ${shop.themeColor}`
     }
+  }, error && /*#__PURE__*/React.createElement("div", {
+    className: "absolute bottom-full left-0 right-0 px-4 py-2 text-xs",
+    style: {
+      background: 'var(--override-bg)',
+      borderTop: '1px solid var(--override)',
+      color: 'var(--override)'
+    }
+  }, error), /*#__PURE__*/React.createElement("div", {
+    className: "min-w-0 flex-1"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-base"
-  }, canEdit ? '☁️' : '🔒'), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] tk-x",
     style: {
       color: 'rgba(250,246,236,0.7)'
     }
-  }, canEdit ? '已自動儲存' : '已截單'), /*#__PURE__*/React.createElement("div", {
-    className: "display-cn text-xs"
-  }, member.name))), /*#__PURE__*/React.createElement("div", {
-    className: "text-right"
-  }, totalQty > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "text-[10px] num",
+  }, member.name), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-base",
     style: {
-      color: 'rgba(250,246,236,0.7)'
+      color: 'rgba(250,246,236,0.6)'
     }
-  }, "\u5171 ", totalQty, " \u9805"), /*#__PURE__*/React.createElement("div", {
+  }, "\xD7", totalQty), /*#__PURE__*/React.createElement("span", {
     className: "num text-2xl",
     style: {
       color: shop.themeColor,
       lineHeight: 1
     }
-  }, "$", subtotal)) : /*#__PURE__*/React.createElement("div", {
+  }, "$", subtotal))), existingOrder && /*#__PURE__*/React.createElement("button", {
+    onClick: onCancelEdit,
+    disabled: submitting,
+    className: "btn-tactile px-3 py-2 text-sm shrink-0",
+    style: {
+      border: '1.5px solid rgba(250,246,236,0.4)',
+      color: 'var(--paper)',
+      background: 'transparent'
+    }
+  }, "\u53D6\u6D88"), canEdit ? /*#__PURE__*/React.createElement("button", {
+    onClick: onSubmit,
+    disabled: !dirty || submitting || totalQty === 0,
+    className: "btn-tactile px-4 py-2.5 text-sm flex items-center gap-2 shrink-0",
+    style: {
+      background: dirty && !submitting && totalQty > 0 ? shop.themeColor : 'var(--mute)',
+      color: 'var(--paper)',
+      opacity: !dirty || submitting || totalQty === 0 ? 0.5 : 1
+    }
+  }, submitting ? '提交中...' : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900
+    }
+  }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, existingOrder ? '更新訂單' : '提交訂單'))) : /*#__PURE__*/React.createElement("span", {
     className: "text-xs",
     style: {
       color: 'rgba(250,246,236,0.5)'
     }
-  }, "\u5C1A\u672A\u9EDE\u9910"))));
+  }, "\u5DF2\u622A\u55AE")));
+}
+
+/* ════════════════════════════════════════════════════════════
+   SUMMARY VIEW — collected orders for the shop (for admin to send)
+   ════════════════════════════════════════════════════════════ */
+function SummaryView({
+  shop,
+  orders
+}) {
+  const [copied, setCopied] = useState(false);
+  if (!shop) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u8ACB\u5148\u9078\u5E97"));
+  }
+
+  // Aggregate: itemKey → {name, variant, price, qty, buyers: [{name, qty, note}]}
+  const grouped = useMemo(() => {
+    const out = {};
+    Object.entries(orders).forEach(([sid, ord]) => {
+      const swimmer = ROSTER_BY_ID[sid];
+      if (!swimmer || !ord.items) return;
+      Object.values(ord.items).forEach(line => {
+        const k = itemKey(shop.id, line.cat, line.name, line.variant);
+        if (!out[k]) {
+          out[k] = {
+            cat: line.cat,
+            name: line.name,
+            variant: line.variant,
+            price: line.price,
+            totalQty: 0,
+            buyers: []
+          };
+        }
+        out[k].totalQty += line.qty || 0;
+        out[k].buyers.push({
+          name: swimmer.name,
+          qty: line.qty || 0,
+          note: line.note || ''
+        });
+      });
+    });
+    return out;
+  }, [orders, shop]);
+  const groupedByCategory = useMemo(() => {
+    const cats = {};
+    Object.values(grouped).forEach(g => {
+      if (!cats[g.cat]) cats[g.cat] = [];
+      cats[g.cat].push(g);
+    });
+    return cats;
+  }, [grouped]);
+  const totalQty = Object.values(grouped).reduce((s, g) => s + g.totalQty, 0);
+  const totalPrice = Object.values(grouped).reduce((s, g) => s + g.totalQty * g.price, 0);
+  const orderedCount = Object.keys(orders).filter(sid => orders[sid]?.items && Object.keys(orders[sid].items).length > 0).length;
+  const buildText = () => {
+    const today = getToday();
+    const lines = [];
+    lines.push(`【龍門泳隊 早餐訂單】${today} ${getDayLabel(today)}`);
+    lines.push(`【${shop.name}】${shop.branch}`);
+    lines.push('');
+    lines.push(`共 ${orderedCount} 位 · ${totalQty} 份 · 合計 NT$ ${totalPrice}`);
+    lines.push('═══════════════════════');
+    shop.categories.forEach(cat => {
+      const items = groupedByCategory[cat.id];
+      if (!items || items.length === 0) return;
+      lines.push('');
+      lines.push(`◆ ${cat.name}`);
+      items.forEach(g => {
+        const variantStr = g.variant === 'default' ? '' : ` (${g.variant})`;
+        lines.push(`  ${g.name}${variantStr} × ${g.totalQty}　$${g.price}`);
+        g.buyers.forEach(b => {
+          const n = b.note ? `「${b.note}」` : '';
+          lines.push(`    · ${b.name} × ${b.qty}${n}`);
+        });
+      });
+    });
+    lines.push('');
+    lines.push('═══════════════════════');
+    lines.push(`合計：NT$ ${totalPrice}`);
+    return lines.join('\n');
+  };
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e) {
+      alert('複製失敗，請手動選取訂單內容');
+    }
+  };
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: shop.themeColor
+    }
+  }, "SUMMARY \xB7 TO-SHOP"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between flex-wrap gap-2"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, "\u7D66\u5E97\u5BB6\u7684\u8A02\u55AE"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm serif-it",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, orderedCount, " swimmers \xB7 ", totalQty, " items \xB7 NT$ ", totalPrice)), /*#__PURE__*/React.createElement("button", {
+    onClick: onCopy,
+    className: "btn-tactile px-4 py-2 text-sm flex items-center gap-2",
+    style: {
+      background: copied ? 'var(--plus)' : 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, copied ? '✓' : '📋'), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, copied ? '已複製' : '複製訂單純文字')))), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-4"
+  }), Object.keys(grouped).length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "py-10 text-center",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-sm",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5C1A\u7121\u8A02\u55AE")) : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-4"
+  }, shop.categories.map(cat => {
+    const items = groupedByCategory[cat.id];
+    if (!items || items.length === 0) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat.id,
+      style: {
+        background: 'var(--paper)',
+        border: '1.5px solid var(--line-strong)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "px-3 py-2",
+      style: {
+        background: shop.themeBg,
+        borderBottom: `1.5px solid ${shop.themeColor}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base",
+      style: {
+        color: shop.themeColor
+      }
+    }, "\u25C6 ", cat.name)), /*#__PURE__*/React.createElement("div", null, items.map(g => {
+      const variantStr = g.variant === 'default' ? '' : ` (${g.variant})`;
+      return /*#__PURE__*/React.createElement("div", {
+        key: g.name + g.variant,
+        className: "px-3 py-2 border-b last:border-b-0",
+        style: {
+          borderColor: 'var(--line)'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "flex items-baseline justify-between mb-1"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "display-cn text-sm"
+      }, g.name, /*#__PURE__*/React.createElement("span", {
+        className: "text-xs",
+        style: {
+          color: 'var(--mute)'
+        }
+      }, variantStr)), /*#__PURE__*/React.createElement("div", {
+        className: "num text-sm"
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: shop.themeColor,
+          fontWeight: 900
+        }
+      }, "\xD7", g.totalQty), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: 'var(--mute)'
+        },
+        className: "ml-2"
+      }, "$", g.price))), /*#__PURE__*/React.createElement("div", {
+        className: "pl-3 text-[11px] space-y-0.5"
+      }, g.buyers.map((b, i) => /*#__PURE__*/React.createElement("div", {
+        key: i,
+        className: "flex items-baseline gap-1.5",
+        style: {
+          color: 'var(--ink-2)'
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "display-cn"
+      }, b.name), /*#__PURE__*/React.createElement("span", {
+        className: "num"
+      }, "\xD7", b.qty), b.note && /*#__PURE__*/React.createElement("span", {
+        className: "note-badge"
+      }, "\uD83D\uDCDD ", b.note)))));
+    })));
+  })));
 }
 /* ════════════════════════════════════════════════════════════
    MENU ADMIN VIEW (admin only)
@@ -7655,33 +7594,26 @@ function RosterEditModal({
   }, busy ? '儲存中...' : isNew ? '新增' : '儲存變更'))));
 }
 /* ════════════════════════════════════════════════════════════
-   APP — Firestore wiring, auth flow, dispatch
+   APP — Firestore wiring with NEW SCHEMA:
+   orders/{date}/swimmers/{swimmerId}  ← single doc with items map
    ════════════════════════════════════════════════════════════ */
 function App() {
-  // Auth state
-  const [authUser, setAuthUser] = useState(undefined); // undefined = loading, null = signed out
-  const [account, setAccount] = useState(undefined); // undefined = loading, null = no doc
+  const [authUser, setAuthUser] = useState(undefined);
+  const [account, setAccount] = useState(undefined);
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginError, setLoginError] = useState('');
-
-  // Data state (subscribed from Firestore)
   const [shops, setShops] = useState({});
   const [shopsLoaded, setShopsLoaded] = useState(false);
   const [date, setDate] = useState(getToday());
   const [selectedShopId, setSelectedShopId] = useState(null);
-  const [carts, setCarts] = useState({}); // {swimmerId: {itemKey: line}}
+  const [orders, setOrders] = useState({}); // {swimmerId: {items:{...}, submittedAt, ...}}
   const [auditLog, setAuditLog] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [notifications, setNotifications] = useState([]);
-
-  // UI state
   const [tab, setTab] = useState('order');
-  const [openSwimmer, setOpenSwimmer] = useState(null);
   const [showNotif, setShowNotif] = useState(false);
   const [seedBusy, setSeedBusy] = useState(false);
   const [seedError, setSeedError] = useState('');
-
-  // Real-time clock for cutoff status (re-renders every minute)
   const [, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
@@ -7698,7 +7630,7 @@ function App() {
         setShops({});
         setShopsLoaded(false);
         setSelectedShopId(null);
-        setCarts({});
+        setOrders({});
         setAuditLog([]);
         setAccounts([]);
         setNotifications([]);
@@ -7706,13 +7638,12 @@ function App() {
     });
   }, []);
 
-  /* ─── account doc subscription (and auto-create on first login) ─── */
+  /* ─── account doc subscription ─── */
   useEffect(() => {
     if (!authUser) return;
     const ref = db.collection('accounts').doc(authUser.uid);
     return ref.onSnapshot(async snap => {
       if (!snap.exists) {
-        // Auto-create as parent with empty swimmers
         try {
           await ref.set({
             email: authUser.email,
@@ -7725,7 +7656,6 @@ function App() {
           console.error('auto-create account failed', e);
           setAccount(null);
         }
-        // onSnapshot will fire again with the new doc
         return;
       }
       setAccount({
@@ -7757,7 +7687,7 @@ function App() {
     });
   }, [account]);
 
-  /* ─── dailyShop subscription for current date ─── */
+  /* ─── dailyShop subscription ─── */
   useEffect(() => {
     if (!account) return;
     const ref = db.collection('dailyShop').doc(date);
@@ -7766,42 +7696,19 @@ function App() {
     }, err => console.error('dailyShop error', err));
   }, [account, date]);
 
-  /* ─── orders subscription for current date — collectionGroup query ─── */
+  /* ─── orders subscription (NEW: each swimmer doc has items map directly) ─── */
   useEffect(() => {
     if (!account) return;
-    // We listen to each swimmer's items doc(s); use a collectionGroup query
-    const orderRef = db.collection('orders').doc(date).collection('swimmers');
-    return orderRef.onSnapshot(snap => {
-      // For each swimmer doc, we need the items subcollection.
-      // Strategy: parallel listen — but onSnapshot per swimmer would explode.
-      // Simpler: store carts as map; load items via individual queries on demand.
-      // For real-time aggregation, use a single collectionGroup on 'items'.
-      // (Set up below)
+    return db.collection('orders').doc(date).collection('swimmers').onSnapshot(snap => {
+      const out = {};
+      snap.forEach(d => {
+        out[d.id] = d.data();
+      });
+      setOrders(out);
     }, err => console.error('orders subscribe error', err));
   }, [account, date]);
 
-  /* ─── items collectionGroup subscription (true real-time across all swimmers) ─── */
-  useEffect(() => {
-    if (!account) return;
-    return db.collectionGroup('items').onSnapshot(snap => {
-      const out = {};
-      snap.forEach(d => {
-        // Path: orders/{date}/swimmers/{swimmerId}/items/{itemKey}
-        const parts = d.ref.path.split('/');
-        if (parts[0] !== 'orders' || parts[1] !== date) return;
-        const swimmerId = parts[3];
-        if (!out[swimmerId]) out[swimmerId] = {};
-        const data = d.data();
-        out[swimmerId][d.id] = {
-          key: d.id,
-          ...data
-        };
-      });
-      setCarts(out);
-    }, err => console.error('items subscribe error', err));
-  }, [account, date]);
-
-  /* ─── audit log subscription (latest 200) ─── */
+  /* ─── audit log ─── */
   useEffect(() => {
     if (!account || !isAdminRole(account)) {
       setAuditLog([]);
@@ -7817,8 +7724,8 @@ function App() {
     }, err => console.error('audit subscribe error', err));
   }, [account]);
 
-  /* ─── roster subscription (mutates global ROSTER, then bumps version to re-render) ─── */
-  const [rosterVersion, setRosterVersion] = useState(0);
+  /* ─── roster subscription ─── */
+  const [, setRosterVersion] = useState(0);
   const rosterHeardRef = useRef(false);
   useEffect(() => {
     if (!account) return;
@@ -7834,8 +7741,6 @@ function App() {
         if (am && bm) return parseInt(am[1]) - parseInt(bm[1]);
         return (a.id || '').localeCompare(b.id || '');
       });
-      // First snapshot: only overwrite if non-empty (else keep hardcoded seed for SeedDataPage to use).
-      // Subsequent snapshots: always reflect Firestore (allows intentional emptying).
       if (rosterHeardRef.current || list.length > 0) {
         setGlobalRoster(list);
         rosterHeardRef.current = true;
@@ -7846,7 +7751,7 @@ function App() {
     }, err => console.error('roster subscribe error', err));
   }, [account]);
 
-  /* ─── accounts list (for admin/super-admin view) ─── */
+  /* ─── accounts list (admin only) ─── */
   useEffect(() => {
     if (!account || !isAdminRole(account)) {
       setAccounts([]);
@@ -7862,7 +7767,7 @@ function App() {
     }, err => console.error('accounts subscribe error', err));
   }, [account]);
 
-  /* ─── notifications subscription (for parents) ─── */
+  /* ─── notifications (parent only) ─── */
   useEffect(() => {
     if (!account || account.role !== 'parent') {
       setNotifications([]);
@@ -7873,10 +7778,8 @@ function App() {
       setNotifications([]);
       return;
     }
-    // listen to each swimmer's notifications subcollection
     const unsubs = swimmers.map(sid => db.collection('notifications').doc(sid).collection('items').orderBy('timestamp', 'desc').limit(50).onSnapshot(snap => {
       setNotifications(prev => {
-        // remove old entries for this swimmer, add new
         const filtered = prev.filter(n => n.swimmerId !== sid);
         const fresh = [];
         snap.forEach(d => fresh.push({
@@ -7911,8 +7814,6 @@ function App() {
     if (!confirm('確定登出？')) return;
     await auth.signOut();
   };
-
-  /* ─── audit logger helper ─── */
   const writeAudit = async entry => {
     return db.collection('auditLog').add({
       timestamp: FieldValue.serverTimestamp(),
@@ -7923,8 +7824,6 @@ function App() {
       ...entry
     });
   };
-
-  /* ─── notification helper (when admin overrides parent's order) ─── */
   const writeNotification = async (swimmerId, message) => {
     return db.collection('notifications').doc(swimmerId).collection('items').add({
       timestamp: FieldValue.serverTimestamp(),
@@ -7935,164 +7834,97 @@ function App() {
     });
   };
 
-  /* ─── DISPATCH (writes everything to Firestore) ─── */
+  /* ─── DISPATCH (new: submit_order replaces add/sub/note loop) ─── */
   const dispatch = async action => {
     if (!account) return;
-    if (action.type === 'add' || action.type === 'sub' || action.type === 'remove') {
-      // Accept both v0.3+ shape (swimmerId, catId, name, price) and v0.2 shape (mid, item)
-      const swimmerId = action.swimmerId || action.mid;
-      const shopId = action.shopId;
-      const variant = action.variant;
-      const item = action.item;
-      const catId = action.catId ?? item?.cat;
-      const name = action.name ?? item?.name;
-      const price = action.price ?? item?.prices?.[variant];
-      if (!swimmerId || !shopId || !catId || !name || price == null) {
-        console.error('add/sub/remove missing fields', action);
-        return;
-      }
-      const key = safeKey(itemKey(shopId, catId, name, variant));
-      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(key);
-      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
-      const override = isOverrideAction(account, swimmerId, isCutoff);
-      const variantLabel = variant === 'default' ? '' : ` (${variant})`;
-      if (action.type === 'remove') {
-        await ref.delete();
-        await writeAudit({
-          kind: 'remove',
-          swimmerId,
-          swimmerName,
-          detail: `移除「${name}${variantLabel}」`,
-          override
-        });
-        if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 移除了「${name}${variantLabel}」`);
-        return;
-      }
-      const snap = await ref.get();
-      const cur = snap.exists ? snap.data() : null;
-      const newQty = (cur?.qty || 0) + (action.type === 'add' ? 1 : -1);
-      if (newQty <= 0) {
-        await ref.delete();
-        await writeAudit({
-          kind: 'sub',
-          swimmerId,
-          swimmerName,
-          detail: `「${name}${variantLabel}」全數移除`,
-          override
-        });
-        if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 全數移除了「${name}${variantLabel}」`);
-        return;
-      }
-      await ref.set({
-        shop: shopId,
-        cat: catId,
-        name,
-        variant,
-        price: cur?.price ?? price,
-        qty: newQty,
-        note: cur?.note || '',
-        updatedAt: FieldValue.serverTimestamp(),
-        updatedBy: account.uid
-      }, {
-        merge: true
-      });
-      await writeAudit({
-        kind: action.type,
-        swimmerId,
-        swimmerName,
-        detail: `「${name}${variantLabel}」${action.type === 'add' ? '+1' : '-1'} → 共 ${newQty} 份`,
-        override
-      });
-      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} ${action.type === 'add' ? '加入' : '減少'}了「${name}${variantLabel}」（剩 ${newQty} 份）`);
-      return;
-    }
-    if (action.type === 'addKey' || action.type === 'subKey') {
-      // Adjust qty of existing cart line (called from CartSheet's +/- buttons)
-      const swimmerId = action.swimmerId || action.mid;
-      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(safeKey(action.key));
-      const snap = await ref.get();
-      if (!snap.exists) return;
-      const cur = snap.data();
-      const delta = action.type === 'addKey' ? 1 : -1;
-      const newQty = (cur.qty || 0) + delta;
-      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
-      const override = isOverrideAction(account, swimmerId, isCutoff);
-      const variantLabel = cur.variant === 'default' ? '' : ` (${cur.variant})`;
-      if (newQty <= 0) {
-        await ref.delete();
-        await writeAudit({
-          kind: 'sub',
-          swimmerId,
-          swimmerName,
-          detail: `「${cur.name}${variantLabel}」全數移除`,
-          override
-        });
-        if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 全數移除了「${cur.name}${variantLabel}」`);
-        return;
-      }
-      await ref.update({
-        qty: newQty,
-        updatedAt: FieldValue.serverTimestamp(),
-        updatedBy: account.uid
-      });
-      await writeAudit({
-        kind: delta > 0 ? 'add' : 'sub',
-        swimmerId,
-        swimmerName,
-        detail: `「${cur.name}${variantLabel}」${delta > 0 ? '+1' : '-1'} → 共 ${newQty} 份`,
-        override
-      });
-      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} ${delta > 0 ? '加入' : '減少'}了「${cur.name}${variantLabel}」（剩 ${newQty} 份）`);
-      return;
-    }
-    if (action.type === 'clearMember') {
-      const swimmerId = action.swimmerId || action.mid;
-      const itemsSnap = await db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').get();
-      const count = itemsSnap.size;
-      if (count === 0) return;
-      const batch = db.batch();
-      itemsSnap.forEach(d => batch.delete(d.ref));
-      await batch.commit();
-      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
-      const override = isOverrideAction(account, swimmerId, isCutoff);
-      await writeAudit({
-        kind: 'clear',
-        swimmerId,
-        swimmerName,
-        detail: `清空 ${swimmerName} 的訂單（${count} 筆）`,
-        override
-      });
-      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 清空了所有訂單`);
-      return;
-    }
-    if (action.type === 'note') {
-      const swimmerId = action.swimmerId || action.mid;
+
+    /* ─── SUBMIT ORDER (single batch write) ─── */
+    if (action.type === 'submit_order') {
       const {
-        key,
-        note
+        swimmerId,
+        items
       } = action;
-      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(safeKey(key));
-      const snap = await ref.get();
-      if (!snap.exists) return;
-      const cur = snap.data();
-      if ((cur.note || '') === (note || '').trim()) return;
       const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
       const override = isOverrideAction(account, swimmerId, isCutoff);
-      await ref.update({
-        note: (note || '').trim(),
-        updatedAt: FieldValue.serverTimestamp(),
-        updatedBy: account.uid
+      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId);
+      const existing = orders[swimmerId];
+      const isUpdate = !!existing;
+      const sanitized = {};
+      Object.entries(items).forEach(([k, v]) => {
+        if (v && v.qty > 0 && v.name && v.cat) {
+          sanitized[k] = {
+            shop: v.shop,
+            cat: v.cat,
+            name: v.name,
+            variant: v.variant,
+            price: v.price,
+            qty: v.qty,
+            note: v.note || ''
+          };
+        }
       });
+      if (Object.keys(sanitized).length === 0) {
+        // Empty submission = delete
+        if (isUpdate) {
+          await ref.delete();
+          await writeAudit({
+            kind: 'remove',
+            swimmerId,
+            swimmerName,
+            detail: `清空 ${swimmerName} 的訂單`,
+            override
+          });
+          if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 清空了訂單`);
+        }
+        return;
+      }
+      const totalQty = Object.values(sanitized).reduce((s, l) => s + l.qty, 0);
+      const totalPrice = Object.values(sanitized).reduce((s, l) => s + l.qty * l.price, 0);
+      await ref.set({
+        items: sanitized,
+        submittedBy: account.uid,
+        submittedByName: account.name || account.email,
+        submittedAt: FieldValue.serverTimestamp(),
+        totalQty,
+        totalPrice
+      });
+
+      // Build a brief summary for audit/notification
+      const itemsBrief = Object.values(sanitized).map(l => `${l.name}${l.variant !== 'default' ? `(${l.variant})` : ''}×${l.qty}`).slice(0, 5).join('、');
+      const more = Object.keys(sanitized).length > 5 ? `…等 ${Object.keys(sanitized).length} 項` : '';
       await writeAudit({
-        kind: 'note',
+        kind: isUpdate ? 'update_order' : 'submit_order',
         swimmerId,
         swimmerName,
-        detail: `「${cur.name}」備註：「${note?.trim() || '(清空)'}」`,
-        override
+        override,
+        detail: `${swimmerName} ${isUpdate ? '更新' : '提交'}訂單：${itemsBrief}${more}（共 ${totalQty} 份 / $${totalPrice}）`
       });
-      if (override && note?.trim()) await writeNotification(swimmerId, `${account.name || '管理員'} 改了「${cur.name}」的備註：${note.trim()}`);
+      if (override) {
+        await writeNotification(swimmerId, `${account.name || '管理員'} ${isUpdate ? '更新' : '提交'}了訂單（共 ${totalQty} 份 / $${totalPrice}）`);
+      }
       return;
     }
+
+    /* ─── DELETE ORDER ─── */
+    if (action.type === 'delete_order') {
+      const {
+        swimmerId
+      } = action;
+      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
+      const override = isOverrideAction(account, swimmerId, isCutoff);
+      await db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).delete();
+      await writeAudit({
+        kind: 'remove',
+        swimmerId,
+        swimmerName,
+        detail: `刪除 ${swimmerName} 的訂單`,
+        override
+      });
+      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 刪除了訂單`);
+      return;
+    }
+
+    /* ─── SHOP CHANGE (clears all orders for the date) ─── */
     if (action.type === 'shop_change') {
       const {
         newShopId
@@ -8101,17 +7933,13 @@ function App() {
       if (oldShopId === newShopId) return;
       const oldShopName = shops[oldShopId]?.name || '(無)';
       const newShopName = shops[newShopId]?.name || newShopId;
-      // Clear all orders for this date
       const swimmersSnap = await db.collection('orders').doc(date).collection('swimmers').get();
       const batch = db.batch();
       let cleared = 0;
-      for (const swimmerDoc of swimmersSnap.docs) {
-        const itemsSnap = await swimmerDoc.ref.collection('items').get();
-        itemsSnap.forEach(d => {
-          batch.delete(d.ref);
-          cleared++;
-        });
-      }
+      swimmersSnap.forEach(d => {
+        batch.delete(d.ref);
+        cleared++;
+      });
       batch.set(db.collection('dailyShop').doc(date), {
         shopId: newShopId,
         setBy: account.uid,
@@ -8120,10 +7948,12 @@ function App() {
       await batch.commit();
       await writeAudit({
         kind: 'shop_change',
-        detail: `選店：${oldShopName} → ${newShopName}${cleared > 0 ? `（清空了 ${cleared} 筆訂單）` : ''}`
+        detail: `選店：${oldShopName} → ${newShopName}${cleared > 0 ? `（清空 ${cleared} 筆訂單）` : ''}`
       });
       return;
     }
+
+    /* ─── MENU EDIT ─── */
     if (action.type === 'menu_edit') {
       const {
         shopId,
@@ -8139,6 +7969,8 @@ function App() {
       });
       return;
     }
+
+    /* ─── ROLE / ACCOUNT MANAGEMENT ─── */
     if (action.type === 'role_change') {
       const {
         uid,
@@ -8187,6 +8019,8 @@ function App() {
       });
       return;
     }
+
+    /* ─── ROSTER ─── */
     if (action.type === 'roster_add') {
       const {
         data
@@ -8228,7 +8062,6 @@ function App() {
         id,
         name
       } = action;
-      // Cascade: remove this swimmer id from any account.swimmers
       const affected = accounts.filter(a => (a.swimmers || []).includes(id));
       const batch = db.batch();
       batch.delete(db.collection('roster').doc(id));
@@ -8245,14 +8078,12 @@ function App() {
       });
       return;
     }
+
+    /* ─── NOTIFICATIONS ─── */
     if (action.type === 'mark_notif_read') {
-      const {
-        swimmerIds
-      } = action;
       const batch = db.batch();
       notifications.forEach(n => {
         if (n.read) return;
-        if (swimmerIds && !swimmerIds.includes(n.swimmerId)) return;
         const ref = db.collection('notifications').doc(n.swimmerId).collection('items').doc(n.id);
         batch.update(ref, {
           read: true
@@ -8263,18 +8094,16 @@ function App() {
     }
   };
 
-  /* ─── seed initial data (super-admin only, when DB is empty) ─── */
+  /* ─── seed initial data ─── */
   const seedDatabase = async () => {
     setSeedBusy(true);
     setSeedError('');
     try {
-      // seed roster
       const rosterBatch = db.batch();
       ROSTER.forEach(m => {
         rosterBatch.set(db.collection('roster').doc(m.id), m);
       });
       await rosterBatch.commit();
-      // seed menus (3 shops, can't all fit in one batch easily — do separately)
       for (const id of SHOP_IDS) {
         await db.collection('menus').doc(id).set(SHOP_SEEDS[id]);
       }
@@ -8291,30 +8120,19 @@ function App() {
   };
 
   /* ════════════════════════════════════════════════════════════
-     RENDER FLOW
+     RENDER
      ════════════════════════════════════════════════════════════ */
-
-  // 1. Auth still loading
-  if (authUser === undefined) {
-    return /*#__PURE__*/React.createElement(LoadingPage, {
-      message: "\u6AA2\u67E5\u767B\u5165\u72C0\u614B..."
-    });
-  }
-  // 2. Not signed in
-  if (authUser === null) {
-    return /*#__PURE__*/React.createElement(LoginPage, {
-      onLogin: handleLogin,
-      busy: loginBusy,
-      error: loginError
-    });
-  }
-  // 3. Signed in but account doc still loading
-  if (account === undefined) {
-    return /*#__PURE__*/React.createElement(LoadingPage, {
-      message: "\u8F09\u5165\u5E33\u865F..."
-    });
-  }
-  // 4. Account doc creation failed
+  if (authUser === undefined) return /*#__PURE__*/React.createElement(LoadingPage, {
+    message: "\u6AA2\u67E5\u767B\u5165\u72C0\u614B..."
+  });
+  if (authUser === null) return /*#__PURE__*/React.createElement(LoginPage, {
+    onLogin: handleLogin,
+    busy: loginBusy,
+    error: loginError
+  });
+  if (account === undefined) return /*#__PURE__*/React.createElement(LoadingPage, {
+    message: "\u8F09\u5165\u5E33\u865F..."
+  });
   if (account === null) {
     return /*#__PURE__*/React.createElement(FullPageWrap, null, /*#__PURE__*/React.createElement(BrandHeader, null), /*#__PURE__*/React.createElement("div", {
       className: "p-6 text-center",
@@ -8341,14 +8159,12 @@ function App() {
       }
     }, "\u767B\u51FA")));
   }
-  // 5. Parent with no swimmers bound — show pending page
   if (account.role === 'parent' && (account.swimmers || []).length === 0) {
     return /*#__PURE__*/React.createElement(PendingPage, {
       user: authUser,
       onLogout: handleLogout
     });
   }
-  // 6. Super-admin and DB is empty → show seed page
   if (isSuperAdminRole(account) && shopsLoaded && Object.keys(shops).length === 0) {
     return /*#__PURE__*/React.createElement(SeedDataPage, {
       onSeed: seedDatabase,
@@ -8356,27 +8172,59 @@ function App() {
       error: seedError
     });
   }
-  // 7. Shops not loaded yet
-  if (!shopsLoaded) {
-    return /*#__PURE__*/React.createElement(LoadingPage, {
-      message: "\u8F09\u5165\u83DC\u55AE..."
-    });
-  }
-
-  /* ─── MAIN APP ─── */
+  if (!shopsLoaded) return /*#__PURE__*/React.createElement(LoadingPage, {
+    message: "\u8F09\u5165\u83DC\u55AE..."
+  });
   const shop = selectedShopId ? shops[selectedShopId] : null;
-  const orderCount = Object.values(carts).reduce((sum, c) => sum + Object.keys(c).length, 0);
+  const orderCount = Object.keys(orders).length;
   const unreadNotif = notifications.filter(n => !n.read).length;
-  const tabBadges = {
-    log: auditLog.length > 0 ? null : null // suppress badge for log
-  };
-
-  // when shop changes, validate carts (handled by Firestore real-time)
-  // tab availability check
   const visibleTabs = TAB_DEFS.filter(t => t.roles.includes(account.role));
   const currentTabValid = visibleTabs.some(t => t.id === tab);
   if (!currentTabValid) {
     setTimeout(() => setTab(visibleTabs[0]?.id || 'order'), 0);
+  }
+
+  // For parent: render single ParentOrderFlow as the main app body
+  if (account.role === 'parent') {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "min-h-screen"
+    }, /*#__PURE__*/React.createElement(Header, {
+      date: date,
+      setDate: setDate,
+      shop: shop,
+      account: account,
+      isCutoff: isCutoff,
+      notifCount: unreadNotif,
+      onNotifClick: () => setShowNotif(true),
+      onLogout: handleLogout
+    }), /*#__PURE__*/React.createElement("main", {
+      className: "max-w-3xl mx-auto px-4 sm:px-8 py-4"
+    }, !shop ? /*#__PURE__*/React.createElement("div", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u7B49\u7BA1\u7406\u54E1\u9078\u5E97"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B")) : /*#__PURE__*/React.createElement(ParentOrderFlow, {
+      shop: shop,
+      orders: orders,
+      account: account,
+      isCutoff: isCutoff,
+      dispatch: dispatch
+    })), showNotif && /*#__PURE__*/React.createElement(NotificationSheet, {
+      notifications: notifications,
+      account: account,
+      onClose: () => setShowNotif(false),
+      onMarkRead: () => dispatch({
+        type: 'mark_notif_read'
+      })
+    }));
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen"
@@ -8392,8 +8240,7 @@ function App() {
   }), /*#__PURE__*/React.createElement(Tabs, {
     tab: tab,
     setTab: setTab,
-    role: account.role,
-    badges: tabBadges
+    role: account.role
   }), /*#__PURE__*/React.createElement("main", {
     className: "max-w-6xl mx-auto px-4 sm:px-8 pb-16"
   }, tab === 'shop' && /*#__PURE__*/React.createElement(ShopView, {
@@ -8410,23 +8257,15 @@ function App() {
     },
     orderCount: orderCount,
     account: account
-  }), tab === 'order' && (isAdminRole(account) ? /*#__PURE__*/React.createElement(OrderView, {
+  }), tab === 'order' && /*#__PURE__*/React.createElement(OrderView, {
     shop: shop,
-    carts: carts,
-    account: account,
-    isCutoff: isCutoff,
-    dispatch: dispatch,
-    openSwimmer: openSwimmer,
-    setOpenSwimmer: setOpenSwimmer
-  }) : /*#__PURE__*/React.createElement(ParentOrderView, {
-    shop: shop,
-    carts: carts,
+    orders: orders,
     account: account,
     isCutoff: isCutoff,
     dispatch: dispatch
-  })), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryView, {
+  }), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryView, {
     shop: shop,
-    carts: carts
+    orders: orders
   }), tab === 'menu' && /*#__PURE__*/React.createElement(MenuAdminView, {
     shops: shops,
     account: account,
