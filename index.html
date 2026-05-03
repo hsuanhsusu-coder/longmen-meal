@@ -4282,7 +4282,7 @@ const TAB_DEFS = [{
   id: 'shop',
   en: 'SHOP',
   cn: '選店',
-  roles: ['admin', 'super-admin', 'parent']
+  roles: ['admin', 'super-admin']
 }, {
   id: 'order',
   en: 'ORDER',
@@ -4292,7 +4292,7 @@ const TAB_DEFS = [{
   id: 'summary',
   en: 'SUMMARY',
   cn: '統計',
-  roles: ['admin', 'super-admin', 'parent']
+  roles: ['admin', 'super-admin']
 }, {
   id: 'menu',
   en: 'MENU',
@@ -4321,6 +4321,7 @@ function Tabs({
   badges
 }) {
   const visible = TAB_DEFS.filter(t => t.roles.includes(role));
+  if (visible.length <= 1) return null; // parent only sees one tab — no need for nav bar
   return /*#__PURE__*/React.createElement("nav", {
     className: "border-b sticky top-0 z-30 backdrop-blur",
     style: {
@@ -4858,12 +4859,19 @@ function MenuDrawer({
     }
   }, shop.name, " \xB7 ", shop.branch)), /*#__PURE__*/React.createElement("button", {
     onClick: onClose,
-    className: "btn-tactile px-3 py-2 text-sm",
+    className: "btn-tactile px-4 py-2 text-sm flex items-center gap-1.5",
     style: {
       border: '1.5px solid var(--ink)',
-      background: 'var(--paper)'
+      background: 'var(--ink)',
+      color: 'var(--paper)'
     }
-  }, "\u2715 \u95DC\u9589")), lockReason && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900
+    }
+  }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, "\u5B8C\u6210"))), lockReason && /*#__PURE__*/React.createElement("div", {
     className: "px-4 py-2 text-xs flex items-center gap-2 flex-shrink-0",
     style: {
       background: 'var(--lock-bg)',
@@ -5772,6 +5780,334 @@ function SummaryView({
       color: 'var(--mute)'
     }
   }, m.cls), m.name))))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   PARENT ORDER VIEW — inline single-page UX for parents
+   No drawer, no roster grid, cart always visible at top
+   ════════════════════════════════════════════════════════════ */
+function ParentOrderView({
+  shop,
+  carts,
+  account,
+  isCutoff,
+  dispatch
+}) {
+  const swimmers = (account.swimmers || []).filter(sid => ROSTER_BY_ID[sid]);
+  const [activeChildId, setActiveChildId] = useState(swimmers[0] || null);
+
+  // re-pick if active child got removed from binding
+  useEffect(() => {
+    if (activeChildId && !swimmers.includes(activeChildId)) {
+      setActiveChildId(swimmers[0] || null);
+    } else if (!activeChildId && swimmers.length > 0) {
+      setActiveChildId(swimmers[0]);
+    }
+  }, [swimmers.join('|')]);
+  if (!shop) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 sm:pt-16 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u7B49\u7BA1\u7406\u54E1\u9078\u5E97"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B"));
+  }
+  if (!activeChildId || !ROSTER_BY_ID[activeChildId]) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 sm:pt-16 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u6C92\u6709\u53EF\u4E0B\u55AE\u7684\u968A\u54E1"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u8ACB\u806F\u7D61\u7BA1\u7406\u54E1\u8A2D\u5B9A\u60A8\u7684\u7D81\u5B9A"));
+  }
+  const member = ROSTER_BY_ID[activeChildId];
+  const cart = carts[activeChildId] || {};
+  const cartLines = useMemo(() => {
+    return Object.values(cart).sort((a, b) => {
+      return (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || '');
+    });
+  }, [cart]);
+  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+  const totalQty = cartLines.reduce((s, l) => s + (l.qty || 0), 0);
+  const canEdit = canEditOrder(account, activeChildId, isCutoff);
+  const itemsByCat = useMemo(() => {
+    const out = {};
+    (shop.items || []).forEach(it => {
+      if (!out[it.cat]) out[it.cat] = [];
+      out[it.cat].push(it);
+    });
+    return out;
+  }, [shop]);
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-4 sm:pt-7 pb-20"
+  }, swimmers.length > 1 && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 flex gap-2"
+  }, swimmers.map(sid => {
+    const m = ROSTER_BY_ID[sid];
+    if (!m) return null;
+    const on = sid === activeChildId;
+    const childCart = carts[sid] || {};
+    const childQty = Object.values(childCart).reduce((s, l) => s + (l.qty || 0), 0);
+    return /*#__PURE__*/React.createElement("button", {
+      key: sid,
+      onClick: () => setActiveChildId(sid),
+      className: "btn-tactile flex-1 py-2 px-3 text-left",
+      style: {
+        background: on ? shop.themeBg : 'var(--paper)',
+        color: on ? shop.themeColor : 'var(--ink-2)',
+        border: `1.5px solid ${on ? shop.themeColor : 'var(--line)'}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base",
+      style: {
+        fontWeight: on ? 900 : 500
+      }
+    }, m.name), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num"
+    }, childQty > 0 ? `${childQty} 項` : '尚未點餐'));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-xl"
+  }, member.name, " \u7684\u8A02\u55AE"), totalQty > 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-base",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xD7", totalQty), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl",
+    style: {
+      color: shop.themeColor
+    }
+  }, "$", subtotal)) : /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5C1A\u672A\u9EDE\u9910")), cartLines.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "p-4 text-center text-sm fade-in",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)',
+      color: 'var(--mute)'
+    }
+  }, "\u2193 \u5F9E\u4E0B\u65B9\u83DC\u55AE\u958B\u59CB\u9EDE\u9910 \u2193") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)'
+    }
+  }, cartLines.map(l => /*#__PURE__*/React.createElement(CartLine, {
+    key: l.key,
+    line: l,
+    shop: shop,
+    canEdit: canEdit,
+    onAdd: () => dispatch({
+      type: 'addKey',
+      mid: activeChildId,
+      key: l.key,
+      line: l
+    }),
+    onSub: () => dispatch({
+      type: 'subKey',
+      mid: activeChildId,
+      key: l.key
+    }),
+    onNote: note => dispatch({
+      type: 'note',
+      mid: activeChildId,
+      key: l.key,
+      note
+    })
+  })), canEdit && /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 border-t flex items-center justify-between",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--bg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7 \u8A02\u55AE\u6703\u81EA\u52D5\u5132\u5B58\uFF0C\u7121\u9700\u6309\u78BA\u8A8D \xB7"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (confirm(`確定清空 ${member.name} 的訂單？`)) dispatch({
+        type: 'clearMember',
+        mid: activeChildId
+      });
+    },
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      border: '1px solid var(--red)',
+      color: 'var(--red)'
+    }
+  }, "\u5168\u90E8\u6E05\u7A7A")))), isCutoff && /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3 text-sm flex items-center gap-2",
+    style: {
+      background: 'var(--lock-bg)',
+      border: '1.5px solid var(--lock)',
+      color: 'var(--lock)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", null, "\u5DF2\u622A\u55AE\uFF0821:00 \u5F8C\u5BB6\u9577\u7121\u6CD5\u4FEE\u6539\uFF09\u3002\u5982\u9700\u66F4\u52D5\uFF0C\u8ACB\u806F\u7D61\u6559\u7DF4")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "mb-3 flex items-baseline justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-0.5",
+    style: {
+      color: shop.themeColor
+    }
+  }, shop.nameEn || '', " \xB7 MENU"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-lg"
+  }, shop.name, " \xB7 \u9EDE\u9910")), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, (shop.items || []).length), " \u500B\u54C1\u9805")), shop.note && /*#__PURE__*/React.createElement("div", {
+    className: "mb-3 p-2 text-[11px]",
+    style: {
+      background: 'var(--paper)',
+      border: '1px dashed var(--line-strong)',
+      color: 'var(--ink-2)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "note \xB7"), " ", shop.note), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-2"
+  }), (shop.categories || []).map(cat => {
+    const items = itemsByCat[cat.id] || [];
+    if (items.length === 0) return null;
+    const groupedKeys = [...new Set(items.filter(it => it.group).map(it => it.group))];
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat.id,
+      className: "mb-5"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "cat-sticky"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between border-b pb-1.5",
+      style: {
+        borderColor: shop.themeColor
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline gap-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base sm:text-lg",
+      style: {
+        color: shop.themeColor
+      }
+    }, cat.name), cat.variantLabel && /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px]",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, cat.variantLabel)), /*#__PURE__*/React.createElement("div", {
+      className: "num text-xs",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, items.length))), groupedKeys.length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, groupedKeys.map(g => /*#__PURE__*/React.createElement("div", {
+      key: g
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-xs serif-it mt-3 mb-1 px-1",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u2500 ", g, " \u2500"), items.filter(it => it.group === g).map(it => /*#__PURE__*/React.createElement(ItemRow, {
+      key: it.name + '/' + g,
+      item: it,
+      cart: cart,
+      shop: shop,
+      disabled: !canEdit,
+      onAdd: v => dispatch({
+        type: 'add',
+        mid: activeChildId,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      }),
+      onSub: v => dispatch({
+        type: 'sub',
+        mid: activeChildId,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      })
+    })))), items.filter(it => !it.group).map(it => /*#__PURE__*/React.createElement(ItemRow, {
+      key: it.name,
+      item: it,
+      cart: cart,
+      shop: shop,
+      disabled: !canEdit,
+      onAdd: v => dispatch({
+        type: 'add',
+        mid: activeChildId,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      }),
+      onSub: v => dispatch({
+        type: 'sub',
+        mid: activeChildId,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      })
+    }))) : items.map(it => /*#__PURE__*/React.createElement(ItemRow, {
+      key: it.name,
+      item: it,
+      cart: cart,
+      shop: shop,
+      disabled: !canEdit,
+      onAdd: v => dispatch({
+        type: 'add',
+        mid: activeChildId,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      }),
+      onSub: v => dispatch({
+        type: 'sub',
+        mid: activeChildId,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      })
+    })));
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "py-6 text-center text-xs serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7 end of menu \xB7")));
 }
 /* ════════════════════════════════════════════════════════════
    MENU ADMIN VIEW (admin only)
@@ -7845,7 +8181,7 @@ function App() {
     },
     orderCount: orderCount,
     account: account
-  }), tab === 'order' && /*#__PURE__*/React.createElement(OrderView, {
+  }), tab === 'order' && (isAdminRole(account) ? /*#__PURE__*/React.createElement(OrderView, {
     shop: shop,
     carts: carts,
     account: account,
@@ -7853,7 +8189,13 @@ function App() {
     dispatch: dispatch,
     openSwimmer: openSwimmer,
     setOpenSwimmer: setOpenSwimmer
-  }), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryView, {
+  }) : /*#__PURE__*/React.createElement(ParentOrderView, {
+    shop: shop,
+    carts: carts,
+    account: account,
+    isCutoff: isCutoff,
+    dispatch: dispatch
+  })), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryView, {
     shop: shop,
     carts: carts
   }), tab === 'menu' && /*#__PURE__*/React.createElement(MenuAdminView, {
