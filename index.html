@@ -93,7 +93,7 @@
   .hl-strong{height:1.5px;background:var(--line-strong)}
   .price-btn{
     display:inline-flex;align-items:center;justify-content:center;gap:4px;
-    min-width:60px;height:36px;padding:0 10px;
+    width:100%;height:36px;padding:0 8px;
     font-family:"Inter",sans-serif;font-weight:600;
     border:1.5px solid var(--ink);background:var(--paper);
     color:var(--ink);font-size:13px;
@@ -115,6 +115,27 @@
   }
   .price-btn.has-qty{background:var(--ink);color:var(--paper)}
   .price-btn.has-qty .v-label{color:rgba(250,246,236,0.7)}
+  /* variant-row: a fixed 3-column area where each variant cell aligns vertically across rows.
+     Each cell shows: [optional minus button] + [price button], and the price button
+     is the same width regardless of M/L/XL/原/厚酥/etc. */
+  .variant-row{
+    display:grid;
+    grid-template-columns:repeat(3, 84px);
+    gap:6px;
+    align-items:center;
+    justify-content:end;
+  }
+  .variant-cell{
+    display:flex;align-items:center;justify-content:flex-end;
+    gap:4px;
+    width:100%;
+  }
+  .minus-btn{
+    width:24px;height:30px;
+    font-size:14px;font-weight:bold;
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
   .qty-ctrl{display:inline-flex;align-items:center;height:30px;border:1.5px solid var(--ink-2)}
   .qty-ctrl button{width:28px;height:100%;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);font-weight:700}
   .qty-ctrl button:hover{background:var(--paper-2)}
@@ -4821,6 +4842,44 @@ function ItemRow({
 }) {
   const variants = Object.keys(item.prices);
   const isSingle = variants.length === 1 && variants[0] === 'default';
+
+  // Slot map: which column does each known variant prefer?
+  // 0 = leftmost, 2 = rightmost. Using 3 slots so M / L / XL can stack consistently.
+  // For unknown variants (e.g. 原 / 厚酥 / 丹麥), put first one in slot 0 and second in slot 2 (left & right).
+  const slotMap = {};
+  if (isSingle) {
+    slotMap['default'] = 2; // single default: right-most slot
+  } else {
+    // Known size variants go to fixed slots
+    const knownSlots = {
+      S: 0,
+      M: 1,
+      L: 2,
+      XL: 2
+    };
+    // Special-case: if variants include both L and XL, push L→1 and XL→2
+    if (variants.includes('L') && variants.includes('XL')) {
+      knownSlots.L = 1;
+      knownSlots.XL = 2;
+    }
+    // First pass: assign known variants
+    const unassigned = [];
+    variants.forEach(v => {
+      if (knownSlots[v] !== undefined) slotMap[v] = knownSlots[v];else unassigned.push(v);
+    });
+    // Second pass: distribute unassigned among free slots
+    const usedSlots = new Set(Object.values(slotMap));
+    const freeSlots = [0, 1, 2].filter(s => !usedSlots.has(s));
+    unassigned.forEach((v, i) => {
+      slotMap[v] = freeSlots[i] !== undefined ? freeSlots[i] : 2;
+    });
+  }
+
+  // Build cells for all 3 slots (some may be empty)
+  const cellsBySlot = [null, null, null];
+  variants.forEach(v => {
+    cellsBySlot[slotMap[v]] = v;
+  });
   return /*#__PURE__*/React.createElement("div", {
     className: "py-2.5 border-b",
     style: {
@@ -4841,17 +4900,21 @@ function ItemRow({
       color: 'var(--mute)'
     }
   }, item.desc)), /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-wrap gap-1.5 justify-end shrink-0"
-  }, variants.map(v => {
+    className: "variant-row shrink-0"
+  }, cellsBySlot.map((v, idx) => {
+    if (!v) return /*#__PURE__*/React.createElement("div", {
+      key: `empty-${idx}`,
+      className: "variant-cell"
+    });
     const price = item.prices[v];
     const key = itemKey(shop.id, item.cat, item.name, v);
     const qty = draft[key]?.qty || 0;
     return /*#__PURE__*/React.createElement("div", {
       key: v,
-      className: "flex items-center gap-1"
+      className: "variant-cell"
     }, qty > 0 && !disabled && /*#__PURE__*/React.createElement("button", {
       onClick: () => onSub(v),
-      className: "btn-tactile w-7 h-9 text-base font-bold pop-in",
+      className: "btn-tactile minus-btn pop-in",
       style: {
         border: '1.5px solid var(--minus)',
         color: 'var(--minus)',
