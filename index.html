@@ -4292,7 +4292,7 @@ const TAB_DEFS = [{
   id: 'summary',
   en: 'SUMMARY',
   cn: '統計',
-  roles: ['admin', 'super-admin']
+  roles: ['admin', 'super-admin', 'parent']
 }, {
   id: 'menu',
   en: 'MENU',
@@ -4321,7 +4321,7 @@ function Tabs({
   badges
 }) {
   const visible = TAB_DEFS.filter(t => t.roles.includes(role));
-  if (visible.length <= 1) return null;
+  if (visible.length < 2) return null;
   return /*#__PURE__*/React.createElement("nav", {
     className: "border-b sticky top-0 z-30 backdrop-blur",
     style: {
@@ -4553,6 +4553,7 @@ function SubTabSwitcher({
 function OrderView({
   shop,
   orders,
+  lastOrders,
   account,
   isCutoff,
   dispatch
@@ -4599,6 +4600,7 @@ function OrderView({
     }), /*#__PURE__*/React.createElement(ParentOrderFlow, {
       shop: shop,
       orders: orders,
+      lastOrders: lastOrders,
       account: account,
       isCutoff: isCutoff,
       dispatch: dispatch
@@ -4796,6 +4798,7 @@ function OrderView({
     shop: shop,
     member: ROSTER_BY_ID[openSwimmer],
     existingOrder: orders[openSwimmer],
+    lastOrder: lastOrders?.[openSwimmer],
     account: account,
     isCutoff: isCutoff,
     dispatch: dispatch,
@@ -4982,6 +4985,46 @@ function MenuSections({
 }
 
 /* Cart line — show in summary view (after submit) */
+/* "📋 沿用上次訂單" button — shown when:
+   - no items currently in draft (user hasn't started)
+   - lastOrder exists with same shopId
+   - clicking fills draft with last order's items                              */
+function ReuseLastOrderButton({
+  lastOrder,
+  currentShopId,
+  onApply
+}) {
+  if (!lastOrder || !lastOrder.items || Object.keys(lastOrder.items).length === 0) return null;
+  if (lastOrder.shopId !== currentShopId) return null;
+  const dateStr = lastOrder.date ? lastOrder.date.slice(5).replace('-', '/') : '';
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onApply,
+    className: "btn-tactile w-full p-3 mb-3 flex items-center justify-between gap-2",
+    style: {
+      background: 'var(--note-bg)',
+      border: '1.5px dashed var(--note)',
+      color: 'var(--note)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 min-w-0 flex-1 text-left"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+    className: "min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-sm",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "\u6CBF\u7528\u4E0A\u6B21\u8A02\u55AE"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] num-mono",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, dateStr, " \xB7 ", lastOrder.totalQty, " \u9805 \xB7 $", lastOrder.totalPrice))), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn text-xs"
+  }, "\u5957\u7528 \u2192"));
+}
 function CartLine({
   line,
   shop,
@@ -5093,6 +5136,7 @@ function OrderEditorDrawer({
   shop,
   member,
   existingOrder,
+  lastOrder,
   account,
   isCutoff,
   dispatch,
@@ -5110,6 +5154,23 @@ function OrderEditorDrawer({
   };
   const canEdit = canEditOrder(account, member.id, isCutoff);
   const isOverride = isOverrideAction(account, member.id, isCutoff);
+  const applyLastOrder = () => {
+    if (!lastOrder?.items) return;
+    const newDraft = {};
+    Object.values(lastOrder.items).forEach(line => {
+      const k = itemKey(shop.id, line.cat, line.name, line.variant);
+      newDraft[k] = {
+        shop: shop.id,
+        cat: line.cat,
+        name: line.name,
+        variant: line.variant,
+        price: line.price,
+        qty: line.qty,
+        note: line.note || ''
+      };
+    });
+    setDraft(newDraft);
+  };
   const onAdd = (item, variant) => {
     const k = itemKey(shop.id, item.cat, item.name, variant);
     setDraft(d => {
@@ -5318,7 +5379,11 @@ function OrderEditorDrawer({
     }
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "flex-1 overflow-y-auto scroll-y px-3 sm:px-5 py-3 pb-32"
-  }, cartLines.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, cartLines.length === 0 && canEdit && /*#__PURE__*/React.createElement(ReuseLastOrderButton, {
+    lastOrder: lastOrder,
+    currentShopId: shop.id,
+    onApply: applyLastOrder
+  }), cartLines.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "mb-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-baseline justify-between mb-2"
@@ -5440,6 +5505,7 @@ function OrderEditorDrawer({
 function ParentOrderFlow({
   shop,
   orders,
+  lastOrders,
   account,
   isCutoff,
   dispatch
@@ -5498,6 +5564,7 @@ function ParentOrderFlow({
     shop: shop,
     member: ROSTER_BY_ID[activeChildId],
     existingOrder: orders[activeChildId],
+    lastOrder: lastOrders?.[activeChildId],
     account: account,
     isCutoff: isCutoff,
     dispatch: dispatch
@@ -5509,6 +5576,7 @@ function ChildOrderPanel({
   shop,
   member,
   existingOrder,
+  lastOrder,
   account,
   isCutoff,
   dispatch
@@ -5530,6 +5598,24 @@ function ChildOrderPanel({
       } : {});
     }
   }, [existingOrder, mode]);
+  const applyLastOrder = () => {
+    if (!lastOrder?.items) return;
+    // Re-stamp items so they have current shop ID and re-key them
+    const newDraft = {};
+    Object.values(lastOrder.items).forEach(line => {
+      const k = itemKey(shop.id, line.cat, line.name, line.variant);
+      newDraft[k] = {
+        shop: shop.id,
+        cat: line.cat,
+        name: line.name,
+        variant: line.variant,
+        price: line.price,
+        qty: line.qty,
+        note: line.note || ''
+      };
+    });
+    setDraft(newDraft);
+  };
   const onAdd = (item, variant) => {
     const k = itemKey(shop.id, item.cat, item.name, variant);
     setDraft(d => {
@@ -5836,14 +5922,18 @@ function ChildOrderPanel({
     style: {
       color: 'var(--mute)'
     }
-  }, "\u5C1A\u672A\u9078\u9910")), cartLines.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "\u5C1A\u672A\u9078\u9910")), cartLines.length === 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, canEdit && /*#__PURE__*/React.createElement(ReuseLastOrderButton, {
+    lastOrder: lastOrder,
+    currentShopId: shop.id,
+    onApply: applyLastOrder
+  }), /*#__PURE__*/React.createElement("div", {
     className: "p-4 text-center text-sm",
     style: {
       background: 'var(--paper)',
       border: '1.5px dashed var(--line-strong)',
       color: 'var(--mute)'
     }
-  }, "\u2193 \u5F9E\u4E0B\u65B9\u83DC\u55AE\u9078\u9910 \u2193") : /*#__PURE__*/React.createElement("div", {
+  }, "\u2193 \u5F9E\u4E0B\u65B9\u83DC\u55AE\u9078\u9910 \u2193")) : /*#__PURE__*/React.createElement("div", {
     style: {
       background: 'var(--paper)',
       border: '2px solid var(--ink)'
@@ -7708,6 +7798,59 @@ function App() {
     }, err => console.error('orders subscribe error', err));
   }, [account, date]);
 
+  /* ─── lastOrders: most recent prior order per swimmer (for "📋 沿用上次訂單") ─── */
+  const [lastOrders, setLastOrders] = useState({}); // {swimmerId: {date, items, totalQty, totalPrice, shopId}}
+  useEffect(() => {
+    if (!account || !shopsLoaded) {
+      setLastOrders({});
+      return;
+    }
+    const swimmerIds = isAdminRole(account) ? null /* admin: pull all */ : account.swimmers || [];
+    if (swimmerIds && swimmerIds.length === 0) {
+      setLastOrders({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        // Look back up to 14 days
+        const today = new Date(date + 'T00:00:00');
+        const out = {};
+        const targets = swimmerIds || ROSTER.map(m => m.id);
+        const remaining = new Set(targets);
+        for (let dayOffset = 1; dayOffset <= 14 && remaining.size > 0; dayOffset++) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - dayOffset);
+          const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const snap = await db.collection('orders').doc(ds).collection('swimmers').get();
+          if (cancelled) return;
+          snap.forEach(doc => {
+            const sid = doc.id;
+            if (!remaining.has(sid)) return;
+            const data = doc.data();
+            if (!data?.items || Object.keys(data.items).length === 0) return;
+            // detect shopId from any item
+            const firstItem = Object.values(data.items)[0];
+            out[sid] = {
+              date: ds,
+              items: data.items,
+              totalQty: data.totalQty || Object.values(data.items).reduce((s, l) => s + (l.qty || 0), 0),
+              totalPrice: data.totalPrice || Object.values(data.items).reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0),
+              shopId: firstItem?.shop || null
+            };
+            remaining.delete(sid);
+          });
+        }
+        if (!cancelled) setLastOrders(out);
+      } catch (e) {
+        console.error('lastOrders fetch error', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [account, date, shopsLoaded, (account?.swimmers || []).join('|')]);
+
   /* ─── audit log ─── */
   useEffect(() => {
     if (!account || !isAdminRole(account)) {
@@ -8184,8 +8327,12 @@ function App() {
     setTimeout(() => setTab(visibleTabs[0]?.id || 'order'), 0);
   }
 
-  // For parent: render single ParentOrderFlow as the main app body
+  // For parent: render Tabs (order + summary) + corresponding view
   if (account.role === 'parent') {
+    const validTabs = ['order', 'summary'];
+    if (!validTabs.includes(tab)) {
+      setTimeout(() => setTab('order'), 0);
+    }
     return /*#__PURE__*/React.createElement("div", {
       className: "min-h-screen"
     }, /*#__PURE__*/React.createElement(Header, {
@@ -8197,6 +8344,10 @@ function App() {
       notifCount: unreadNotif,
       onNotifClick: () => setShowNotif(true),
       onLogout: handleLogout
+    }), /*#__PURE__*/React.createElement(Tabs, {
+      tab: tab,
+      setTab: setTab,
+      role: account.role
     }), /*#__PURE__*/React.createElement("main", {
       className: "max-w-3xl mx-auto px-4 sm:px-8 py-4"
     }, !shop ? /*#__PURE__*/React.createElement("div", {
@@ -8211,9 +8362,13 @@ function App() {
       style: {
         color: 'var(--mute)'
       }
-    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B")) : /*#__PURE__*/React.createElement(ParentOrderFlow, {
+    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B")) : tab === 'summary' ? /*#__PURE__*/React.createElement(SummaryView, {
+      shop: shop,
+      orders: orders
+    }) : /*#__PURE__*/React.createElement(ParentOrderFlow, {
       shop: shop,
       orders: orders,
+      lastOrders: lastOrders,
       account: account,
       isCutoff: isCutoff,
       dispatch: dispatch
@@ -8260,6 +8415,7 @@ function App() {
   }), tab === 'order' && /*#__PURE__*/React.createElement(OrderView, {
     shop: shop,
     orders: orders,
+    lastOrders: lastOrders,
     account: account,
     isCutoff: isCutoff,
     dispatch: dispatch
