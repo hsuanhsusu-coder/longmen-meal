@@ -1,0 +1,7300 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>龍門泳隊 · 訂餐系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#F4EDE0;
+    --paper:#FAF6EC;
+    --paper-2:#EDE3D0;
+    --ink:#1F1A14;
+    --ink-2:#5C544A;
+    --mute:#8B8378;
+    --red:#C9342B;
+    --line:#D9CFBE;
+    --line-strong:#3A332B;
+    --yusee:#1E5C8C;
+    --yusee-bg:#D9E5EE;
+    --badudu:#C4811E;
+    --badudu-bg:#F2E0BC;
+    --shanlin:#3F6B3A;
+    --shanlin-bg:#D6E0CA;
+    --plus:#3F6B3A;
+    --minus:#C9342B;
+    --lock:#8B7355;
+    --lock-bg:#E8DCC4;
+    --override:#9B2C2C;
+    --override-bg:#FBE4E0;
+    --admin:#5C3A85;
+    --admin-bg:#E5DAEE;
+    --super:#8B2D6E;
+    --super-bg:#F0DEE8;
+    --parent:#1E5C8C;
+    --parent-bg:#D9E5EE;
+    --note:#B5851A;
+    --note-bg:#F8EDC9;
+  }
+  *{-webkit-tap-highlight-color:transparent}
+  html,body{overscroll-behavior-y:none}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Noto Sans TC","Inter",system-ui,sans-serif;
+    background-image:
+      radial-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
+      radial-gradient(rgba(0,0,0,0.012) 1px, transparent 1px);
+    background-size:14px 14px, 7px 7px;
+    background-position:0 0, 3px 3px;
+  }
+  .display{font-family:"Big Shoulders Display",sans-serif;font-weight:900;letter-spacing:-0.02em;line-height:0.85}
+  .display-cn{font-family:"Noto Serif TC",serif;font-weight:900;letter-spacing:0.04em}
+  .serif-it{font-family:"Fraunces",serif;font-style:italic}
+  .serif{font-family:"Fraunces",serif}
+  .tk-x{letter-spacing:0.18em;text-transform:uppercase;font-family:"Inter",sans-serif;font-weight:500}
+  .tk-cn{letter-spacing:0.2em}
+  .num{font-family:"Big Shoulders Display",sans-serif;font-weight:800;font-variant-numeric:tabular-nums}
+  .num-mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .btn-tactile{transition:all 120ms cubic-bezier(.2,.6,.4,1)}
+  .btn-tactile:active{transform:translateY(1px) scale(0.98)}
+  .btn-tactile:disabled{opacity:0.45;cursor:not-allowed}
+  .card-hover{transition:transform 180ms ease, box-shadow 180ms ease, background 180ms ease}
+  .card-hover:hover{transform:translateY(-2px)}
+  @keyframes pop{0%{transform:scale(0.85);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  .pop-in{animation:pop 240ms cubic-bezier(.2,.7,.3,1.2)}
+  @keyframes slide-up{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .slide-up{animation:slide-up 280ms cubic-bezier(.2,.7,.3,1)}
+  @keyframes slide-down{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .slide-down{animation:slide-down 280ms cubic-bezier(.2,.7,.3,1)}
+  @keyframes fade-in{from{opacity:0}to{opacity:1}}
+  .fade-in{animation:fade-in 200ms ease}
+  @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.5}}
+  .pulse-dot{animation:pulse-dot 1.4s ease-in-out infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner{animation:spin 1s linear infinite}
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type="number"]{-moz-appearance:textfield}
+  textarea{resize:none}
+  .scroll-y{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .scroll-y::-webkit-scrollbar{width:6px}
+  .scroll-y::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .hl{height:1px;background:var(--line)}
+  .hl-strong{height:1.5px;background:var(--line-strong)}
+  .price-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:4px;
+    min-width:60px;height:36px;padding:0 10px;
+    font-family:"Inter",sans-serif;font-weight:600;
+    border:1.5px solid var(--ink);background:var(--paper);
+    color:var(--ink);font-size:13px;
+    transition:all 120ms ease;position:relative;
+  }
+  .price-btn:hover:not(:disabled){background:var(--ink);color:var(--paper)}
+  .price-btn:active:not(:disabled){transform:scale(0.97)}
+  .price-btn:disabled{opacity:0.4;cursor:not-allowed}
+  .price-btn .v-label{font-size:11px;color:var(--ink-2);font-weight:500}
+  .price-btn:hover:not(:disabled) .v-label{color:var(--paper)}
+  .price-btn .price{font-family:"Big Shoulders Display",sans-serif;font-weight:800;font-size:16px}
+  .price-btn .qty-badge{
+    position:absolute;top:-7px;right:-7px;
+    background:var(--red);color:var(--paper);
+    width:20px;height:20px;font-size:11px;font-weight:800;
+    border:1.5px solid var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    font-family:"Big Shoulders Display",sans-serif;
+  }
+  .price-btn.has-qty{background:var(--ink);color:var(--paper)}
+  .price-btn.has-qty .v-label{color:rgba(250,246,236,0.7)}
+  .qty-ctrl{display:inline-flex;align-items:center;height:30px;border:1.5px solid var(--ink-2)}
+  .qty-ctrl button{width:28px;height:100%;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);font-weight:700}
+  .qty-ctrl button:hover{background:var(--paper-2)}
+  .qty-ctrl button:disabled{opacity:0.4;cursor:not-allowed}
+  .qty-ctrl .qv{padding:0 8px;font-family:"Big Shoulders Display",sans-serif;font-weight:800;font-size:16px;min-width:28px;text-align:center}
+  .cat-sticky{position:sticky;top:0;background:var(--bg);z-index:5;padding:6px 0}
+  .tab-ind{position:absolute;left:8px;right:8px;bottom:-1.5px;height:3px;background:var(--red)}
+  .lc-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .role-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:3px 8px;font-size:11px;font-weight:700;
+    font-family:"Inter",sans-serif;letter-spacing:0.1em;
+  }
+  .lock-overlay{position:relative;}
+  .lock-overlay::after{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(139,115,85,0.06) 8px,rgba(139,115,85,0.06) 16px);
+    pointer-events:none;
+  }
+  .notif-dot{
+    position:absolute;top:-3px;right:-3px;
+    width:14px;height:14px;border-radius:50%;
+    background:var(--red);color:var(--paper);
+    border:1.5px solid var(--paper);
+    font-size:9px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    font-family:"Big Shoulders Display",sans-serif;
+  }
+  .note-badge{
+    display:inline-flex;align-items:center;gap:3px;
+    padding:1px 6px;font-size:10px;
+    background:var(--note-bg);color:var(--note);
+    border:1px solid var(--note);font-weight:600;
+  }
+  .override-badge{
+    display:inline-flex;align-items:center;gap:3px;
+    padding:1px 6px;font-size:10px;
+    background:var(--override-bg);color:var(--override);
+    border:1px solid var(--override);font-weight:700;
+    font-family:"Inter",sans-serif;letter-spacing:0.05em;
+  }
+</style>
+</head>
+<body>
+<div id="error-display" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;padding:14px 16px;background:#FBE4E0;border-bottom:3px solid #9B2C2C;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#5C0F0A;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;line-height:1.5"></div>
+<script>
+(function(){
+  function show(msg){
+    var d = document.getElementById('error-display');
+    if (!d) { alert(msg); return; }
+    d.style.display = 'block';
+    d.textContent = (d.textContent ? d.textContent + '\n\n' : '') + msg;
+  }
+  window.addEventListener('error', function(e){
+    show('⚠ ERROR: ' + (e.message||'unknown') + '\nFile: ' + (e.filename||'?') + ':' + (e.lineno||'?') + ':' + (e.colno||'?') + (e.error&&e.error.stack ? '\n'+e.error.stack : ''));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    show('⚠ PROMISE: ' + (e.reason && e.reason.message ? e.reason.message : (e.reason||'unknown')));
+  });
+})();
+</script>
+<div id="error-display" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;padding:14px 16px;background:#FBE4E0;border-bottom:3px solid #9B2C2C;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#5C0F0A;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;line-height:1.5"></div>
+<script>
+(function(){
+  function show(msg){
+    var d = document.getElementById('error-display');
+    if (!d) { alert(msg); return; }
+    d.style.display = 'block';
+    d.textContent = (d.textContent ? d.textContent + '\n\n' : '') + msg;
+  }
+  window.addEventListener('error', function(e){
+    show('⚠ ERROR: ' + (e.message || 'unknown') + '\nFile: ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?') + (e.error && e.error.stack ? '\n' + e.error.stack : ''));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    show('⚠ PROMISE: ' + (e.reason && e.reason.message ? e.reason.message : (e.reason || 'unknown')));
+  });
+})();
+</script>
+<div id="app"></div>
+<script>
+try {
+  if (typeof React === 'undefined') throw new Error('React did not load — CDN blocked or offline?');
+  if (typeof ReactDOM === 'undefined') throw new Error('ReactDOM did not load — CDN blocked or offline?');
+const {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  createContext,
+  useContext
+} = React;
+
+/* ════════════════════════════════════════════════════════════
+   FIREBASE INITIALIZATION
+   ════════════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDVa1nGeKzD--oGmbGye5y1PTqTAaTI4lw",
+  authDomain: "longmen-meal.firebaseapp.com",
+  projectId: "longmen-meal",
+  storageBucket: "longmen-meal.firebasestorage.app",
+  messagingSenderId: "301043358756",
+  appId: "1:301043358756:web:1e95cb66fb2af8cc28ccb1"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const FieldValue = firebase.firestore.FieldValue;
+
+/* ════════════════════════════════════════════════════════════
+   ROSTER (33 swimmers; 4 still pending - admin can edit later)
+   ════════════════════════════════════════════════════════════ */
+const ROSTER = [{
+  id: 'r01',
+  name: '金采儀',
+  cls: 904,
+  seat: 8,
+  grade: 9
+}, {
+  id: 'r02',
+  name: '唐家寶',
+  cls: 905,
+  seat: 23,
+  grade: 9
+}, {
+  id: 'r03',
+  name: '呂誠',
+  cls: 906,
+  seat: 25,
+  grade: 9
+}, {
+  id: 'r04',
+  name: '楊宥樂',
+  cls: 908,
+  seat: 33,
+  grade: 9
+}, {
+  id: 'r05',
+  name: '洪澧暘',
+  cls: 913,
+  seat: 26,
+  grade: 9
+}, {
+  id: 'r06',
+  name: '楊蕥妮',
+  cls: 802,
+  seat: 11,
+  grade: 8
+}, {
+  id: 'r07',
+  name: '呂紹宇',
+  cls: 803,
+  seat: 23,
+  grade: 8
+}, {
+  id: 'r08',
+  name: '蔡萬潼',
+  cls: 804,
+  seat: 16,
+  grade: 8
+}, {
+  id: 'r09',
+  name: '鄭宇廷',
+  cls: 810,
+  seat: 35,
+  grade: 8
+}, {
+  id: 'r10',
+  name: '楊立傳',
+  cls: 812,
+  seat: 31,
+  grade: 8
+}, {
+  id: 'r11',
+  name: '楊立楷',
+  cls: 812,
+  seat: 32,
+  grade: 8
+}, {
+  id: 'r12',
+  name: '王曉霖',
+  cls: 813,
+  seat: 2,
+  grade: 8
+}, {
+  id: 'r13',
+  name: '李晨睿',
+  cls: 813,
+  seat: 21,
+  grade: 8
+}, {
+  id: 'r14',
+  name: '林泳廷',
+  cls: 815,
+  seat: 26,
+  grade: 8
+}, {
+  id: 'r15',
+  name: '蔡權樺',
+  cls: 816,
+  seat: 1,
+  grade: 8
+}, {
+  id: 'r16',
+  name: '林子堯',
+  cls: 701,
+  seat: 24,
+  grade: 7
+}, {
+  id: 'r17',
+  name: '和怡霈',
+  cls: 702,
+  seat: 7,
+  grade: 7
+}, {
+  id: 'r18',
+  name: '曾澄',
+  cls: 703,
+  seat: 12,
+  grade: 7
+}, {
+  id: 'r19',
+  name: '吳定宇',
+  cls: 703,
+  seat: 22,
+  grade: 7
+}, {
+  id: 'r20',
+  name: '楊杰栩',
+  cls: 703,
+  seat: 33,
+  grade: 7
+}, {
+  id: 'r21',
+  name: '蘇柏宇',
+  cls: 703,
+  seat: 37,
+  grade: 7
+}, {
+  id: 'r22',
+  name: '陳羿愷',
+  cls: 706,
+  seat: 28,
+  grade: 7
+}, {
+  id: 'r23',
+  name: '朱秭儀',
+  cls: 709,
+  seat: 4,
+  grade: 7
+}, {
+  id: 'r24',
+  name: '周懿',
+  cls: 710,
+  seat: 3,
+  grade: 7
+}, {
+  id: 'r25',
+  name: '柯柔瑄',
+  cls: 710,
+  seat: 5,
+  grade: 7
+}, {
+  id: 'r26',
+  name: '何浩蓮',
+  cls: 710,
+  seat: 22,
+  grade: 7
+}, {
+  id: 'r27',
+  name: '鄭咏永',
+  cls: 710,
+  seat: 35,
+  grade: 7
+}, {
+  id: 'r28',
+  name: '陳柏方',
+  cls: 711,
+  seat: 10,
+  grade: 7
+}, {
+  id: 'r29',
+  name: '楊詠昕',
+  cls: 713,
+  seat: 12,
+  grade: 7
+}];
+const ROSTER_BY_ID = Object.fromEntries(ROSTER.map(m => [m.id, m]));
+const GRADE_INFO = {
+  7: {
+    label: '七',
+    color: '#5E6E3D'
+  },
+  8: {
+    label: '八',
+    color: '#B5532E'
+  },
+  9: {
+    label: '九',
+    color: '#C9342B'
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   HELPERS
+   ════════════════════════════════════════════════════════════ */
+const getToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const getDayLabel = s => ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][new Date(s + 'T00:00:00').getDay()];
+const formatDateBig = s => {
+  const d = new Date(s + 'T00:00:00');
+  return {
+    y: d.getFullYear(),
+    m: d.getMonth() + 1,
+    dd: d.getDate()
+  };
+};
+const itemKey = (shopId, catId, name, variant) => `${shopId}|${catId}|${name}|${variant}`;
+const safeKey = k => k.replace(/[\/\.\#\$\[\]]/g, '_');
+const fmtTime = ts => {
+  const d = ts && ts.toDate ? ts.toDate() : new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+};
+const fmtDateTime = ts => {
+  const d = ts && ts.toDate ? ts.toDate() : new Date(ts);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const isCutoffNow = () => new Date().getHours() >= 21;
+const SHOP_IDS = ['yusee', 'badudu', 'shanlin'];
+
+/* permission helpers (now check Firestore-derived account) */
+const isAdminRole = acc => acc && (acc.role === 'admin' || acc.role === 'super-admin');
+const isSuperAdminRole = acc => acc && acc.role === 'super-admin';
+const canEditOrder = (account, swimmerId, isCutoff) => {
+  if (!account) return false;
+  if (isAdminRole(account)) return true;
+  if (!(account.swimmers || []).includes(swimmerId)) return false;
+  if (isCutoff) return false;
+  return true;
+};
+const isOverrideAction = (account, swimmerId, isCutoff) => {
+  if (!account) return false;
+  if (!isAdminRole(account)) return false;
+  return !(account.swimmers || []).includes(swimmerId) || isCutoff;
+};
+
+/* ─── COMPONENTS BELOW ─── */
+/* ════════════════════════════════════════════════════════════
+   MENU SEED DATA — used to populate Firestore on first run
+   Same data as v0.2 prototype
+   ════════════════════════════════════════════════════════════ */
+const YUSEE_SEED = {
+  id: 'yusee',
+  name: '早安有喜',
+  nameEn: 'Morning Yusee',
+  branch: '大安和平店',
+  address: '台北市大安區和平東路二段117號',
+  phone: '(02) 2325-0335',
+  hours: '早餐專賣',
+  themeColor: 'var(--yusee)',
+  themeBg: 'var(--yusee-bg)',
+  note: '飲品可調甜度、冰量；使用統一鮮乳；情人蜂蜜',
+  categories: [{
+    id: 'tea',
+    name: '有喜茶飲',
+    variants: ['M', 'L'],
+    variantLabel: 'M中／L大'
+  }, {
+    id: 'milktea',
+    name: '鮮奶茶',
+    variants: ['M', 'L'],
+    variantLabel: '重乳+10元'
+  }, {
+    id: 'honey',
+    name: '百分百蜂蜜',
+    variants: ['M'],
+    variantLabel: '蜂蜜系列'
+  }, {
+    id: 'fruit',
+    name: '鮮果茶飲',
+    variants: ['M', 'L'],
+    variantLabel: '鮮果飲品'
+  }, {
+    id: 'coffee',
+    name: '有喜咖啡',
+    variants: ['冰', '熱'],
+    variantLabel: '冰16oz／熱12oz'
+  }, {
+    id: 'platter',
+    name: '經典拼盤',
+    variants: ['default'],
+    variantLabel: '附醬料+飲品'
+  }, {
+    id: 'burger',
+    name: '義式手工漢堡',
+    variants: ['白金', '黑金'],
+    variantLabel: '白金／黑金麵包'
+  }, {
+    id: 'toast',
+    name: '有一點厚吐司',
+    variants: ['原', '薄'],
+    variantLabel: '原／薄'
+  }, {
+    id: 'eggtoast',
+    name: '吐司佐蛋',
+    variants: ['原', '丹麥'],
+    variantLabel: '原／丹麥'
+  }, {
+    id: 'french',
+    name: '法國吐司',
+    variants: ['default']
+  }, {
+    id: 'eggcake',
+    name: '雙蛋蛋餅',
+    variants: ['原', '厚酥'],
+    variantLabel: '原／厚酥'
+  }, {
+    id: 'veggie',
+    name: '蔬食脆捲餅',
+    variants: ['原', '厚酥'],
+    variantLabel: '原／厚酥'
+  }, {
+    id: 'mcmuffin',
+    name: '朝氣滿福堡',
+    variants: ['default'],
+    variantLabel: '加起司+15元'
+  }, {
+    id: 'pasta',
+    name: '美味麵食',
+    variants: ['default'],
+    variantLabel: 'A加烤肉.蛋+40 / B加蛋+15'
+  }, {
+    id: 'ricebox',
+    name: '套餐飯食',
+    variants: ['丼飯', '咖哩'],
+    variantLabel: '附中杯紅茶'
+  }, {
+    id: 'snack',
+    name: '有喜小點心',
+    variants: ['default']
+  }, {
+    id: 'hotpot',
+    name: '鍋燒系列',
+    variants: ['原味', '泡菜'],
+    variantLabel: 'A加起司+15 / B換牛肉+15'
+  }],
+  items: [{
+    cat: 'tea',
+    name: '有喜紅茶',
+    prices: {
+      M: 25,
+      L: 30
+    }
+  }, {
+    cat: 'tea',
+    name: '有喜綠茶',
+    prices: {
+      M: 30,
+      L: 35
+    }
+  }, {
+    cat: 'tea',
+    name: '有喜烏龍茶',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '有喜奶茶',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '茉香奶綠',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '烏龍奶茶',
+    prices: {
+      M: 40,
+      L: 45
+    }
+  }, {
+    cat: 'tea',
+    name: '非基改豆漿',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '紅茶豆漿',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '抹茶豆漿',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '胚芽豆漿',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '胚芽奶茶',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '焦糖奶茶',
+    prices: {
+      M: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '經典厚奶茶',
+    prices: {
+      M: 50,
+      L: 55
+    }
+  }, {
+    cat: 'tea',
+    name: '經典厚奶綠',
+    prices: {
+      M: 50,
+      L: 55
+    }
+  }, {
+    cat: 'tea',
+    name: '寒天珍珠紅茶',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '寒天珍珠奶茶',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '寒天珍珠豆漿',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '復刻多瓜茶',
+    prices: {
+      M: 35,
+      L: 40
+    }
+  }, {
+    cat: 'tea',
+    name: '烏龍多瓜',
+    prices: {
+      M: 40,
+      L: 45
+    }
+  }, {
+    cat: 'tea',
+    name: '金沙阿華田',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'tea',
+    name: '蔓越莓遇見綠茶',
+    prices: {
+      M: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '蔓越莓遇見烏龍',
+    prices: {
+      M: 50
+    }
+  }, {
+    cat: 'tea',
+    name: '青梅酵素飲',
+    prices: {
+      M: 50
+    }
+  }, {
+    cat: 'milktea',
+    name: '紅茶鮮乳',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'milktea',
+    name: '綠茶鮮乳',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'milktea',
+    name: '多瓜鮮乳',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'milktea',
+    name: '烏龍鮮乳',
+    prices: {
+      M: 55,
+      L: 65
+    }
+  }, {
+    cat: 'milktea',
+    name: '抹茶鮮乳',
+    prices: {
+      M: 55,
+      L: 65
+    }
+  }, {
+    cat: 'milktea',
+    name: '麵茶鮮乳',
+    prices: {
+      M: 55,
+      L: 65
+    }
+  }, {
+    cat: 'milktea',
+    name: '葡萄鮮乳',
+    prices: {
+      M: 65,
+      L: 75
+    }
+  }, {
+    cat: 'milktea',
+    name: '金沙阿華田鮮乳',
+    prices: {
+      M: 65
+    }
+  }, {
+    cat: 'milktea',
+    name: '蘋果鮮乳',
+    prices: {
+      M: 70
+    }
+  }, {
+    cat: 'honey',
+    name: '蜂蜜茶',
+    prices: {
+      M: 35
+    }
+  }, {
+    cat: 'honey',
+    name: '蜂蜜紅茶',
+    prices: {
+      M: 45
+    }
+  }, {
+    cat: 'honey',
+    name: '蜂蜜綠茶',
+    prices: {
+      M: 55
+    }
+  }, {
+    cat: 'honey',
+    name: '蜂蜜檸檬茶',
+    prices: {
+      M: 55
+    }
+  }, {
+    cat: 'honey',
+    name: '蜂蜜奶茶',
+    prices: {
+      M: 55
+    }
+  }, {
+    cat: 'honey',
+    name: '蜂蜜百香',
+    prices: {
+      M: 60
+    }
+  }, {
+    cat: 'fruit',
+    name: '檸檬綠茶',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '檸檬紅茶',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '鮮檸檬百香綠茶',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '檸檬多瓜',
+    prices: {
+      M: 45,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '柳橙果粒茶',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '柳橙綠茶',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '蘋果風味汁',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'fruit',
+    name: '鳳梨冰茶',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'coffee',
+    name: '美式咖啡',
+    prices: {
+      冰: 45,
+      熱: 45
+    }
+  }, {
+    cat: 'coffee',
+    name: '特調咖啡',
+    prices: {
+      冰: 55,
+      熱: 55
+    }
+  }, {
+    cat: 'coffee',
+    name: '拿鐵',
+    prices: {
+      冰: 60,
+      熱: 60
+    }
+  }, {
+    cat: 'coffee',
+    name: '榛果拿鐵咖啡',
+    prices: {
+      冰: 70,
+      熱: 70
+    }
+  }, {
+    cat: 'coffee',
+    name: '焦糖拿鐵咖啡',
+    prices: {
+      冰: 70,
+      熱: 70
+    }
+  }, {
+    cat: 'coffee',
+    name: '蜂蜜甘甜咖啡',
+    prices: {
+      冰: 70,
+      熱: 70
+    }
+  }, {
+    cat: 'coffee',
+    name: '檸檬香醇咖啡',
+    prices: {
+      冰: 70
+    }
+  }, {
+    cat: 'coffee',
+    name: '胚芽拿鐵咖啡',
+    prices: {
+      冰: 70,
+      熱: 70
+    }
+  }, {
+    cat: 'platter',
+    name: '鹿兒島丹童拼盤',
+    prices: {
+      default: 199
+    },
+    desc: '法國吐司、炒蛋、香酥雞塊、熱狗、地瓜球、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+  }, {
+    cat: 'platter',
+    name: '中華拼盤',
+    prices: {
+      default: 199
+    },
+    desc: '蘿蔔糕、鍋貼、鮮魚條、太陽蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+  }, {
+    cat: 'platter',
+    name: '淺草丹麥拼盤',
+    prices: {
+      default: 209
+    },
+    desc: '丹麥吐司、照燒雞肉丸、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+  }, {
+    cat: 'platter',
+    name: '法式金磚拼盤',
+    prices: {
+      default: 209
+    },
+    desc: '法式厚片、手工培根、雞肉洋蔥圈、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+  }, {
+    cat: 'platter',
+    name: '香蒜豐盛總匯拼盤',
+    prices: {
+      default: 239
+    },
+    desc: '香蒜吐司條、香焙火腿、鮮嫩香酥雞、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+  }, {
+    cat: 'platter',
+    name: '大相撲經典拼盤',
+    prices: {
+      default: 239
+    },
+    desc: '牛角可頌、嫩煎雞腿、德式香腸、雞肉洋蔥圈、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+  }, {
+    cat: 'burger',
+    name: '香草豚肉',
+    prices: {
+      白金: 109,
+      黑金: 109
+    }
+  }, {
+    cat: 'burger',
+    name: '勁辣卡啦雞腿',
+    prices: {
+      白金: 129,
+      黑金: 129
+    }
+  }, {
+    cat: 'burger',
+    name: '英式塔塔魚條',
+    prices: {
+      白金: 139,
+      黑金: 139
+    }
+  }, {
+    cat: 'burger',
+    name: '日式相撲大豬排',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'burger',
+    name: '夏威夷鳳梨蝦排',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'burger',
+    name: '手工培根4盎司純牛肉',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'burger',
+    name: '經典花生醬4盎司純牛肉',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'burger',
+    name: '松露蕈菇4盎司純牛肉',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'burger',
+    name: '起司脆薯辣雞',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'burger',
+    name: '起司脆薯雙牛',
+    prices: {
+      白金: 149,
+      黑金: 149
+    }
+  }, {
+    cat: 'toast',
+    name: '果醬(巧克力/草莓/藍莓/奶酥/奶油/花生)',
+    prices: {
+      原: 40,
+      薄: 25
+    }
+  }, {
+    cat: 'toast',
+    name: '香蒜吐司條',
+    prices: {
+      原: 45
+    }
+  }, {
+    cat: 'toast',
+    name: '安妮抹茶奶酥',
+    prices: {
+      原: 60
+    }
+  }, {
+    cat: 'toast',
+    name: '阿華田脆酷力',
+    prices: {
+      原: 60
+    }
+  }, {
+    cat: 'toast',
+    name: '鮪魚起司焗烤',
+    prices: {
+      原: 85
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '吐司夾蛋',
+    prices: {
+      原: 30,
+      丹麥: 45
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '田園蔬菜',
+    prices: {
+      原: 45,
+      丹麥: 60
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '切達起司',
+    prices: {
+      原: 45,
+      丹麥: 60
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '香純肉鬆',
+    prices: {
+      原: 45,
+      丹麥: 60
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '起司菇菇',
+    prices: {
+      原: 50,
+      丹麥: 65
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '地瓜蔬菜(不加蛋)',
+    prices: {
+      原: 50,
+      丹麥: 65
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '香焙純火腿',
+    prices: {
+      原: 55,
+      丹麥: 70
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '香脆薯餅',
+    prices: {
+      原: 55,
+      丹麥: 70
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '海洋水蒸鮪魚',
+    prices: {
+      原: 55,
+      丹麥: 70
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '馬鈴薯蛋沙拉',
+    prices: {
+      原: 60,
+      丹麥: 75
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '手工培根',
+    prices: {
+      原: 60,
+      丹麥: 75
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '板燒烤肉',
+    prices: {
+      原: 65,
+      丹麥: 80
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '澳洲純牛肉',
+    prices: {
+      原: 65,
+      丹麥: 80
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '香草豚肉',
+    prices: {
+      原: 65,
+      丹麥: 80
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '卡啦脆腿',
+    prices: {
+      原: 70,
+      丹麥: 85
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '英式塔塔魚條',
+    prices: {
+      原: 70,
+      丹麥: 85
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '嫩煎雞排',
+    prices: {
+      原: 75,
+      丹麥: 90
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '勁辣卡啦雞腿',
+    prices: {
+      原: 80,
+      丹麥: 95
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '板燒烤肉總匯',
+    prices: {
+      原: 80,
+      丹麥: 100
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '英式塔塔蝦排',
+    prices: {
+      原: 90,
+      丹麥: 105
+    }
+  }, {
+    cat: 'eggtoast',
+    name: '嫩煎雞腿總匯',
+    prices: {
+      原: 90,
+      丹麥: 110
+    }
+  }, {
+    cat: 'french',
+    name: '有喜原味',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'french',
+    name: '美味果醬(巧克力/草莓/藍莓/奶酥/奶油/花生)',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'french',
+    name: '香純肉鬆',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'french',
+    name: '板燒烤肉',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'french',
+    name: '卡啦脆腿',
+    prices: {
+      default: 70
+    }
+  }, {
+    cat: 'french',
+    name: '嫩煎雞腿',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'eggcake',
+    name: '有喜原味',
+    prices: {
+      原: 35,
+      厚酥: 45
+    }
+  }, {
+    cat: 'eggcake',
+    name: '香甜玉米',
+    prices: {
+      原: 45,
+      厚酥: 55
+    }
+  }, {
+    cat: 'eggcake',
+    name: '蔬菜洋蔥',
+    prices: {
+      原: 50,
+      厚酥: 60
+    }
+  }, {
+    cat: 'eggcake',
+    name: '切達起司',
+    prices: {
+      原: 50,
+      厚酥: 60
+    }
+  }, {
+    cat: 'eggcake',
+    name: '香純肉鬆',
+    prices: {
+      原: 50,
+      厚酥: 60
+    }
+  }, {
+    cat: 'eggcake',
+    name: '鮮嫩熱狗',
+    prices: {
+      原: 50,
+      厚酥: 60
+    }
+  }, {
+    cat: 'eggcake',
+    name: '香焙純火腿',
+    prices: {
+      原: 55,
+      厚酥: 65
+    }
+  }, {
+    cat: 'eggcake',
+    name: '香脆薯餅',
+    prices: {
+      原: 55,
+      厚酥: 65
+    }
+  }, {
+    cat: 'eggcake',
+    name: '起司菇菇',
+    prices: {
+      原: 55,
+      厚酥: 65
+    }
+  }, {
+    cat: 'eggcake',
+    name: '海洋水蒸鮪魚',
+    prices: {
+      原: 55,
+      厚酥: 65
+    }
+  }, {
+    cat: 'eggcake',
+    name: '馬鈴薯蛋沙拉',
+    prices: {
+      原: 60,
+      厚酥: 70
+    }
+  }, {
+    cat: 'eggcake',
+    name: '手工培根',
+    prices: {
+      原: 60,
+      厚酥: 70
+    }
+  }, {
+    cat: 'eggcake',
+    name: '韓國泡菜',
+    prices: {
+      原: 60,
+      厚酥: 70
+    }
+  }, {
+    cat: 'eggcake',
+    name: '德式香腸',
+    prices: {
+      原: 65,
+      厚酥: 75
+    }
+  }, {
+    cat: 'eggcake',
+    name: '板燒烤肉',
+    prices: {
+      原: 65,
+      厚酥: 75
+    }
+  }, {
+    cat: 'eggcake',
+    name: '三層培根',
+    prices: {
+      原: 65,
+      厚酥: 75
+    }
+  }, {
+    cat: 'eggcake',
+    name: '黃金泡菜',
+    prices: {
+      原: 65,
+      厚酥: 75
+    }
+  }, {
+    cat: 'eggcake',
+    name: '卡啦脆腿',
+    prices: {
+      原: 70,
+      厚酥: 80
+    }
+  }, {
+    cat: 'eggcake',
+    name: '嫩煎雞腿',
+    prices: {
+      原: 75,
+      厚酥: 85
+    }
+  }, {
+    cat: 'veggie',
+    name: '田園蔬菜',
+    prices: {
+      原: 55,
+      厚酥: 70
+    }
+  }, {
+    cat: 'veggie',
+    name: '地瓜蔬菜',
+    prices: {
+      原: 55,
+      厚酥: 70
+    }
+  }, {
+    cat: 'veggie',
+    name: '黃金泡菜蔬食',
+    prices: {
+      原: 70,
+      厚酥: 85
+    }
+  }, {
+    cat: 'veggie',
+    name: '香草豚肉',
+    prices: {
+      原: 70,
+      厚酥: 85
+    }
+  }, {
+    cat: 'veggie',
+    name: '板燒烤肉',
+    prices: {
+      原: 70,
+      厚酥: 85
+    }
+  }, {
+    cat: 'veggie',
+    name: '澳洲純牛肉',
+    prices: {
+      原: 70,
+      厚酥: 85
+    }
+  }, {
+    cat: 'veggie',
+    name: '德式香腸',
+    prices: {
+      原: 70,
+      厚酥: 85
+    }
+  }, {
+    cat: 'veggie',
+    name: '英式塔塔魚條',
+    prices: {
+      原: 75,
+      厚酥: 90
+    }
+  }, {
+    cat: 'veggie',
+    name: '嫩煎雞腿',
+    prices: {
+      原: 80,
+      厚酥: 95
+    }
+  }, {
+    cat: 'veggie',
+    name: '勁辣卡啦雞腿',
+    prices: {
+      原: 85,
+      厚酥: 100
+    }
+  }, {
+    cat: 'veggie',
+    name: '英式塔塔蝦排',
+    prices: {
+      原: 100,
+      厚酥: 115
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '起司蛋',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '火腿蛋',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '薯餅蛋',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '菇菇起司蛋',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '香草豚肉蛋',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '烤肉蛋',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '牛肉蛋(澳洲純牛肉)',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '卡啦脆腿',
+    prices: {
+      default: 70
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '嫩煎雞腿蛋',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '英式塔塔魚條蛋',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '松露蕈菇牛肉蛋',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'mcmuffin',
+    name: '英式塔塔蝦排蛋',
+    prices: {
+      default: 90
+    }
+  }, {
+    cat: 'pasta',
+    name: '義式肉醬義大利麵',
+    prices: {
+      default: 75
+    },
+    group: '義大利麵'
+  }, {
+    cat: 'pasta',
+    name: '磨菇肉醬義大利麵',
+    prices: {
+      default: 75
+    },
+    group: '義大利麵'
+  }, {
+    cat: 'pasta',
+    name: '黑胡椒肉醬義大利麵',
+    prices: {
+      default: 75
+    },
+    group: '義大利麵'
+  }, {
+    cat: 'pasta',
+    name: '海味XO醬義大利麵',
+    prices: {
+      default: 85
+    },
+    group: '義大利麵'
+  }, {
+    cat: 'pasta',
+    name: '培根白醬義大利麵',
+    prices: {
+      default: 115
+    },
+    group: '義大利麵'
+  }, {
+    cat: 'pasta',
+    name: '經典肉肉炒麵',
+    prices: {
+      default: 70
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '大阪豬肉炒麵',
+    prices: {
+      default: 80
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '打拋豬肉炒麵',
+    prices: {
+      default: 95
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '醬燒雞腿炒麵',
+    prices: {
+      default: 95
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '泡菜豬肉炒麵',
+    prices: {
+      default: 110
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '泡菜牛肉炒麵',
+    prices: {
+      default: 125
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '湖南剩椒豬肉炒麵',
+    prices: {
+      default: 125
+    },
+    group: '炒麵'
+  }, {
+    cat: 'pasta',
+    name: '湖南剩椒牛肉炒麵',
+    prices: {
+      default: 140
+    },
+    group: '炒麵'
+  }, {
+    cat: 'ricebox',
+    name: '泰式打拋豚肉飯',
+    prices: {
+      丼飯: 159
+    }
+  }, {
+    cat: 'ricebox',
+    name: '湖南剩椒豬肉飯',
+    prices: {
+      丼飯: 169
+    }
+  }, {
+    cat: 'ricebox',
+    name: '湖南剩椒五花牛肉飯',
+    prices: {
+      丼飯: 179
+    }
+  }, {
+    cat: 'ricebox',
+    name: '招牌鐵板豬肉飯',
+    prices: {
+      丼飯: 159,
+      咖哩: 179
+    }
+  }, {
+    cat: 'ricebox',
+    name: '照燒雞肉丸飯',
+    prices: {
+      丼飯: 159,
+      咖哩: 179
+    }
+  }, {
+    cat: 'ricebox',
+    name: '香酥魚條飯',
+    prices: {
+      丼飯: 159,
+      咖哩: 179
+    }
+  }, {
+    cat: 'ricebox',
+    name: '夏威夷鳳梨蝦排飯',
+    prices: {
+      丼飯: 169,
+      咖哩: 189
+    }
+  }, {
+    cat: 'ricebox',
+    name: '招牌鐵板五花牛肉飯',
+    prices: {
+      丼飯: 179,
+      咖哩: 199
+    }
+  }, {
+    cat: 'ricebox',
+    name: '嫩煎雞腿飯',
+    prices: {
+      丼飯: 179,
+      咖哩: 199
+    }
+  }, {
+    cat: 'ricebox',
+    name: '日式相撲豬排飯',
+    prices: {
+      丼飯: 189,
+      咖哩: 209
+    }
+  }, {
+    cat: 'snack',
+    name: '蛋(半熟/全熟)',
+    prices: {
+      default: 15
+    }
+  }, {
+    cat: 'snack',
+    name: '薯餅',
+    prices: {
+      default: 25
+    }
+  }, {
+    cat: 'snack',
+    name: '小熱狗 ×4',
+    prices: {
+      default: 30
+    }
+  }, {
+    cat: 'snack',
+    name: '香甜玉米濃湯',
+    prices: {
+      default: 35
+    }
+  }, {
+    cat: 'snack',
+    name: '港式蘿蔔糕',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'snack',
+    name: '玉米布丁酥 ×4',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'snack',
+    name: '復刻地瓜球 ×8',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'snack',
+    name: '麥克塊 ×4',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'snack',
+    name: '中華鍋貼',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'snack',
+    name: '起司雞肉洋蔥圈 ×5',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'snack',
+    name: '照燒雞肉丸 ×7',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '香酥甜不辣',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '摩佐起司條 ×4',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '美式脆薯',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'snack',
+    name: '南瓜酥',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'snack',
+    name: '秘炙雞蛋 ×2',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'snack',
+    name: '紅糖Q粑 ×4',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'snack',
+    name: '蔬果沙拉盒',
+    prices: {
+      default: 75
+    },
+    desc: '巴塔醬／千島醬／和風醬，鎮醬+15'
+  }, {
+    cat: 'snack',
+    name: '英式塔塔炸魚 ×5',
+    prices: {
+      default: 75
+    },
+    desc: '附巴塔醬'
+  }, {
+    cat: 'snack',
+    name: '鮮嫩香酥雞',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'snack',
+    name: '豪華炸物拼盤',
+    prices: {
+      default: 140
+    },
+    desc: '香酥條x2、薯條一份、熱狗x2、雞塊x2、洋蔥圈x2、地瓜球x4'
+  }, {
+    cat: 'snack',
+    name: '秘炙雞翅炸物拼盤',
+    prices: {
+      default: 179
+    },
+    desc: '秘炙雞翅x2、薯條一份、魚條x2、布丁酥x2、起司條x2'
+  }, {
+    cat: 'hotpot',
+    name: '豬肉意麵',
+    prices: {
+      原味: 125,
+      泡菜: 140
+    }
+  }, {
+    cat: 'hotpot',
+    name: '豬肉多粉',
+    prices: {
+      原味: 125,
+      泡菜: 140
+    }
+  }, {
+    cat: 'hotpot',
+    name: '豬肉雞絲麵',
+    prices: {
+      原味: 125,
+      泡菜: 140
+    }
+  }, {
+    cat: 'hotpot',
+    name: '豬肉水津烏龍麵',
+    prices: {
+      原味: 140,
+      泡菜: 155
+    }
+  }]
+};
+const BADUDU_SEED = {
+  id: 'badudu',
+  name: '呷齁霸嘟嘟',
+  nameEn: 'BaDuDu',
+  branch: '大安和平',
+  address: '台北市大安區和平東路二段98-2號',
+  phone: '09-2135-6338',
+  hours: '04:30 - 14:00（最後加點 13:45）',
+  themeColor: 'var(--badudu)',
+  themeBg: 'var(--badudu-bg)',
+  note: '本店不主動加沙茶，需要請提前告知；半熟蛋請提早說。如不吃食材或有任何需求都可告知店員。',
+  categories: [{
+    id: 'omelet',
+    name: '香Q厚蛋餅',
+    variants: ['default'],
+    variantLabel: 'Chinese omelet'
+  }, {
+    id: 'preegg',
+    name: '調皮搗蛋',
+    variants: ['蛋餅', '吐司', '漢堡'],
+    variantLabel: 'preserved egg'
+  }, {
+    id: 'cheesefb',
+    name: '酥皮乳酪餅',
+    variants: ['default'],
+    variantLabel: '需等15分鐘 · 不含蛋'
+  }, {
+    id: 'burger',
+    name: '呷霸漢堡吐司',
+    variants: ['吐司', '漢堡'],
+    variantLabel: '吐司／漢堡 不同價'
+  }, {
+    id: 'waffle',
+    name: '格格鬆餅堡',
+    variants: ['default'],
+    variantLabel: 'Waffle'
+  }, {
+    id: 'ricebrg',
+    name: '粒粒米漢堡',
+    variants: ['default'],
+    variantLabel: '需等15分鐘 · Rice burger'
+  }, {
+    id: 'croissant',
+    name: '酥脆可頌潛艇堡',
+    variants: ['可頌', '潛艇堡'],
+    variantLabel: '可頌／潛艇堡'
+  }, {
+    id: 'french',
+    name: '蹦啾法式吐司',
+    variants: ['default'],
+    variantLabel: '需等15分鐘 · French toast'
+  }, {
+    id: 'jam',
+    name: '甜在心果醬',
+    variants: ['薄片', '厚片', '乳酪餅'],
+    variantLabel: '薄$25/厚$35/乳酪$40'
+  }, {
+    id: 'gratin',
+    name: '牽絲焗烤',
+    variants: ['default'],
+    variantLabel: '需等20分鐘 · Gratin'
+  }, {
+    id: 'hidden',
+    name: '獨有隱藏版',
+    variants: ['default'],
+    variantLabel: 'Exclusive flavors'
+  }, {
+    id: 'dessert',
+    name: '嘴饞小點心',
+    variants: ['default'],
+    variantLabel: 'Dessert'
+  }, {
+    id: 'noodle',
+    name: '特選鐵板麵飯',
+    variants: ['麵', '飯'],
+    variantLabel: '部分品項可換成飯+30'
+  }, {
+    id: 'hotpot',
+    name: '私房招牌鍋燒',
+    variants: ['意麵', '烏龍', '雞絲', '冬粉', '泡飯'],
+    variantLabel: '內含海鮮 · 五種麵體'
+  }, {
+    id: 'salad',
+    name: '瘦瘦健康沙拉',
+    variants: ['default'],
+    variantLabel: '附醬料 和風/千島/不醬'
+  }, {
+    id: 'set',
+    name: '舒活輕食套餐',
+    variants: ['default'],
+    variantLabel: '附中飲品'
+  }, {
+    id: 'combo',
+    name: '呷霸超值套餐',
+    variants: ['default'],
+    variantLabel: 'Combo · 附中飲品'
+  }, {
+    id: 'fried',
+    name: '精選炸快樂',
+    variants: ['default'],
+    variantLabel: 'Fried food set'
+  }, {
+    id: 'drink',
+    name: '來一杯解解渴',
+    variants: ['M', 'L', 'XL'],
+    variantLabel: 'M中/L大/XL特大'
+  }, {
+    id: 'coffee',
+    name: '提神研磨咖啡',
+    variants: ['M', 'L'],
+    variantLabel: 'M中／L大'
+  }],
+  items: [{
+    cat: 'omelet',
+    name: '原味',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'omelet',
+    name: '起司',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '火腿',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '培根',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '肉鬆',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '洋蔥',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '玉米',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '九層塔',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '爆醬甜心(花生/巧克力)',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'omelet',
+    name: '蔬菜',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'omelet',
+    name: '豬肉',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'omelet',
+    name: '熱狗',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'omelet',
+    name: '薯餅',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'omelet',
+    name: '洋芋',
+    prices: {
+      default: 70
+    }
+  }, {
+    cat: 'omelet',
+    name: '鮪魚',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'omelet',
+    name: '豬排',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'omelet',
+    name: '咔啦雞腿',
+    prices: {
+      default: 85
+    }
+  }, {
+    cat: 'preegg',
+    name: 'QQ小皮蛋',
+    prices: {
+      蛋餅: 70
+    }
+  }, {
+    cat: 'preegg',
+    name: '皮蛋肉鬆',
+    prices: {
+      蛋餅: 80
+    }
+  }, {
+    cat: 'preegg',
+    name: '皮蛋鮪魚',
+    prices: {
+      蛋餅: 95
+    }
+  }, {
+    cat: 'cheesefb',
+    name: '煎蛋乳酪',
+    prices: {
+      default: 60
+    },
+    desc: '加蛋+20'
+  }, {
+    cat: 'cheesefb',
+    name: '起司乳酪',
+    prices: {
+      default: 60
+    },
+    desc: '加蛋+20'
+  }, {
+    cat: 'cheesefb',
+    name: '鮪魚乳酪',
+    prices: {
+      default: 65
+    },
+    desc: '加蛋+20'
+  }, {
+    cat: 'cheesefb',
+    name: '豬肉乳酪',
+    prices: {
+      default: 80
+    },
+    desc: '加蛋+20'
+  }, {
+    cat: 'cheesefb',
+    name: '豬排乳酪',
+    prices: {
+      default: 80
+    },
+    desc: '加蛋+20'
+  }, {
+    cat: 'burger',
+    name: '煎蛋',
+    prices: {
+      吐司: 45
+    }
+  }, {
+    cat: 'burger',
+    name: '起司蛋',
+    prices: {
+      吐司: 55,
+      漢堡: 55
+    }
+  }, {
+    cat: 'burger',
+    name: '蔬菜蛋',
+    prices: {
+      吐司: 55,
+      漢堡: 55
+    }
+  }, {
+    cat: 'burger',
+    name: '火腿蛋',
+    prices: {
+      吐司: 55,
+      漢堡: 55
+    }
+  }, {
+    cat: 'burger',
+    name: '培根蛋',
+    prices: {
+      吐司: 55,
+      漢堡: 55
+    }
+  }, {
+    cat: 'burger',
+    name: '肉鬆蛋',
+    prices: {
+      吐司: 55,
+      漢堡: 55
+    }
+  }, {
+    cat: 'burger',
+    name: '薯餅蛋',
+    prices: {
+      吐司: 60,
+      漢堡: 60
+    }
+  }, {
+    cat: 'burger',
+    name: '豬肉蛋',
+    prices: {
+      吐司: 60,
+      漢堡: 60
+    }
+  }, {
+    cat: 'burger',
+    name: '香雞蛋',
+    prices: {
+      吐司: 60,
+      漢堡: 60
+    }
+  }, {
+    cat: 'burger',
+    name: '洋芋蛋(含水煮蛋)',
+    prices: {
+      吐司: 65,
+      漢堡: 65
+    }
+  }, {
+    cat: 'burger',
+    name: '鮪魚蛋',
+    prices: {
+      吐司: 70,
+      漢堡: 70
+    }
+  }, {
+    cat: 'burger',
+    name: '豬排蛋',
+    prices: {
+      吐司: 70,
+      漢堡: 70
+    }
+  }, {
+    cat: 'burger',
+    name: '鮮蝦排蛋',
+    prices: {
+      吐司: 70,
+      漢堡: 75
+    }
+  }, {
+    cat: 'burger',
+    name: '花枝排蛋',
+    prices: {
+      吐司: 75,
+      漢堡: 75
+    }
+  }, {
+    cat: 'burger',
+    name: '無骨雞排蛋',
+    prices: {
+      吐司: 80,
+      漢堡: 80
+    }
+  }, {
+    cat: 'burger',
+    name: '照燒雞腿蛋',
+    prices: {
+      吐司: 80,
+      漢堡: 80
+    }
+  }, {
+    cat: 'burger',
+    name: '藍帶豬排蛋',
+    prices: {
+      吐司: 80,
+      漢堡: 80
+    }
+  }, {
+    cat: 'burger',
+    name: '香酥鱈魚蛋',
+    prices: {
+      吐司: 80,
+      漢堡: 80
+    }
+  }, {
+    cat: 'burger',
+    name: '咔啦雞腿蛋(辣味/原味)',
+    prices: {
+      吐司: 80,
+      漢堡: 80
+    }
+  }, {
+    cat: 'burger',
+    name: '總匯',
+    prices: {
+      漢堡: 85
+    }
+  }, {
+    cat: 'burger',
+    name: '厚切牛肉蛋',
+    prices: {
+      吐司: 140,
+      漢堡: 140
+    }
+  }, {
+    cat: 'waffle',
+    name: '果醬鬆餅堡(花生/巧克力/奶油/草莓/奶酥)',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'waffle',
+    name: '蜂蜜鬆餅堡',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'waffle',
+    name: '煉乳鬆餅堡',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'waffle',
+    name: '火腿歐姆蛋鬆餅堡',
+    prices: {
+      default: 95
+    }
+  }, {
+    cat: 'waffle',
+    name: '薯餅塔鬆餅堡',
+    prices: {
+      default: 100
+    }
+  }, {
+    cat: 'ricebrg',
+    name: '鮮蝦排米漢堡',
+    prices: {
+      default: 115
+    }
+  }, {
+    cat: 'ricebrg',
+    name: '花枝排米漢堡',
+    prices: {
+      default: 115
+    }
+  }, {
+    cat: 'ricebrg',
+    name: '照燒雞腿米漢堡',
+    prices: {
+      default: 120
+    }
+  }, {
+    cat: 'ricebrg',
+    name: '香酥鱈魚米漢堡',
+    prices: {
+      default: 120
+    }
+  }, {
+    cat: 'ricebrg',
+    name: '咔啦雞腿米漢堡',
+    prices: {
+      default: 120
+    }
+  }, {
+    cat: 'ricebrg',
+    name: 'DHA鮪魚蛋米漢堡',
+    prices: {
+      default: 120
+    }
+  }, {
+    cat: 'ricebrg',
+    name: '厚切牛肉米漢堡',
+    prices: {
+      default: 140
+    }
+  }, {
+    cat: 'croissant',
+    name: '雙芝心',
+    prices: {
+      可頌: 95
+    }
+  }, {
+    cat: 'croissant',
+    name: '鮮蔬起司',
+    prices: {
+      可頌: 100,
+      潛艇堡: 100
+    }
+  }, {
+    cat: 'croissant',
+    name: '雙火腿芝心',
+    prices: {
+      可頌: 120,
+      潛艇堡: 120
+    }
+  }, {
+    cat: 'croissant',
+    name: 'DHA鮪魚蛋',
+    prices: {
+      可頌: 120,
+      潛艇堡: 120
+    }
+  }, {
+    cat: 'croissant',
+    name: '咔啦雞腿蛋',
+    prices: {
+      可頌: 120,
+      潛艇堡: 120
+    }
+  }, {
+    cat: 'croissant',
+    name: '厚切牛肉蛋',
+    prices: {
+      可頌: 140,
+      潛艇堡: 140
+    }
+  }, {
+    cat: 'french',
+    name: '果醬法式吐司(花生/巧克力/奶油/草莓/奶酥)',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'french',
+    name: '蜂蜜法式吐司',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'french',
+    name: '煉乳法式吐司',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'french',
+    name: '肉鬆法式吐司',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'french',
+    name: 'DHA鮪魚法式吐司',
+    prices: {
+      default: 90
+    }
+  }, {
+    cat: 'jam',
+    name: '花生',
+    prices: {
+      薄片: 25,
+      厚片: 35,
+      乳酪餅: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '奶酥',
+    prices: {
+      薄片: 25,
+      厚片: 35,
+      乳酪餅: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '草莓',
+    prices: {
+      薄片: 25,
+      厚片: 35,
+      乳酪餅: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '奶油',
+    prices: {
+      薄片: 25,
+      厚片: 35,
+      乳酪餅: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '香蒜',
+    prices: {
+      薄片: 25,
+      厚片: 35,
+      乳酪餅: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '巧克力',
+    prices: {
+      薄片: 25,
+      厚片: 35,
+      乳酪餅: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '黃金起司磚',
+    prices: {
+      厚片: 40
+    }
+  }, {
+    cat: 'jam',
+    name: '調色厚片(任選兩種)',
+    prices: {
+      厚片: 40
+    },
+    desc: '花生/巧克力/奶油/草莓/奶酥/香蒜'
+  }, {
+    cat: 'jam',
+    name: '棉花糖厚片(任選一種)',
+    prices: {
+      厚片: 95
+    },
+    desc: '花生/巧克力/奶油/草莓/奶酥/香蒜'
+  }, {
+    cat: 'gratin',
+    name: 'DHA鮪魚焗烤厚片',
+    prices: {
+      default: 100
+    }
+  }, {
+    cat: 'gratin',
+    name: '玉米培根焗烤厚片',
+    prices: {
+      default: 100
+    }
+  }, {
+    cat: 'gratin',
+    name: '焗烤蘑菇麵',
+    prices: {
+      default: 130
+    }
+  }, {
+    cat: 'gratin',
+    name: '焗烤黑胡椒麵',
+    prices: {
+      default: 130
+    }
+  }, {
+    cat: 'gratin',
+    name: '棉花田焗烤麵',
+    prices: {
+      default: 180
+    }
+  }, {
+    cat: 'hidden',
+    name: '好事花生蔥抓餅',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'hidden',
+    name: '黑炫風蔥抓餅',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'hidden',
+    name: '德式腸夾漢堡',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'hidden',
+    name: '甜尋肉醬蛋吐司',
+    prices: {
+      default: 85
+    }
+  }, {
+    cat: 'hidden',
+    name: '黑炫風蛋餅吐司',
+    prices: {
+      default: 90
+    }
+  }, {
+    cat: 'hidden',
+    name: '黑炫風咔啦蛋吐司',
+    prices: {
+      default: 110
+    }
+  }, {
+    cat: 'dessert',
+    name: '小熱狗',
+    prices: {
+      default: 30
+    }
+  }, {
+    cat: 'dessert',
+    name: '玉米蛋',
+    prices: {
+      default: 30
+    }
+  }, {
+    cat: 'dessert',
+    name: '洋蔥蛋',
+    prices: {
+      default: 30
+    }
+  }, {
+    cat: 'dessert',
+    name: '蔥花蛋',
+    prices: {
+      default: 35
+    }
+  }, {
+    cat: 'dessert',
+    name: '九層塔蛋',
+    prices: {
+      default: 35
+    }
+  }, {
+    cat: 'dessert',
+    name: '小肉豆',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'dessert',
+    name: '炸飯糰',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'dessert',
+    name: '德式香腸',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'dessert',
+    name: '炸湯圓',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'dessert',
+    name: '香蔥吉拿棒',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'dessert',
+    name: '歐姆蛋',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'dessert',
+    name: '蘿蔔糕',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '麥克雞塊(五片入)',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '薯餅(兩片入)',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '炸煎餃(五顆)',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '蔥抓餅',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '小雞球',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '雞肉圈',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '地瓜球',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '玉米布丁酥',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '洋蔥圈',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'dessert',
+    name: '脆薯條',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'dessert',
+    name: '起司條(三條)',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'dessert',
+    name: '鮮奶芋泥球',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'dessert',
+    name: '檸檬雞柳條',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'dessert',
+    name: '薯餅蛋塔',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'dessert',
+    name: '鱈魚條(三條)',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'dessert',
+    name: '酥炸杏鮑菇',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'dessert',
+    name: '玉米濃湯(冬天限定)',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'noodle',
+    name: '蘑菇麵',
+    prices: {
+      麵: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '黑胡椒麵',
+    prices: {
+      麵: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '肉醬麵',
+    prices: {
+      麵: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '醬燒板條',
+    prices: {
+      麵: 90
+    }
+  }, {
+    cat: 'noodle',
+    name: '杏鮑菇麵',
+    prices: {
+      麵: 100,
+      飯: 130
+    }
+  }, {
+    cat: 'noodle',
+    name: '三杯雞丁麵',
+    prices: {
+      麵: 95,
+      飯: 125
+    }
+  }, {
+    cat: 'noodle',
+    name: '宮保雞丁麵',
+    prices: {
+      麵: 95,
+      飯: 125
+    }
+  }, {
+    cat: 'noodle',
+    name: '奶油雞丁麵',
+    prices: {
+      麵: 95,
+      飯: 125
+    }
+  }, {
+    cat: 'noodle',
+    name: '泰式打拋豬麵',
+    prices: {
+      麵: 110,
+      飯: 150
+    }
+  }, {
+    cat: 'noodle',
+    name: '不一樣炒泡麵',
+    prices: {
+      麵: 90
+    },
+    desc: '泡麵固定散蛋'
+  }, {
+    cat: 'hotpot',
+    name: '經典原味',
+    prices: {
+      意麵: 150,
+      烏龍: 150,
+      雞絲: 150,
+      冬粉: 150,
+      泡飯: 150
+    }
+  }, {
+    cat: 'hotpot',
+    name: '韓式泡菜',
+    prices: {
+      意麵: 190,
+      烏龍: 190,
+      雞絲: 190,
+      冬粉: 190,
+      泡飯: 190
+    }
+  }, {
+    cat: 'hotpot',
+    name: '香濃豆酥(純素,不加水)',
+    prices: {
+      意麵: 200,
+      烏龍: 200,
+      雞絲: 200,
+      冬粉: 200,
+      泡飯: 200
+    }
+  }, {
+    cat: 'hotpot',
+    name: '肉燥牛肉起司',
+    prices: {
+      意麵: 230,
+      烏龍: 230,
+      雞絲: 230,
+      冬粉: 230,
+      泡飯: 230
+    }
+  }, {
+    cat: 'hotpot',
+    name: '梅花肉多多',
+    prices: {
+      意麵: 230,
+      烏龍: 230,
+      雞絲: 230,
+      冬粉: 230,
+      泡飯: 230
+    },
+    desc: '多多系列均附贈一杯紅茶500cc'
+  }, {
+    cat: 'hotpot',
+    name: '蛤蜊多多',
+    prices: {
+      意麵: 230,
+      烏龍: 230,
+      雞絲: 230,
+      冬粉: 230,
+      泡飯: 230
+    },
+    desc: '多多系列均附贈一杯紅茶500cc'
+  }, {
+    cat: 'hotpot',
+    name: '鮮蝦多多',
+    prices: {
+      意麵: 230,
+      烏龍: 230,
+      雞絲: 230,
+      冬粉: 230,
+      泡飯: 230
+    },
+    desc: '多多系列均附贈一杯紅茶500cc'
+  }, {
+    cat: 'salad',
+    name: '生菜沙拉',
+    prices: {
+      default: 90
+    },
+    desc: '附醬料 和風/千島/不醬'
+  }, {
+    cat: 'salad',
+    name: '火腿沙拉',
+    prices: {
+      default: 100
+    },
+    desc: '附醬料 和風/千島/不醬'
+  }, {
+    cat: 'salad',
+    name: '豬排沙拉',
+    prices: {
+      default: 105
+    },
+    desc: '附醬料 和風/千島/不醬'
+  }, {
+    cat: 'salad',
+    name: '德式腸沙拉',
+    prices: {
+      default: 110
+    },
+    desc: '附醬料 和風/千島/不醬'
+  }, {
+    cat: 'salad',
+    name: '呷霸自製洋芋沙拉',
+    prices: {
+      default: 110
+    },
+    desc: '附醬料 和風/千島/不醬'
+  }, {
+    cat: 'set',
+    name: 'A. 窈窕完美無瑕可頌套餐',
+    prices: {
+      default: 180
+    },
+    desc: '可頌+散蛋+蔬菜+洋芋+德式腸+(中)飲品。飲品冰熱請寫備註'
+  }, {
+    cat: 'set',
+    name: 'B. 活力充沛法式小豬套餐',
+    prices: {
+      default: 190
+    },
+    desc: '法式吐司+散蛋+蔬菜+洋芋+豬排+(中)飲品。口味請寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值1. 薯餅蛋吐司+(中)飲品',
+    prices: {
+      default: 75
+    },
+    desc: '飲品擇一寫備註:紅茶/奶茶/綠茶 · 熱/溫/涼/冰'
+  }, {
+    cat: 'combo',
+    name: '超值2. 豬排蛋漢堡+(中)飲品',
+    prices: {
+      default: 85
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值3. 炸煎餃(5顆)+蔥蛋+(中)飲品',
+    prices: {
+      default: 95
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值4. 蘿蔔糕+蛋+豬排+(中)飲品',
+    prices: {
+      default: 105
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值5. 起司蛋餅+小肉豆+(中)飲品',
+    prices: {
+      default: 110
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值6. 鐵板麵+豬排或小熱狗+(中)飲品',
+    prices: {
+      default: 115
+    },
+    desc: '麵擇:黑胡椒/蘑菇 · 主菜擇:豬排/小熱狗 · 寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值7. 厚切牛肉花生蛋漢堡+(中)飲品',
+    prices: {
+      default: 125
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值8. 照燒雞腿米漢堡+(中)飲品',
+    prices: {
+      default: 130
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值9. 黑炫風咔啦蛋吐司+脆薯條+(中)飲品',
+    prices: {
+      default: 180
+    },
+    desc: '飲品擇一寫備註'
+  }, {
+    cat: 'combo',
+    name: '超值10. 原味海鮮鍋燒麵+小炸物+(中)飲品',
+    prices: {
+      default: 210
+    },
+    desc: '麵擇:意麵/烏龍/雞絲/冬粉/泡飯 · 小炸物擇一寫備註'
+  }, {
+    cat: 'fried',
+    name: '炸A. 炸飯糰+雞肉圈+小肉豆',
+    prices: {
+      default: 75
+    }
+  }, {
+    cat: 'fried',
+    name: '炸B. 小熱狗+脆薯條+麥克雞塊',
+    prices: {
+      default: 125
+    }
+  }, {
+    cat: 'fried',
+    name: '炸C. 薯餅+檸檬雞柳條+炸湯圓',
+    prices: {
+      default: 135
+    }
+  }, {
+    cat: 'fried',
+    name: '炸D. 小雞球+地瓜球+起司條',
+    prices: {
+      default: 145
+    }
+  }, {
+    cat: 'fried',
+    name: '炸E. 香蔥吉拿棒+檸檬雞柳條+杏鮑菇',
+    prices: {
+      default: 160
+    }
+  }, {
+    cat: 'fried',
+    name: '炸F. 小肉豆+麥克雞塊+洋蔥圈+鱈魚條',
+    prices: {
+      default: 185
+    }
+  }, {
+    cat: 'fried',
+    name: '炸G. 小熱狗+香蔥吉拿棒+薯餅+雞肉圈+玉米布丁酥',
+    prices: {
+      default: 200
+    }
+  }, {
+    cat: 'drink',
+    name: '紅茶',
+    prices: {
+      M: 20,
+      XL: 25
+    }
+  }, {
+    cat: 'drink',
+    name: '奶茶',
+    prices: {
+      M: 20,
+      XL: 25
+    }
+  }, {
+    cat: 'drink',
+    name: '綠茶',
+    prices: {
+      M: 20,
+      XL: 25
+    }
+  }, {
+    cat: 'drink',
+    name: '有糖豆漿',
+    prices: {
+      M: 20,
+      L: 30
+    }
+  }, {
+    cat: 'drink',
+    name: '無糖豆漿',
+    prices: {
+      M: 20,
+      L: 30
+    }
+  }, {
+    cat: 'drink',
+    name: '紅茶豆漿',
+    prices: {
+      L: 30
+    }
+  }, {
+    cat: 'drink',
+    name: '混米豆漿',
+    prices: {
+      L: 35
+    }
+  }, {
+    cat: 'drink',
+    name: '香純米漿',
+    prices: {
+      M: 25,
+      L: 35
+    }
+  }, {
+    cat: 'drink',
+    name: '美白薏仁',
+    prices: {
+      M: 25,
+      L: 35
+    }
+  }, {
+    cat: 'drink',
+    name: '重乳鮮奶茶',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'drink',
+    name: '香濃可可亞',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'drink',
+    name: '活力柳橙汁',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'drink',
+    name: '愛戀蘋果汁',
+    prices: {
+      M: 40,
+      L: 50
+    }
+  }, {
+    cat: 'drink',
+    name: '特優鮮豆沙(夏季限定)',
+    prices: {
+      L: 40,
+      XL: 50
+    }
+  }, {
+    cat: 'drink',
+    name: '綠豆沙牛奶(夏季限定)',
+    prices: {
+      L: 50,
+      XL: 60
+    }
+  }, {
+    cat: 'drink',
+    name: '懷念調味乳(玻璃罐裝)',
+    prices: {
+      M: 40
+    },
+    desc: '麥芽/草莓/巧克力'
+  }, {
+    cat: 'coffee',
+    name: '美式(無糖)',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'coffee',
+    name: '黑咖啡(有糖)',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'coffee',
+    name: '招牌咖啡',
+    prices: {
+      M: 50,
+      L: 60
+    }
+  }, {
+    cat: 'coffee',
+    name: '特調拿鐵',
+    prices: {
+      M: 60,
+      L: 70
+    }
+  }]
+};
+const SHANLIN_SEED = {
+  id: 'shanlin',
+  name: '山林美食館',
+  nameEn: 'Shan-lin',
+  branch: '大安辛亥路',
+  address: '台北市大安區辛亥路二段171巷31號',
+  phone: '(02) 2377-4298',
+  hours: '早餐專賣 · 焗烤類 10:30 後供應',
+  themeColor: 'var(--shanlin)',
+  themeBg: 'var(--shanlin-bg)',
+  note: '主菜可選漢堡蛋／吐司蛋／丹麥蛋(+30)／乳酪餅。鐵板麵+蛋。冬季限定品項冬天才有',
+  categories: [{
+    id: 'main',
+    name: '主菜品項',
+    variants: ['漢堡蛋', '吐司蛋', '丹麥蛋'],
+    variantLabel: '漢堡蛋／吐司蛋／丹麥蛋(+30)'
+  }, {
+    id: 'eggcake',
+    name: '蛋餅',
+    variants: ['default'],
+    variantLabel: '14 種口味'
+  }, {
+    id: 'noodle',
+    name: '鐵板麵類',
+    variants: ['default'],
+    variantLabel: '已加蛋'
+  }, {
+    id: 'jam',
+    name: '果醬類',
+    variants: ['吐司', '厚片'],
+    variantLabel: '吐司$25／厚片$35'
+  }, {
+    id: 'gratin',
+    name: '焗烤類',
+    variants: ['default'],
+    variantLabel: '10:30 後供應'
+  }, {
+    id: 'snack',
+    name: '單點類',
+    variants: ['default'],
+    variantLabel: '小份點心'
+  }, {
+    id: 'drink',
+    name: '飲料類',
+    variants: ['小', '大'],
+    variantLabel: '小杯／大杯'
+  }, {
+    id: 'hotpot',
+    name: '私房料理',
+    variants: ['意麵', '雞絲麵', '烏龍麵', '泡飯'],
+    variantLabel: '四種麵體'
+  }],
+  items: [{
+    cat: 'main',
+    name: '蔬菜',
+    prices: {
+      漢堡蛋: 50,
+      吐司蛋: 50,
+      丹麥蛋: 80
+    }
+  }, {
+    cat: 'main',
+    name: '起士',
+    prices: {
+      漢堡蛋: 50,
+      吐司蛋: 50,
+      丹麥蛋: 80
+    }
+  }, {
+    cat: 'main',
+    name: '肉鬆',
+    prices: {
+      漢堡蛋: 50,
+      吐司蛋: 50,
+      丹麥蛋: 80
+    }
+  }, {
+    cat: 'main',
+    name: '火腿',
+    prices: {
+      漢堡蛋: 50,
+      吐司蛋: 50,
+      丹麥蛋: 80
+    }
+  }, {
+    cat: 'main',
+    name: '培根',
+    prices: {
+      漢堡蛋: 50,
+      吐司蛋: 50,
+      丹麥蛋: 80
+    }
+  }, {
+    cat: 'main',
+    name: '豬肉',
+    prices: {
+      漢堡蛋: 55,
+      吐司蛋: 55,
+      丹麥蛋: 85
+    }
+  }, {
+    cat: 'main',
+    name: '香雞',
+    prices: {
+      漢堡蛋: 55,
+      吐司蛋: 55,
+      丹麥蛋: 85
+    }
+  }, {
+    cat: 'main',
+    name: '洋芋',
+    prices: {
+      漢堡蛋: 60,
+      吐司蛋: 60,
+      丹麥蛋: 90
+    }
+  }, {
+    cat: 'main',
+    name: '鮪魚',
+    prices: {
+      漢堡蛋: 65,
+      吐司蛋: 65,
+      丹麥蛋: 95
+    }
+  }, {
+    cat: 'main',
+    name: '燻雞',
+    prices: {
+      漢堡蛋: 65,
+      吐司蛋: 65,
+      丹麥蛋: 95
+    }
+  }, {
+    cat: 'main',
+    name: '豬排',
+    prices: {
+      漢堡蛋: 65,
+      吐司蛋: 65,
+      丹麥蛋: 95
+    }
+  }, {
+    cat: 'main',
+    name: '花枝',
+    prices: {
+      漢堡蛋: 70,
+      吐司蛋: 70,
+      丹麥蛋: 100
+    }
+  }, {
+    cat: 'main',
+    name: '鮮蝦',
+    prices: {
+      漢堡蛋: 70,
+      吐司蛋: 70,
+      丹麥蛋: 100
+    }
+  }, {
+    cat: 'main',
+    name: '藍帶豬排',
+    prices: {
+      漢堡蛋: 75,
+      吐司蛋: 75,
+      丹麥蛋: 105
+    }
+  }, {
+    cat: 'main',
+    name: '咔拉雞腿',
+    prices: {
+      漢堡蛋: 75,
+      吐司蛋: 75,
+      丹麥蛋: 105
+    }
+  }, {
+    cat: 'main',
+    name: '總匯',
+    prices: {
+      漢堡蛋: 75,
+      吐司蛋: 75,
+      丹麥蛋: 105
+    }
+  }, {
+    cat: 'main',
+    name: '無骨雞',
+    prices: {
+      漢堡蛋: 75,
+      吐司蛋: 75,
+      丹麥蛋: 105
+    }
+  }, {
+    cat: 'main',
+    name: '燒雞腿',
+    prices: {
+      漢堡蛋: 75,
+      吐司蛋: 75,
+      丹麥蛋: 105
+    }
+  }, {
+    cat: 'main',
+    name: '鱈魚',
+    prices: {
+      漢堡蛋: 75,
+      吐司蛋: 75,
+      丹麥蛋: 105
+    }
+  }, {
+    cat: 'main',
+    name: '雙喜雞蛋',
+    prices: {
+      漢堡蛋: 80,
+      吐司蛋: 80,
+      丹麥蛋: 110
+    }
+  }, {
+    cat: 'eggcake',
+    name: '原味',
+    prices: {
+      default: 40
+    }
+  }, {
+    cat: 'eggcake',
+    name: '起士',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'eggcake',
+    name: '玉米',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'eggcake',
+    name: '火腿',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'eggcake',
+    name: '培根',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'eggcake',
+    name: '肉鬆',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'eggcake',
+    name: '熱狗',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'eggcake',
+    name: '豬肉',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'eggcake',
+    name: '薯餅',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'eggcake',
+    name: '蔬菜',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'eggcake',
+    name: '洋芋',
+    prices: {
+      default: 60
+    }
+  }, {
+    cat: 'eggcake',
+    name: '鮪魚',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'eggcake',
+    name: '豬排',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'eggcake',
+    name: '燻雞',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'noodle',
+    name: '蘑菇麵',
+    prices: {
+      default: 70
+    }
+  }, {
+    cat: 'noodle',
+    name: '黑胡椒麵',
+    prices: {
+      default: 70
+    }
+  }, {
+    cat: 'noodle',
+    name: '肉醬麵',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '奶油雞麵',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '三杯雞麵',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '宮保雞丁麵',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '杏鮑菇麵(辣)',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '醬燒板條',
+    prices: {
+      default: 80
+    }
+  }, {
+    cat: 'noodle',
+    name: '打拋豬飯／麵',
+    prices: {
+      default: 110
+    }
+  }, {
+    cat: 'jam',
+    name: '草莓',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'jam',
+    name: '藍莓',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'jam',
+    name: '花生',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'jam',
+    name: '奶油',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'jam',
+    name: '香蒜',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'jam',
+    name: '奶酥',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'jam',
+    name: '巧克力',
+    prices: {
+      吐司: 25,
+      厚片: 35
+    }
+  }, {
+    cat: 'gratin',
+    name: '鮪魚厚片',
+    prices: {
+      default: 85
+    }
+  }, {
+    cat: 'gratin',
+    name: '燻雞厚片',
+    prices: {
+      default: 85
+    }
+  }, {
+    cat: 'gratin',
+    name: '玉米培根厚片',
+    prices: {
+      default: 85
+    }
+  }, {
+    cat: 'gratin',
+    name: '蘑菇麵',
+    prices: {
+      default: 110
+    }
+  }, {
+    cat: 'gratin',
+    name: '黑胡椒麵',
+    prices: {
+      default: 110
+    }
+  }, {
+    cat: 'snack',
+    name: '小熱狗',
+    prices: {
+      default: 25
+    }
+  }, {
+    cat: 'snack',
+    name: '蔥花蛋',
+    prices: {
+      default: 25
+    }
+  }, {
+    cat: 'snack',
+    name: '玉米蛋',
+    prices: {
+      default: 25
+    }
+  }, {
+    cat: 'snack',
+    name: '小肉豆',
+    prices: {
+      default: 35
+    }
+  }, {
+    cat: 'snack',
+    name: '德式香腸',
+    prices: {
+      default: 35
+    }
+  }, {
+    cat: 'snack',
+    name: '炸飯糰',
+    prices: {
+      default: 35
+    }
+  }, {
+    cat: 'snack',
+    name: '蘿蔔糕',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '麥克雞塊',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '薯餅(2片)',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '煎餃',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '蔥抓餅',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '雞肉圈',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '洋蔥圈',
+    prices: {
+      default: 45
+    }
+  }, {
+    cat: 'snack',
+    name: '玉米布丁酥',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '脆薯條',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '芋頭糕',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '檸檬雞柳條',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '玉米濃湯(冬季)',
+    prices: {
+      default: 50
+    }
+  }, {
+    cat: 'snack',
+    name: '鱈魚條',
+    prices: {
+      default: 55
+    }
+  }, {
+    cat: 'snack',
+    name: '洋芋沙拉',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'snack',
+    name: '生菜沙拉',
+    prices: {
+      default: 65
+    }
+  }, {
+    cat: 'drink',
+    name: '無糖豆漿',
+    prices: {
+      小: 20,
+      大: 35
+    }
+  }, {
+    cat: 'drink',
+    name: '豆漿',
+    prices: {
+      小: 20,
+      大: 35
+    }
+  }, {
+    cat: 'drink',
+    name: '米漿',
+    prices: {
+      小: 25,
+      大: 40
+    }
+  }, {
+    cat: 'drink',
+    name: '紅茶',
+    prices: {
+      小: 20,
+      大: 25
+    }
+  }, {
+    cat: 'drink',
+    name: '奶茶',
+    prices: {
+      小: 20,
+      大: 25
+    }
+  }, {
+    cat: 'drink',
+    name: '薄糖綠茶',
+    prices: {
+      小: 20,
+      大: 25
+    }
+  }, {
+    cat: 'drink',
+    name: '招牌咖啡',
+    prices: {
+      小: 35,
+      大: 45
+    }
+  }, {
+    cat: 'drink',
+    name: '柳橙汁',
+    prices: {
+      小: 30,
+      大: 40
+    }
+  }, {
+    cat: 'drink',
+    name: '薏仁漿',
+    prices: {
+      小: 25,
+      大: 40
+    }
+  }, {
+    cat: 'drink',
+    name: '綠豆沙',
+    prices: {
+      小: 35,
+      大: 45
+    }
+  }, {
+    cat: 'drink',
+    name: '鮮奶茶',
+    prices: {
+      小: 35,
+      大: 45
+    }
+  }, {
+    cat: 'drink',
+    name: '調味乳',
+    prices: {
+      小: 35
+    }
+  }, {
+    cat: 'hotpot',
+    name: '鍋燒',
+    prices: {
+      意麵: 135,
+      雞絲麵: 135,
+      烏龍麵: 135,
+      泡飯: 135
+    }
+  }, {
+    cat: 'hotpot',
+    name: '鮮蝦多多',
+    prices: {
+      意麵: 230,
+      雞絲麵: 230,
+      烏龍麵: 230,
+      泡飯: 230
+    }
+  }, {
+    cat: 'hotpot',
+    name: '蛤蜊多多',
+    prices: {
+      意麵: 230,
+      雞絲麵: 230,
+      烏龍麵: 230,
+      泡飯: 230
+    }
+  }, {
+    cat: 'hotpot',
+    name: '梅花肉多多',
+    prices: {
+      意麵: 230,
+      雞絲麵: 230,
+      烏龍麵: 230,
+      泡飯: 230
+    }
+  }]
+};
+const SHOP_SEEDS = {
+  yusee: YUSEE_SEED,
+  badudu: BADUDU_SEED,
+  shanlin: SHANLIN_SEED
+};
+/* ════════════════════════════════════════════════════════════
+   LOGIN / PENDING / LOADING PAGES
+   ════════════════════════════════════════════════════════════ */
+
+function FullPageWrap({
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center px-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-md"
+  }, children));
+}
+function BrandHeader({
+  small
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: small ? 'mb-6' : 'mb-8 text-center'
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x mb-2",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "inline-block w-6 h-px align-middle mr-2",
+    style: {
+      background: 'var(--ink)'
+    }
+  }), "LONGMEN JR.HIGH \xB7 BREAKFAST ORDER"), /*#__PURE__*/React.createElement("h1", {
+    className: small ? 'display text-4xl' : 'display text-6xl',
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "MEAL", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--red)'
+    }
+  }, "\xB7"), "ORDER"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg mt-1",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u9F8D\u9580\u6CF3\u968A"));
+}
+function LoginPage({
+  onLogin,
+  busy,
+  error
+}) {
+  return /*#__PURE__*/React.createElement(FullPageWrap, null, /*#__PURE__*/React.createElement(BrandHeader, null), /*#__PURE__*/React.createElement("div", {
+    className: "p-6",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl mb-1"
+  }, "\u767B\u5165"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "sign in with Google to continue")), /*#__PURE__*/React.createElement("button", {
+    onClick: onLogin,
+    disabled: busy,
+    className: "btn-tactile w-full py-3 px-4 flex items-center justify-center gap-3",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)',
+      border: '1.5px solid var(--ink)'
+    }
+  }, busy ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "spinner inline-block w-4 h-4",
+    style: {
+      border: '2px solid rgba(250,246,236,0.3)',
+      borderTopColor: 'var(--paper)',
+      borderRadius: '50%'
+    }
+  }), /*#__PURE__*/React.createElement("span", null, "\u767B\u5165\u4E2D...")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("svg", {
+    width: "18",
+    height: "18",
+    viewBox: "0 0 24 24"
+  }, /*#__PURE__*/React.createElement("path", {
+    fill: "#4285F4",
+    d: "M22.5 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+  }), /*#__PURE__*/React.createElement("path", {
+    fill: "#34A853",
+    d: "M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+  }), /*#__PURE__*/React.createElement("path", {
+    fill: "#FBBC05",
+    d: "M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+  }), /*#__PURE__*/React.createElement("path", {
+    fill: "#EA4335",
+    d: "M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, "\u4F7F\u7528 Google \u767B\u5165"))), error && /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 p-2 text-xs slide-down",
+    style: {
+      background: 'var(--override-bg)',
+      border: '1px solid var(--override)',
+      color: 'var(--override)'
+    }
+  }, error), /*#__PURE__*/React.createElement("div", {
+    className: "mt-5 pt-4 text-[11px] leading-relaxed",
+    style: {
+      borderTop: '1px solid var(--line)',
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-1.5"
+  }, "\xB7 ", /*#__PURE__*/React.createElement("strong", null, "\u5BB6\u9577"), "\u8ACB\u4F7F\u7528\u60A8\u4E4B\u524D\u7D81\u5B9A\u7684 Google \u5E33\u865F"), /*#__PURE__*/React.createElement("div", null, "\xB7 \u7B2C\u4E00\u6B21\u767B\u5165\u9700\u8981\u7B49\u7BA1\u7406\u54E1\u6838\u51C6\uFF0C\u4E4B\u5F8C\u5C31\u80FD\u6B63\u5E38\u4E0B\u55AE"))));
+}
+function PendingPage({
+  user,
+  onLogout
+}) {
+  return /*#__PURE__*/React.createElement(FullPageWrap, null, /*#__PURE__*/React.createElement(BrandHeader, null), /*#__PURE__*/React.createElement("div", {
+    className: "p-6",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-4xl mb-2"
+  }, "\u23F3"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl mb-1"
+  }, "\u7B49\u5F85\u7BA1\u7406\u54E1\u6838\u51C6"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u60A8\u7684\u5E33\u865F ", /*#__PURE__*/React.createElement("span", {
+    className: "num-mono",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, user?.email), " \u5DF2\u767B\u9304")), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm leading-relaxed mb-5 p-3",
+    style: {
+      background: 'var(--bg)',
+      border: '1px dashed var(--line-strong)',
+      color: 'var(--ink-2)'
+    }
+  }, "\u8ACB\u806F\u7D61\u738B\u6559\u7DF4\u6216\u674E\u7BA1\u7406\uFF0C\u544A\u77E5\u60A8\u8981\u7D81\u5B9A\u54EA\u4F4D/\u54EA\u5E7E\u4F4D\u968A\u54E1\u3002\u6838\u51C6\u5F8C\u91CD\u65B0\u6574\u7406\u9801\u9762\u5373\u53EF\u958B\u59CB\u4E0B\u55AE\u3002"), /*#__PURE__*/React.createElement("button", {
+    onClick: onLogout,
+    className: "btn-tactile w-full py-2 text-sm",
+    style: {
+      background: 'var(--paper)',
+      color: 'var(--ink-2)',
+      border: '1.5px solid var(--ink-2)'
+    }
+  }, "\u767B\u51FA \xB7 \u63DB\u5225\u7684\u5E33\u865F")));
+}
+function LoadingPage({
+  message
+}) {
+  return /*#__PURE__*/React.createElement(FullPageWrap, null, /*#__PURE__*/React.createElement(BrandHeader, null), /*#__PURE__*/React.createElement("div", {
+    className: "text-center p-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "spinner inline-block w-8 h-8 mb-3",
+    style: {
+      border: '3px solid var(--line)',
+      borderTopColor: 'var(--ink)',
+      borderRadius: '50%'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, message || '載入中...')));
+}
+function SeedDataPage({
+  onSeed,
+  busy,
+  error
+}) {
+  return /*#__PURE__*/React.createElement(FullPageWrap, null, /*#__PURE__*/React.createElement(BrandHeader, null), /*#__PURE__*/React.createElement("div", {
+    className: "p-6",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-4xl mb-2"
+  }, "\uD83C\uDF31"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl mb-1"
+  }, "\u9996\u6B21\u555F\u7528"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "initial setup \u2014 load seed data")), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm leading-relaxed mb-4 p-3",
+    style: {
+      background: 'var(--bg)',
+      border: '1px dashed var(--line-strong)',
+      color: 'var(--ink-2)'
+    }
+  }, /*#__PURE__*/React.createElement("strong", null, "\u6B61\u8FCE\uFF0Csuper-admin\uFF01"), /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("br", null), "\u9019\u662F\u7CFB\u7D71\u7B2C\u4E00\u6B21\u555F\u7528\u3002\u9EDE\u4E0B\u65B9\u6309\u9215\u5C07\u4EE5\u4E0B\u8CC7\u6599\u8F09\u5165\u5230 Firestore\uFF1A", /*#__PURE__*/React.createElement("ul", {
+    className: "mt-2 ml-4 list-disc space-y-0.5"
+  }, /*#__PURE__*/React.createElement("li", null, "29 \u4F4D\u968A\u54E1\u540D\u55AE"), /*#__PURE__*/React.createElement("li", null, "\u4E09\u5BB6\u5E97\u5B8C\u6574\u83DC\u55AE\uFF08\u5171 464 \u54C1\u9805\uFF09")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 text-xs"
+  }, "\u5B8C\u6210\u5F8C\u5373\u53EF\u958B\u59CB\u9078\u5E97\u3001\u9080\u8ACB\u5176\u4ED6\u5E33\u865F\u3001\u4E0B\u55AE\u3002")), /*#__PURE__*/React.createElement("button", {
+    onClick: onSeed,
+    disabled: busy,
+    className: "btn-tactile w-full py-3",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, busy ? '載入中...' : '🌱 載入初始資料'), error && /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 p-2 text-xs",
+    style: {
+      background: 'var(--override-bg)',
+      border: '1px solid var(--override)',
+      color: 'var(--override)'
+    }
+  }, error)));
+}
+/* ════════════════════════════════════════════════════════════
+   HEADER (modified — no preview bar, has logout)
+   ════════════════════════════════════════════════════════════ */
+function Header({
+  date,
+  setDate,
+  shop,
+  account,
+  isCutoff,
+  notifCount,
+  onNotifClick,
+  onLogout
+}) {
+  const f = formatDateBig(date);
+  const roleColor = account?.role === 'super-admin' ? 'var(--super)' : account?.role === 'admin' ? 'var(--admin)' : 'var(--parent)';
+  const roleBg = account?.role === 'super-admin' ? 'var(--super-bg)' : account?.role === 'admin' ? 'var(--admin-bg)' : 'var(--parent-bg)';
+  const roleLabel = account?.role === 'super-admin' ? 'SUPER' : account?.role === 'admin' ? 'ADMIN' : 'PARENT';
+  return /*#__PURE__*/React.createElement("header", {
+    className: "border-b",
+    style: {
+      borderColor: 'var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-6xl mx-auto px-4 sm:px-8 pt-4 sm:pt-6 pb-3 sm:pb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between gap-3 mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] sm:text-xs tk-x mb-2 flex items-center gap-2",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "inline-block w-6 sm:w-8 h-px",
+    style: {
+      background: 'var(--ink)'
+    }
+  }), "LONGMEN JR.HIGH \xB7 BREAKFAST ORDER"), /*#__PURE__*/React.createElement("h1", {
+    className: "display text-4xl sm:text-7xl",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "MEAL", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--red)'
+    }
+  }, "\xB7"), "ORDER"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-2 mt-1.5 flex-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base sm:text-xl",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "\u9F8D\u9580\u6CF3\u968A"), /*#__PURE__*/React.createElement("div", {
+    className: "serif-it text-xs sm:text-sm",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "early-morning fuel"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start gap-2"
+  }, account?.role === 'parent' && /*#__PURE__*/React.createElement("button", {
+    onClick: onNotifClick,
+    className: "btn-tactile relative p-2",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--paper)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, "\uD83D\uDD14"), notifCount > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "notif-dot pulse-dot"
+  }, notifCount)), /*#__PURE__*/React.createElement("div", {
+    className: "role-chip",
+    style: {
+      background: roleBg,
+      color: roleColor,
+      border: `1.5px solid ${roleColor}`
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "display-cn"
+  }, account?.name || account?.email), /*#__PURE__*/React.createElement("span", {
+    className: "opacity-60"
+  }, "\xB7 ", roleLabel)), /*#__PURE__*/React.createElement("button", {
+    onClick: onLogout,
+    className: "btn-tactile p-2 text-xs",
+    style: {
+      border: '1.5px solid var(--ink-2)',
+      background: 'var(--paper)',
+      color: 'var(--ink-2)'
+    }
+  }, "\u767B\u51FA"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-end gap-x-4 gap-y-2 pt-3",
+    style: {
+      borderTop: '1px solid var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u660E\u65E5\u65E9\u9910 \xB7 DATE"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl sm:text-3xl"
+  }, f.y), /*#__PURE__*/React.createElement("span", {
+    className: "text-base",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "/"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl sm:text-3xl"
+  }, f.m), /*#__PURE__*/React.createElement("span", {
+    className: "text-base",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "/"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl sm:text-3xl",
+    style: {
+      color: 'var(--red)'
+    }
+  }, f.dd), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn text-sm ml-1",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, getDayLabel(date)))), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1"
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "TODAY'S SHOP"), shop ? /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "display-cn text-base sm:text-lg",
+    style: {
+      color: shop.themeColor
+    }
+  }, shop.name), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, shop.branch)) : /*#__PURE__*/React.createElement("div", {
+    className: "text-sm",
+    style: {
+      color: 'var(--red)'
+    }
+  }, "\u5C1A\u672A\u9078\u5E97")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "CUTOFF"), isCutoff ? /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "role-chip",
+    style: {
+      background: 'var(--lock-bg)',
+      color: 'var(--lock)',
+      border: '1.5px solid var(--lock)'
+    }
+  }, "\uD83D\uDD12 \u5DF2\u622A\u55AE")) : /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "role-chip",
+    style: {
+      background: '#E0EFD8',
+      color: 'var(--plus)',
+      border: '1.5px solid var(--plus)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pulse-dot"
+  }, "\u25CF"), " \u958B\u653E\u4E2D"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] num",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u622A\u81F3 21:00"))))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   TABS (role-based; admin gets accounts/menu/log)
+   ════════════════════════════════════════════════════════════ */
+const TAB_DEFS = [{
+  id: 'shop',
+  en: 'SHOP',
+  cn: '選店',
+  roles: ['admin', 'super-admin', 'parent']
+}, {
+  id: 'order',
+  en: 'ORDER',
+  cn: '點餐',
+  roles: ['admin', 'super-admin', 'parent']
+}, {
+  id: 'summary',
+  en: 'SUMMARY',
+  cn: '統計',
+  roles: ['admin', 'super-admin', 'parent']
+}, {
+  id: 'menu',
+  en: 'MENU',
+  cn: '菜單管理',
+  roles: ['admin', 'super-admin']
+}, {
+  id: 'log',
+  en: 'LOG',
+  cn: '紀錄',
+  roles: ['admin', 'super-admin']
+}, {
+  id: 'accounts',
+  en: 'PEOPLE',
+  cn: '帳號',
+  roles: ['admin', 'super-admin']
+}];
+function Tabs({
+  tab,
+  setTab,
+  role,
+  badges
+}) {
+  const visible = TAB_DEFS.filter(t => t.roles.includes(role));
+  return /*#__PURE__*/React.createElement("nav", {
+    className: "border-b sticky top-0 z-30 backdrop-blur",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'rgba(244,237,224,0.92)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-6xl mx-auto px-2 sm:px-8 flex overflow-x-auto scroll-y"
+  }, visible.map(t => {
+    const active = tab === t.id;
+    const badge = badges?.[t.id];
+    return /*#__PURE__*/React.createElement("button", {
+      key: t.id,
+      onClick: () => setTab(t.id),
+      className: "btn-tactile px-3 sm:px-7 py-2.5 sm:py-4 relative shrink-0",
+      style: {
+        color: active ? 'var(--ink)' : 'var(--mute)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display text-xl sm:text-3xl",
+      style: {
+        lineHeight: 0.9
+      }
+    }, t.en), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] sm:text-xs tk-cn mt-0.5",
+      style: {
+        color: active ? 'var(--red)' : 'var(--mute)'
+      }
+    }, t.cn), badge != null && /*#__PURE__*/React.createElement("span", {
+      className: "absolute top-1.5 right-1.5 num text-xs px-1.5 py-0.5",
+      style: {
+        background: 'var(--red)',
+        color: 'var(--paper)',
+        minWidth: '18px',
+        textAlign: 'center'
+      }
+    }, badge), active && /*#__PURE__*/React.createElement("span", {
+      className: "tab-ind"
+    }));
+  })));
+}
+
+/* ════════════════════════════════════════════════════════════
+   SHOP VIEW
+   ════════════════════════════════════════════════════════════ */
+function ShopView({
+  shops,
+  selectedShop,
+  setSelectedShop,
+  orderCount,
+  account
+}) {
+  const isAdmin = isAdminRole(account);
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "STEP 1 \xB7 CHOOSE"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, isAdmin ? '選擇明日的早餐店' : '今日由教練選的早餐店'), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm serif-it",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, isAdmin ? 'admin: pick the shop the team orders from tomorrow morning' : 'parent view (read-only) — coach decides this')), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-5"
+  }), isAdmin && orderCount > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mb-5 p-3 text-xs slide-down",
+    style: {
+      background: '#FBE8E5',
+      border: '1.5px solid var(--red)',
+      color: 'var(--ink)'
+    }
+  }, "\u26A0 \u76EE\u524D\u5DF2\u6709 ", /*#__PURE__*/React.createElement("span", {
+    className: "num text-base",
+    style: {
+      color: 'var(--red)'
+    }
+  }, orderCount), " \u7B46\u8A02\u55AE\u3002\u63DB\u5E97\u6703\u6E05\u7A7A\u6240\u6709\u8A02\u55AE\uFF0C\u8ACB\u8B39\u614E\u5207\u63DB\u3002"), /*#__PURE__*/React.createElement("div", {
+    className: "grid sm:grid-cols-3 gap-3 sm:gap-4"
+  }, SHOP_IDS.map(id => {
+    const s = shops[id];
+    if (!s) return null;
+    const sel = selectedShop === id;
+    const clickable = isAdmin;
+    return /*#__PURE__*/React.createElement("div", {
+      key: id,
+      onClick: () => {
+        if (clickable) setSelectedShop(id);
+      },
+      className: `card-hover ${clickable ? 'btn-tactile cursor-pointer' : ''} text-left p-4 sm:p-5 relative`,
+      style: {
+        background: sel ? s.themeBg : 'var(--paper)',
+        border: `2px solid ${sel ? s.themeColor : 'var(--line-strong)'}`,
+        cursor: !isAdmin ? 'default' : 'pointer'
+      }
+    }, sel && /*#__PURE__*/React.createElement("div", {
+      className: "absolute -top-2.5 -right-2.5 pop-in num text-sm px-2 py-0.5",
+      style: {
+        background: s.themeColor,
+        color: 'var(--paper)',
+        boxShadow: '2px 2px 0 var(--ink)'
+      }
+    }, "\u2713 \u4ECA\u65E5"), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between mb-3"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display text-xl sm:text-2xl",
+      style: {
+        color: s.themeColor,
+        lineHeight: 1
+      }
+    }, s.nameEn), /*#__PURE__*/React.createElement("div", {
+      className: "serif-it text-xs",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, String(SHOP_IDS.indexOf(id) + 1).padStart(2, '0'), " / 03")), /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl sm:text-3xl mb-1",
+      style: {
+        color: 'var(--ink)'
+      }
+    }, s.name), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs sm:text-sm mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, s.branch, "\u3000\xB7\u3000", s.hours), /*#__PURE__*/React.createElement("div", {
+      className: "hl mb-3"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num-mono",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, "\uD83D\uDCDE ", s.phone), /*#__PURE__*/React.createElement("div", {
+      className: "mt-0.5 leading-relaxed"
+    }, "\uD83D\uDCCD ", s.address)), /*#__PURE__*/React.createElement("div", {
+      className: "mt-3 flex items-center justify-between"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-xs",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "num",
+      style: {
+        color: s.themeColor
+      }
+    }, s.items?.length || 0), " \u500B\u54C1\u9805"), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs display-cn",
+      style: {
+        color: s.themeColor
+      }
+    }, sel ? '已選擇' : isAdmin ? '點擊選擇 →' : '—')));
+  })), selectedShop && shops[selectedShop]?.note && /*#__PURE__*/React.createElement("div", {
+    className: "mt-5 p-3 text-xs slide-up",
+    style: {
+      background: 'var(--paper)',
+      border: '1px dashed var(--line-strong)',
+      color: 'var(--ink-2)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "note \xB7"), " ", shops[selectedShop].note));
+}
+
+/* ════════════════════════════════════════════════════════════
+   ORDER VIEW (roster grid + permission gating)
+   ════════════════════════════════════════════════════════════ */
+function OrderView({
+  shop,
+  carts,
+  account,
+  isCutoff,
+  dispatch,
+  openSwimmer,
+  setOpenSwimmer
+}) {
+  const [filter, setFilter] = useState('all');
+  if (!shop) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u8ACB\u5148\u9078\u5E97"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, isAdminRole(account) ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u9EDE\u4E0A\u65B9\u7684\u300C", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--red)'
+      }
+    }, "SHOP \u9078\u5E97"), "\u300D\u5206\u9801\u6311\u9078\u660E\u65E5\u65E9\u9910\u5E97") : '等管理員選店後，您就能下單了'));
+  }
+  const filtered = useMemo(() => {
+    if (filter === 'all') return ROSTER;
+    return ROSTER.filter(m => m.grade === parseInt(filter));
+  }, [filter]);
+  const memberStats = useMemo(() => {
+    const stats = {};
+    ROSTER.forEach(m => {
+      const c = carts[m.id] || {};
+      let n = 0,
+        sub = 0,
+        hasNote = false;
+      Object.values(c).forEach(line => {
+        n += line.qty;
+        sub += line.qty * line.price;
+        if (line.note?.trim()) hasNote = true;
+      });
+      stats[m.id] = {
+        itemCount: n,
+        subtotal: sub,
+        hasNote
+      };
+    });
+    return stats;
+  }, [carts]);
+  const isParent = account?.role === 'parent';
+  const isAdmin = isAdminRole(account);
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2",
+    style: {
+      background: shop.themeBg,
+      border: `1.5px solid ${shop.themeColor}`
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: shop.themeColor
+    }
+  }, "\u660E\u65E5\u65E9\u9910 \xB7 STEP 2"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-3 flex-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg sm:text-xl",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, shop.name), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, shop.branch))), isParent && /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x",
+    style: {
+      color: shop.themeColor
+    }
+  }, "\u60A8\u53EF\u4E0B\u55AE"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs num",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, (account.swimmers || []).map(sid => ROSTER_BY_ID[sid]?.name).filter(Boolean).join(' + ') || '（管理員尚未綁定隊員）')), isAdmin && /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "\u7BA1\u7406\u54E1 \xB7 \u5168\u54E1\u53EF\u7DE8\u8F2F"), isCutoff && /*#__PURE__*/React.createElement("span", {
+    className: "override-badge mt-1"
+  }, "\u26A0 \u5DF2\u622A\u55AE \xB7 \u8D8A\u6B0A\u7DE8\u8F2F"))), /*#__PURE__*/React.createElement("div", {
+    className: "mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "ROSTER \xB7 \u9EDE\u9078\u968A\u54E1\u4E0B\u55AE"), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, [{
+    v: 'all',
+    l: '全部',
+    c: 'var(--ink)'
+  }, {
+    v: '7',
+    l: '七年級',
+    c: GRADE_INFO[7].color
+  }, {
+    v: '8',
+    l: '八年級',
+    c: GRADE_INFO[8].color
+  }, {
+    v: '9',
+    l: '九年級',
+    c: GRADE_INFO[9].color
+  }].map(x => {
+    const on = filter === x.v;
+    return /*#__PURE__*/React.createElement("button", {
+      key: x.v,
+      onClick: () => setFilter(x.v),
+      className: "btn-tactile px-2.5 py-1 text-xs",
+      style: {
+        background: on ? x.c : 'transparent',
+        color: on ? '#FAF6EC' : x.c,
+        border: `1.5px solid ${x.c}`
+      }
+    }, x.l);
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5DF2\u4E0B\u55AE\u3000", /*#__PURE__*/React.createElement("span", {
+    className: "num",
+    style: {
+      color: 'var(--red)'
+    }
+  }, Object.values(memberStats).filter(s => s.itemCount > 0).length), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--mute)'
+    }
+  }, " / ", ROSTER.length)))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3"
+  }, filtered.map(m => {
+    const st = memberStats[m.id];
+    const has = st.itemCount > 0;
+    const grade = GRADE_INFO[m.grade];
+    const isOwn = (account?.swimmers || []).includes(m.id);
+    const isLocked = isParent && !isOwn;
+    return /*#__PURE__*/React.createElement("button", {
+      key: m.id,
+      onClick: () => setOpenSwimmer(m.id),
+      className: `card-hover btn-tactile text-left p-3 relative ${isLocked ? 'lock-overlay' : ''}`,
+      style: {
+        background: has ? 'var(--paper)' : 'var(--bg)',
+        border: `1.5px solid ${has ? shop.themeColor : isOwn ? 'var(--parent)' : 'var(--line)'}`,
+        opacity: isLocked ? 0.85 : 1
+      }
+    }, isOwn && isParent && /*#__PURE__*/React.createElement("div", {
+      className: "absolute -top-1.5 -right-1.5 role-chip",
+      style: {
+        background: 'var(--parent-bg)',
+        color: 'var(--parent)',
+        border: '1.5px solid var(--parent)',
+        fontSize: 9
+      }
+    }, "\u6211\u7684\u5B69\u5B50"), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-between mb-1.5"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-1.5 num text-xs",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: grade.color,
+        fontWeight: 900
+      }
+    }, grade.label), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, m.cls), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "/"), /*#__PURE__*/React.createElement("span", null, m.seat)), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-1"
+    }, st.hasNote && /*#__PURE__*/React.createElement("span", {
+      className: "note-badge"
+    }, "\uD83D\uDCDD"), has && /*#__PURE__*/React.createElement("span", {
+      className: "num text-base pop-in",
+      style: {
+        color: shop.themeColor
+      }
+    }, "\xD7", st.itemCount))), /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base sm:text-lg",
+      style: {
+        color: 'var(--ink)'
+      }
+    }, m.name), /*#__PURE__*/React.createElement("div", {
+      className: "mt-1 flex items-baseline justify-between"
+    }, has ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "num text-xl",
+      style: {
+        color: 'var(--ink)'
+      }
+    }, "$", st.subtotal), /*#__PURE__*/React.createElement("span", {
+      className: "text-[10px]",
+      style: {
+        color: isLocked ? 'var(--mute)' : shop.themeColor
+      }
+    }, isLocked ? '檢視 →' : '編輯 →')) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "text-xs",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u2014"), /*#__PURE__*/React.createElement("span", {
+      className: "text-[10px]",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, isLocked ? '檢視 →' : '點選下單 →'))));
+  })), openSwimmer && /*#__PURE__*/React.createElement(MenuDrawer, {
+    shop: shop,
+    member: ROSTER_BY_ID[openSwimmer],
+    cart: carts[openSwimmer] || {},
+    account: account,
+    isCutoff: isCutoff,
+    dispatch: dispatch,
+    onClose: () => setOpenSwimmer(null)
+  }));
+}
+/* ════════════════════════════════════════════════════════════
+   MENU DRAWER (per swimmer) - with permission lock
+   ════════════════════════════════════════════════════════════ */
+function MenuDrawer({
+  shop,
+  member,
+  cart,
+  account,
+  isCutoff,
+  dispatch,
+  onClose
+}) {
+  const grade = GRADE_INFO[member.grade];
+  const [activeCat, setActiveCat] = useState(shop.categories[0]?.id);
+  const [showCart, setShowCart] = useState(false);
+  const scrollRef = useRef(null);
+  const catRefs = useRef({});
+  const canEdit = canEditOrder(account, member.id, isCutoff);
+  const isOverride = isOverrideAction(account, member.id, isCutoff);
+  const lockReason = (() => {
+    if (canEdit) return null;
+    if (account?.role === 'parent' && !account.swimmers.includes(member.id)) return '您只能編輯自己孩子的訂單，這是其他隊員的訂單（僅供檢視）';
+    if (account?.role === 'parent' && isCutoff) return '已過 21:00 截單時間，您無法再修改。如有特殊狀況請聯絡管理員';
+    return null;
+  })();
+  const itemsByCat = useMemo(() => {
+    const map = {};
+    shop.categories.forEach(c => {
+      map[c.id] = [];
+    });
+    shop.items.forEach(it => {
+      if (map[it.cat]) map[it.cat].push(it);
+    });
+    return map;
+  }, [shop]);
+  const cartLines = Object.values(cart);
+  const totalQty = cartLines.reduce((s, l) => s + l.qty, 0);
+  const subtotal = cartLines.reduce((s, l) => s + l.qty * l.price, 0);
+  const scrollToCat = catId => {
+    const el = catRefs.current[catId];
+    if (el && scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: el.offsetTop - 12,
+        behavior: 'smooth'
+      });
+      setActiveCat(catId);
+    }
+  };
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const onScroll = () => {
+      const sy = sc.scrollTop + 80;
+      let cur = shop.categories[0]?.id;
+      for (const c of shop.categories) {
+        const el = catRefs.current[c.id];
+        if (el && el.offsetTop <= sy) cur = c.id;
+      }
+      setActiveCat(cur);
+    };
+    sc.addEventListener('scroll', onScroll, {
+      passive: true
+    });
+    return () => sc.removeEventListener('scroll', onScroll);
+  }, [shop]);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.4)'
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 sm:inset-4 sm:max-w-4xl sm:mx-auto slide-up flex flex-col",
+    style: {
+      background: 'var(--bg)',
+      border: '2px solid var(--ink)'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "border-b px-4 py-3 flex items-center justify-between flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: shop.themeBg
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 num text-xs mb-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: grade.color,
+      fontWeight: 900
+    }
+  }, grade.label, "\u5E74"), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, member.cls), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "/"), /*#__PURE__*/React.createElement("span", null, member.seat), isOverride && canEdit && /*#__PURE__*/React.createElement("span", {
+    className: "override-badge ml-2"
+  }, "\u26A0 \u8D8A\u6B0A\u7DE8\u8F2F")), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xl sm:text-2xl",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, member.name, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm ml-2 font-normal",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u7684\u8A02\u55AE")), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: shop.themeColor
+    }
+  }, shop.name, " \xB7 ", shop.branch)), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "btn-tactile px-3 py-2 text-sm",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--paper)'
+    }
+  }, "\u2715 \u95DC\u9589")), lockReason && /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-2 text-xs flex items-center gap-2 flex-shrink-0",
+    style: {
+      background: 'var(--lock-bg)',
+      borderBottom: '1.5px solid var(--lock)',
+      color: 'var(--lock)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", null, lockReason)), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 flex overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-20 sm:w-32 border-r flex-shrink-0 overflow-y-auto scroll-y",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--paper)'
+    }
+  }, shop.categories.map(c => {
+    const cnt = itemsByCat[c.id]?.length || 0;
+    const on = activeCat === c.id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: c.id,
+      onClick: () => scrollToCat(c.id),
+      className: "btn-tactile w-full text-left px-2 py-2.5 border-b text-xs sm:text-sm",
+      style: {
+        background: on ? shop.themeBg : 'transparent',
+        color: on ? shop.themeColor : 'var(--ink-2)',
+        borderColor: 'var(--line)',
+        fontWeight: on ? 700 : 400,
+        borderLeft: on ? `3px solid ${shop.themeColor}` : '3px solid transparent'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn leading-tight"
+    }, c.name), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] mt-0.5 num",
+      style: {
+        color: on ? shop.themeColor : 'var(--mute)'
+      }
+    }, cnt, " \u9805"));
+  })), /*#__PURE__*/React.createElement("div", {
+    ref: scrollRef,
+    className: "flex-1 overflow-y-auto scroll-y",
+    style: {
+      paddingBottom: cartLines.length > 0 ? '88px' : '16px'
+    }
+  }, shop.categories.map(c => {
+    const items = itemsByCat[c.id] || [];
+    if (items.length === 0) return null;
+    const groupedKeys = [...new Set(items.filter(it => it.group).map(it => it.group))];
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.id,
+      ref: el => {
+        catRefs.current[c.id] = el;
+      },
+      className: "px-3 sm:px-5 py-3"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "cat-sticky"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between border-b pb-1.5",
+      style: {
+        borderColor: shop.themeColor
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline gap-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-lg sm:text-xl",
+      style: {
+        color: shop.themeColor
+      }
+    }, c.name), c.variantLabel && /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px]",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, c.variantLabel)), /*#__PURE__*/React.createElement("div", {
+      className: "num text-xs",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, items.length, " items"))), groupedKeys.length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, groupedKeys.map(g => /*#__PURE__*/React.createElement("div", {
+      key: g
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-xs serif-it mt-3 mb-1 px-1",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u2500 ", g, " \u2500"), items.filter(it => it.group === g).map(it => /*#__PURE__*/React.createElement(ItemRow, {
+      key: it.name + '/' + g,
+      item: it,
+      cart: cart,
+      shop: shop,
+      disabled: !canEdit,
+      onAdd: v => dispatch({
+        type: 'add',
+        mid: member.id,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      }),
+      onSub: v => dispatch({
+        type: 'sub',
+        mid: member.id,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      })
+    })))), items.filter(it => !it.group).map(it => /*#__PURE__*/React.createElement(ItemRow, {
+      key: it.name,
+      item: it,
+      cart: cart,
+      shop: shop,
+      disabled: !canEdit,
+      onAdd: v => dispatch({
+        type: 'add',
+        mid: member.id,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      }),
+      onSub: v => dispatch({
+        type: 'sub',
+        mid: member.id,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      })
+    }))) : items.map(it => /*#__PURE__*/React.createElement(ItemRow, {
+      key: it.name,
+      item: it,
+      cart: cart,
+      shop: shop,
+      disabled: !canEdit,
+      onAdd: v => dispatch({
+        type: 'add',
+        mid: member.id,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      }),
+      onSub: v => dispatch({
+        type: 'sub',
+        mid: member.id,
+        shopId: shop.id,
+        item: it,
+        variant: v
+      })
+    })));
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "px-3 sm:px-5 py-6 text-center text-xs serif-it",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7 end of menu \xB7"))), cartLines.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "absolute bottom-0 left-0 right-0 border-t slide-up",
+    style: {
+      background: 'var(--ink)',
+      borderColor: shop.themeColor
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowCart(true),
+    className: "btn-tactile w-full px-4 py-3 flex items-center justify-between",
+    style: {
+      color: 'var(--paper)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl",
+    style: {
+      color: shop.themeColor
+    }
+  }, "\xD7", totalQty), /*#__PURE__*/React.createElement("div", {
+    className: "text-left"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs tk-x",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "CART"), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm display-cn"
+  }, member.name, " \u7684\u8A02\u55AE\u3000\xB7\u3000\u67E5\u770B\u5099\u8A3B"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "num text-base",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "NT$"), /*#__PURE__*/React.createElement("div", {
+    className: "num text-3xl"
+  }, subtotal)), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm"
+  }, "\u25B8")))), showCart && /*#__PURE__*/React.createElement(CartSheet, {
+    shop: shop,
+    member: member,
+    cart: cart,
+    canEdit: canEdit,
+    dispatch: dispatch,
+    onClose: () => setShowCart(false)
+  })));
+}
+function ItemRow({
+  item,
+  cart,
+  shop,
+  disabled,
+  onAdd,
+  onSub
+}) {
+  const variants = Object.keys(item.prices);
+  const isSingle = variants.length === 1 && variants[0] === 'default';
+  return /*#__PURE__*/React.createElement("div", {
+    className: "py-2.5 border-b",
+    style: {
+      borderColor: 'var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-sm sm:text-base leading-snug",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, item.name), item.desc && /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] mt-0.5 leading-snug",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, item.desc)), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1.5 justify-end shrink-0"
+  }, variants.map(v => {
+    const price = item.prices[v];
+    const key = itemKey(shop.id, item.cat, item.name, v);
+    const qty = cart[key]?.qty || 0;
+    return /*#__PURE__*/React.createElement("div", {
+      key: v,
+      className: "flex items-center gap-1"
+    }, qty > 0 && !disabled && /*#__PURE__*/React.createElement("button", {
+      onClick: () => onSub(v),
+      className: "btn-tactile w-7 h-9 text-base font-bold",
+      style: {
+        border: '1.5px solid var(--minus)',
+        color: 'var(--minus)',
+        background: 'var(--paper)'
+      }
+    }, "\u2212"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => onAdd(v),
+      disabled: disabled,
+      className: `price-btn ${qty > 0 ? 'has-qty' : ''}`,
+      style: qty > 0 ? {
+        borderColor: shop.themeColor,
+        background: shop.themeColor,
+        color: 'var(--paper)'
+      } : {}
+    }, !isSingle && /*#__PURE__*/React.createElement("span", {
+      className: "v-label"
+    }, v), /*#__PURE__*/React.createElement("span", {
+      className: "price"
+    }, "$", price), qty > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "qty-badge"
+    }, "\xD7", qty)));
+  }))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   CART SHEET - with notes per line
+   ════════════════════════════════════════════════════════════ */
+function CartSheet({
+  shop,
+  member,
+  cart,
+  canEdit,
+  dispatch,
+  onClose
+}) {
+  const lines = Object.values(cart).sort((a, b) => a.cat.localeCompare(b.cat));
+  const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 z-10 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.5)'
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute bottom-0 left-0 right-0 sm:bottom-4 sm:left-4 sm:right-4 sm:max-w-2xl sm:mx-auto slide-up flex flex-col",
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)',
+      maxHeight: '90vh'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b flex items-center justify-between flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: shop.themeBg
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: shop.themeColor
+    }
+  }, "CART \xB7 \u8A02\u55AE\u660E\u7D30"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg"
+  }, member.name, " \u7684\u8A02\u55AE")), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "btn-tactile px-3 py-1.5 text-sm",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--paper)'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 overflow-y-auto scroll-y"
+  }, lines.map(l => /*#__PURE__*/React.createElement(CartLine, {
+    key: l.key,
+    line: l,
+    shop: shop,
+    canEdit: canEdit,
+    onAdd: () => dispatch({
+      type: 'addKey',
+      mid: member.id,
+      key: l.key,
+      line: l
+    }),
+    onSub: () => dispatch({
+      type: 'subKey',
+      mid: member.id,
+      key: l.key
+    }),
+    onNote: note => dispatch({
+      type: 'note',
+      mid: member.id,
+      key: l.key,
+      note
+    })
+  })), lines.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "py-10 text-center text-sm",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u8CFC\u7269\u8ECA\u662F\u7A7A\u7684")), /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-t flex items-center justify-between flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, canEdit ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (confirm(`清空 ${member.name} 的所有訂單？`)) dispatch({
+        type: 'clearMember',
+        mid: member.id
+      });
+    },
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      color: 'rgba(250,246,236,0.7)',
+      border: '1px solid rgba(250,246,236,0.3)'
+    }
+  }, "\u6E05\u7A7A\u8A02\u55AE") : /*#__PURE__*/React.createElement("span", null), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline gap-3"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-xs tk-x",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "TOTAL"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-base",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "NT$"), /*#__PURE__*/React.createElement("span", {
+    className: "num text-3xl"
+  }, total)))));
+}
+function CartLine({
+  line,
+  shop,
+  canEdit,
+  onAdd,
+  onSub,
+  onNote
+}) {
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteText, setNoteText] = useState(line.note || '');
+  const saveNote = () => {
+    onNote(noteText.trim());
+    setEditingNote(false);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b",
+    style: {
+      borderColor: 'var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-sm",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, line.name, line.variant !== 'default' && /*#__PURE__*/React.createElement("span", {
+    className: "ml-2 text-xs px-1.5 py-0.5",
+    style: {
+      background: shop.themeBg,
+      color: shop.themeColor
+    }
+  }, line.variant)), /*#__PURE__*/React.createElement("div", {
+    className: "num text-xs",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "$", line.price)), /*#__PURE__*/React.createElement("div", {
+    className: "qty-ctrl"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onSub,
+    disabled: !canEdit
+  }, "\u2212"), /*#__PURE__*/React.createElement("span", {
+    className: "qv"
+  }, line.qty), /*#__PURE__*/React.createElement("button", {
+    onClick: onAdd,
+    disabled: !canEdit
+  }, "+")), /*#__PURE__*/React.createElement("div", {
+    className: "num text-base w-16 text-right",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "$", line.qty * line.price)), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pl-1"
+  }, editingNote && canEdit ? /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-1.5 items-start slide-down"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base",
+    style: {
+      color: 'var(--note)'
+    }
+  }, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("textarea", {
+    autoFocus: true,
+    rows: 2,
+    value: noteText,
+    onChange: e => setNoteText(e.target.value),
+    placeholder: "\u4F8B\uFF1A\u5C11\u51B0\u3001\u4E0D\u8981\u6D0B\u8525\u3001\u534A\u719F\u86CB...",
+    className: "flex-1 text-xs p-2 outline-none",
+    style: {
+      background: 'var(--note-bg)',
+      border: '1.5px solid var(--note)',
+      color: 'var(--ink)',
+      fontFamily: '"Noto Sans TC",sans-serif'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col gap-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: saveNote,
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      background: 'var(--note)',
+      color: 'var(--paper)'
+    }
+  }, "\u2713 \u5B58"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setNoteText(line.note || '');
+      setEditingNote(false);
+    },
+    className: "btn-tactile text-xs px-2 py-1",
+    style: {
+      background: 'transparent',
+      color: 'var(--mute)',
+      border: '1px solid var(--mute)'
+    }
+  }, "\u53D6\u6D88"))) : line.note ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => canEdit && setEditingNote(true),
+    className: `text-xs flex items-start gap-1 ${canEdit ? 'hover:opacity-70' : ''}`,
+    style: {
+      color: 'var(--note)',
+      cursor: canEdit ? 'pointer' : 'default'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: 'var(--note-bg)',
+      padding: '2px 6px',
+      border: '1px solid var(--note)'
+    }
+  }, line.note), canEdit && /*#__PURE__*/React.createElement("span", {
+    className: "opacity-50"
+  }, "\u7DE8\u8F2F")) : canEdit ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditingNote(true),
+    className: "text-xs flex items-center gap-1 opacity-50 hover:opacity-100 transition",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("span", null, "\u65B0\u589E\u5099\u8A3B\uFF08\u5982\uFF1A\u5C11\u51B0\u3001\u4E0D\u52A0\u8525\uFF09")) : null));
+}
+
+/* ════════════════════════════════════════════════════════════
+   SUMMARY VIEW - new format: by-item with names + notes
+   ════════════════════════════════════════════════════════════ */
+function SummaryView({
+  shop,
+  carts,
+  account
+}) {
+  if (!shop || shop.placeholder) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u5C1A\u672A\u958B\u59CB\u8A02\u9910"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u8ACB\u5148\u9078\u5E97"));
+  }
+
+  // aggregate by item, with per-orderer breakdown
+  const byItem = {};
+  let grandQty = 0,
+    grandTotal = 0;
+  ROSTER.forEach(m => {
+    const c = carts[m.id] || {};
+    Object.values(c).forEach(line => {
+      const k = `${line.name}|${line.variant}`;
+      if (!byItem[k]) byItem[k] = {
+        name: line.name,
+        variant: line.variant,
+        price: line.price,
+        qty: 0,
+        orderers: []
+      };
+      byItem[k].qty += line.qty;
+      byItem[k].orderers.push({
+        memberId: m.id,
+        name: m.name,
+        cls: m.cls,
+        qty: line.qty,
+        note: line.note || ''
+      });
+      grandQty += line.qty;
+      grandTotal += line.qty * line.price;
+    });
+  });
+  const itemRows = Object.values(byItem).sort((a, b) => b.qty - a.qty);
+  const ordered = ROSTER.filter(m => Object.keys(carts[m.id] || {}).length > 0);
+  const notOrdered = ROSTER.filter(m => Object.keys(carts[m.id] || {}).length === 0);
+
+  // build copy text (verbose: with names + notes for restaurant)
+  const buildCopyText = () => {
+    const d = new Date();
+    const lines = [`龍門泳隊 ${d.getMonth() + 1}/${d.getDate()} 訂餐 @ ${shop.name}`];
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+    itemRows.forEach(r => {
+      const v = r.variant !== 'default' ? `(${r.variant})` : '';
+      lines.push(`【${r.name}${v}】×${r.qty}　$${r.price}`);
+      r.orderers.forEach(o => {
+        const noteTxt = o.note ? `　※${o.note}` : '';
+        lines.push(`　・ ${o.name} ×${o.qty}${noteTxt}`);
+      });
+    });
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+    lines.push(`共 ${grandQty} 份　·　總計 NT$ ${grandTotal.toLocaleString()}`);
+    return lines.join('\n');
+  };
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildCopyText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      alert(buildCopyText());
+    }
+  };
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "STEP 3 \xB7 TOTALS"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, "\u8A02\u55AE\u7D71\u8A08"), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm flex items-baseline gap-2 flex-wrap"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "display-cn",
+    style: {
+      color: shop.themeColor
+    }
+  }, shop.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, shop.branch), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\xB7"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, shop.phone))), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-5"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-3 gap-2 sm:gap-3 mb-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-3 sm:p-4",
+    style: {
+      background: 'var(--paper)',
+      border: `1.5px solid var(--line-strong)`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "ORDERED"), /*#__PURE__*/React.createElement("div", {
+    className: "num text-3xl sm:text-4xl"
+  }, ordered.length), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5DF2\u4E0B\u55AE\u4EBA\u6578")), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 sm:p-4",
+    style: {
+      background: 'var(--paper)',
+      border: `1.5px solid ${shop.themeColor}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: shop.themeColor
+    }
+  }, "ITEMS"), /*#__PURE__*/React.createElement("div", {
+    className: "num text-3xl sm:text-4xl",
+    style: {
+      color: shop.themeColor
+    }
+  }, grandQty), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u7E3D\u4EFD\u6578")), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 sm:p-4",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "NT$"), /*#__PURE__*/React.createElement("div", {
+    className: "num text-3xl sm:text-4xl"
+  }, grandTotal.toLocaleString()), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "\u7E3D\u91D1\u984D"))), grandQty === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "py-8 text-center",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5C1A\u7121\u8A02\u55AE")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "mb-6",
+    style: {
+      background: 'var(--paper)',
+      border: `1.5px solid var(--line-strong)`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 border-b flex items-center justify-between",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: shop.themeBg
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base",
+    style: {
+      color: shop.themeColor
+    }
+  }, "\u7D66\u5E97\u5BB6\u7684\u8A02\u55AE\u660E\u7D30"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x",
+    style: {
+      color: shop.themeColor
+    }
+  }, "BY ITEM \xB7 \u542B\u5099\u8A3B\u8207\u8A02\u8CFC\u4EBA")), /*#__PURE__*/React.createElement("div", null, itemRows.map(r => /*#__PURE__*/React.createElement("div", {
+    key: r.name + '/' + r.variant,
+    className: "border-b",
+    style: {
+      borderColor: 'var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 flex items-center gap-3",
+    style: {
+      background: 'var(--paper-2)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "display-cn text-sm",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, r.name), r.variant !== 'default' && /*#__PURE__*/React.createElement("span", {
+    className: "ml-2 text-xs px-1.5 py-0.5",
+    style: {
+      background: shop.themeBg,
+      color: shop.themeColor
+    }
+  }, r.variant)), /*#__PURE__*/React.createElement("div", {
+    className: "num text-xs w-12 text-right",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "$", r.price), /*#__PURE__*/React.createElement("div", {
+    className: "num text-lg w-12 text-right",
+    style: {
+      color: shop.themeColor
+    }
+  }, "\xD7", r.qty), /*#__PURE__*/React.createElement("div", {
+    className: "num text-base w-20 text-right",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, "$", r.qty * r.price)), /*#__PURE__*/React.createElement("div", {
+    className: "bg-[var(--paper)] divide-y",
+    style: {
+      borderColor: 'var(--line)'
+    }
+  }, r.orderers.map((o, i) => /*#__PURE__*/React.createElement("div", {
+    key: o.memberId,
+    className: "px-4 py-1.5 flex items-center gap-2 text-xs"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-[10px] w-10",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, o.cls), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, o.name), /*#__PURE__*/React.createElement("span", {
+    className: "num",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\xD7", o.qty), o.note && /*#__PURE__*/React.createElement("span", {
+    className: "note-badge ml-auto"
+  }, "\uD83D\uDCDD ", o.note))))))), /*#__PURE__*/React.createElement("div", {
+    className: "px-3 py-2 flex justify-between items-baseline",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "tk-x text-xs"
+  }, "GRAND TOTAL"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "num text-sm",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "NT$ "), /*#__PURE__*/React.createElement("span", {
+    className: "num text-2xl"
+  }, grandTotal.toLocaleString())))), /*#__PURE__*/React.createElement("div", {
+    className: "mb-6 p-4",
+    style: {
+      background: 'var(--paper)',
+      border: `1.5px solid var(--line-strong)`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "FOR RESTAURANT \xB7 \u542B\u5099\u8A3B\u8207\u8A02\u8CFC\u4EBA"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-sm"
+  }, "\uD83D\uDCCB \u8907\u88FD\u7D66\u5E97\u5BB6")), /*#__PURE__*/React.createElement("button", {
+    onClick: handleCopy,
+    className: "btn-tactile px-4 py-2 text-sm display",
+    style: {
+      background: copied ? 'var(--plus)' : 'var(--ink)',
+      color: 'var(--paper)',
+      boxShadow: '3px 3px 0 ' + shop.themeColor
+    }
+  }, copied ? '✓ COPIED' : '📋 COPY')), /*#__PURE__*/React.createElement("pre", {
+    className: "text-xs num-mono p-3 whitespace-pre-wrap",
+    style: {
+      background: 'var(--bg)',
+      border: '1px dashed var(--line-strong)',
+      color: 'var(--ink)',
+      fontFamily: '"Noto Sans TC",monospace',
+      maxHeight: '300px',
+      overflow: 'auto'
+    }
+  }, buildCopyText())), /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-2",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "BY MEMBER \xB7 \u500B\u4EBA\u8A02\u55AE"), /*#__PURE__*/React.createElement("div", {
+    className: "grid sm:grid-cols-2 gap-2"
+  }, ordered.map(m => {
+    const c = carts[m.id] || {};
+    const lines = Object.values(c);
+    const sub = lines.reduce((s, l) => s + l.qty * l.price, 0);
+    const grade = GRADE_INFO[m.grade];
+    return /*#__PURE__*/React.createElement("div", {
+      key: m.id,
+      className: "p-3",
+      style: {
+        background: 'var(--paper)',
+        border: `1.5px solid ${shop.themeColor}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline justify-between mb-2"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline gap-1.5 num text-xs",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: grade.color,
+        fontWeight: 900
+      }
+    }, grade.label), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, m.cls), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "/"), /*#__PURE__*/React.createElement("span", null, m.seat)), /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base"
+    }, m.name)), /*#__PURE__*/React.createElement("div", {
+      className: "num text-xl",
+      style: {
+        color: shop.themeColor
+      }
+    }, "$", sub)), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs space-y-1",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, lines.map(l => /*#__PURE__*/React.createElement("div", {
+      key: l.key
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex justify-between gap-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "truncate"
+    }, "\xB7 ", l.name, l.variant !== 'default' ? ` (${l.variant})` : ''), /*#__PURE__*/React.createElement("span", {
+      className: "num shrink-0",
+      style: {
+        color: 'var(--ink)'
+      }
+    }, "\xD7", l.qty)), l.note && /*#__PURE__*/React.createElement("div", {
+      className: "ml-3 mt-0.5 note-badge",
+      style: {
+        fontSize: 9
+      }
+    }, "\uD83D\uDCDD ", l.note)))));
+  }))), notOrdered.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "p-4",
+    style: {
+      background: '#FBE8E5',
+      border: '1.5px solid var(--red)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base mb-2",
+    style: {
+      color: 'var(--red)'
+    }
+  }, "\u26A0 \u5C1A\u672A\u8A02\u9910 \xB7 ", notOrdered.length, " \u4EBA"), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1.5"
+  }, notOrdered.map(m => /*#__PURE__*/React.createElement("span", {
+    key: m.id,
+    className: "px-2 py-0.5 text-xs",
+    style: {
+      background: 'var(--paper)',
+      border: '1px solid var(--red)',
+      color: 'var(--ink)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "num text-[10px] mr-1",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, m.cls), m.name))))));
+}
+/* ════════════════════════════════════════════════════════════
+   MENU ADMIN VIEW (admin only)
+   ════════════════════════════════════════════════════════════ */
+function MenuAdminView({
+  shops,
+  account,
+  dispatch
+}) {
+  const [shopId, setShopId] = useState('yusee');
+  const shop = shops[shopId];
+  if (!isAdminRole(account)) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u6B0A\u9650\u4E0D\u8DB3"), /*#__PURE__*/React.createElement("div", {
+      className: "text-sm",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u50C5\u7BA1\u7406\u54E1\u53EF\u7DE8\u8F2F\u83DC\u55AE"));
+  }
+  const updateItemPrice = (catId, idx, variant, newPrice) => {
+    const oldShop = shops[shopId];
+    const newItems = JSON.parse(JSON.stringify(oldShop.items));
+    const itemsInCat = newItems.filter(it => it.cat === catId);
+    const target = itemsInCat[idx];
+    if (!target) return;
+    const oldPrice = target.prices[variant];
+    if (parseInt(newPrice) === oldPrice) return;
+    target.prices[variant] = parseInt(newPrice) || 0;
+    // find original index in flat items array and update
+    const allTarget = newItems.find(it => it.cat === catId && it.name === target.name);
+    if (allTarget) allTarget.prices[variant] = target.prices[variant];
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      items: newItems,
+      detail: `「${target.name}」(${variant}) 價格 $${oldPrice} → $${newPrice}`
+    });
+  };
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "ADMIN \xB7 MENU EDITOR"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, "\u83DC\u55AE\u7BA1\u7406"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm serif-it",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "edit prices \xB7 changes are logged")), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-4"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mb-4 flex-wrap"
+  }, SHOP_IDS.map(id => {
+    const s = shops[id];
+    if (!s) return null;
+    const on = shopId === id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: id,
+      onClick: () => setShopId(id),
+      className: "btn-tactile px-3 py-2",
+      style: {
+        background: on ? s.themeBg : 'var(--paper)',
+        color: on ? s.themeColor : 'var(--ink-2)',
+        border: `1.5px solid ${on ? s.themeColor : 'var(--line)'}`,
+        fontWeight: on ? 700 : 500
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-sm"
+    }, s.name), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num"
+    }, s.items?.length || 0, " \u9805"));
+  })), !shop || !shop.items ? /*#__PURE__*/React.createElement("div", {
+    className: "py-10 text-center",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-sm",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u9078\u64C7\u5E97\u5BB6\u4EE5\u7DE8\u8F2F")) : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3"
+  }, shop.categories.map(cat => {
+    const items = shop.items.filter(it => it.cat === cat.id);
+    return /*#__PURE__*/React.createElement("details", {
+      key: cat.id,
+      className: "overflow-hidden",
+      style: {
+        background: 'var(--paper)',
+        border: '1.5px solid var(--line-strong)'
+      }
+    }, /*#__PURE__*/React.createElement("summary", {
+      className: "cursor-pointer px-3 py-2 flex items-center justify-between",
+      style: {
+        background: shop.themeBg
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline gap-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base",
+      style: {
+        color: shop.themeColor
+      }
+    }, cat.name), cat.variantLabel && /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px]",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, cat.variantLabel)), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs num",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, items.length, " \u9805")), /*#__PURE__*/React.createElement("div", {
+      className: "divide-y",
+      style: {
+        borderColor: 'var(--line)'
+      }
+    }, items.map((it, idx) => {
+      const variants = Object.keys(it.prices);
+      return /*#__PURE__*/React.createElement("div", {
+        key: it.name + idx,
+        className: "px-3 py-2 flex items-center gap-3"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "flex-1 min-w-0"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "display-cn text-sm",
+        style: {
+          color: 'var(--ink)'
+        }
+      }, it.name), it.desc && /*#__PURE__*/React.createElement("div", {
+        className: "text-[11px]",
+        style: {
+          color: 'var(--mute)'
+        }
+      }, it.desc)), /*#__PURE__*/React.createElement("div", {
+        className: "flex gap-2"
+      }, variants.map(v => /*#__PURE__*/React.createElement("div", {
+        key: v,
+        className: "text-right"
+      }, v !== 'default' && /*#__PURE__*/React.createElement("div", {
+        className: "text-[10px]",
+        style: {
+          color: 'var(--mute)'
+        }
+      }, v), /*#__PURE__*/React.createElement("div", {
+        className: "flex items-baseline gap-0.5"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "text-xs",
+        style: {
+          color: 'var(--mute)'
+        }
+      }, "$"), /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        defaultValue: it.prices[v],
+        onBlur: e => {
+          const nv = parseInt(e.target.value) || 0;
+          if (nv !== it.prices[v]) updateItemPrice(cat.id, idx, v, nv);
+        },
+        className: "w-14 num text-base text-right py-0.5",
+        style: {
+          borderBottom: '1.5px solid var(--ink)',
+          background: 'transparent'
+        }
+      }))))));
+    })));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mt-5 p-3 text-xs",
+    style: {
+      background: 'var(--admin-bg)',
+      border: '1px dashed var(--admin)',
+      color: 'var(--admin)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it"
+  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u50F9\u683C\u6B04\u4F4D \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u5230\u96F2\u7AEF\uFF0C\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u5206\u9801\u3002"));
+}
+
+/* ════════════════════════════════════════════════════════════
+   AUDIT LOG VIEW (admin only)
+   ════════════════════════════════════════════════════════════ */
+function AuditLogView({
+  auditLog,
+  account
+}) {
+  const [filter, setFilter] = useState('all');
+  if (!isAdminRole(account)) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u6B0A\u9650\u4E0D\u8DB3"));
+  }
+  const KIND_LABEL = {
+    add: '+ 加入',
+    sub: '− 減少',
+    remove: '✕ 移除',
+    clear: '🗑 清空',
+    note: '📝 備註',
+    shop_change: '🍱 換店',
+    menu_edit: '🍴 改菜單',
+    invite: '👤 邀請',
+    role_change: '🎖 角色變更',
+    unbind: '🔗 改綁定'
+  };
+  const KIND_COLOR = {
+    add: 'var(--plus)',
+    sub: '#B5532E',
+    remove: 'var(--red)',
+    clear: 'var(--red)',
+    note: 'var(--note)',
+    shop_change: 'var(--admin)',
+    menu_edit: 'var(--admin)',
+    invite: 'var(--super)',
+    role_change: 'var(--super)',
+    unbind: 'var(--super)'
+  };
+  const filtered = filter === 'all' ? auditLog : auditLog.filter(e => e.kind === filter);
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "ADMIN \xB7 AUDIT LOG"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, "\u8B8A\u66F4\u7D00\u9304"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm serif-it",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "every action is recorded \xB7 sorted newest first")), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-4"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap gap-1 mb-4"
+  }, [{
+    v: 'all',
+    l: '全部'
+  }, {
+    v: 'add',
+    l: '+ 加入'
+  }, {
+    v: 'sub',
+    l: '− 減少'
+  }, {
+    v: 'note',
+    l: '備註'
+  }, {
+    v: 'menu_edit',
+    l: '改菜單'
+  }, {
+    v: 'shop_change',
+    l: '換店'
+  }, {
+    v: 'role_change',
+    l: '角色'
+  }, {
+    v: 'invite',
+    l: '邀請'
+  }].map(x => {
+    const on = filter === x.v;
+    return /*#__PURE__*/React.createElement("button", {
+      key: x.v,
+      onClick: () => setFilter(x.v),
+      className: "btn-tactile px-2.5 py-1 text-xs",
+      style: {
+        background: on ? 'var(--ink)' : 'var(--paper)',
+        color: on ? 'var(--paper)' : 'var(--ink-2)',
+        border: '1.5px solid var(--ink)'
+      }
+    }, x.l);
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "ml-auto text-xs num",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, filtered.length, " \u7B46 / \u5171 ", auditLog.length)), filtered.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "py-10 text-center",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-sm",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5C1A\u7121\u7D00\u9304")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--line-strong)'
+    }
+  }, filtered.map((e, i) => /*#__PURE__*/React.createElement("div", {
+    key: e.id,
+    className: "px-3 py-2 border-b flex items-start gap-2 sm:gap-3",
+    style: {
+      borderColor: 'var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "num-mono text-[10px] sm:text-xs w-20 sm:w-24 shrink-0 pt-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, fmtDateTime(e.timestamp)), /*#__PURE__*/React.createElement("div", {
+    className: "shrink-0 pt-0.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "role-chip",
+    style: {
+      background: e.actorRole === 'super-admin' ? 'var(--super-bg)' : e.actorRole === 'admin' ? 'var(--admin-bg)' : 'var(--parent-bg)',
+      color: e.actorRole === 'super-admin' ? 'var(--super)' : e.actorRole === 'admin' ? 'var(--admin)' : 'var(--parent)',
+      border: `1px solid ${e.actorRole === 'super-admin' ? 'var(--super)' : e.actorRole === 'admin' ? 'var(--admin)' : 'var(--parent)'}`,
+      fontSize: 9
+    }
+  }, e.actorName)), /*#__PURE__*/React.createElement("div", {
+    className: "shrink-0 pt-0.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "display-cn text-xs px-1.5 py-0.5",
+    style: {
+      background: 'var(--paper-2)',
+      color: KIND_COLOR[e.kind] || 'var(--ink)',
+      border: `1px solid ${KIND_COLOR[e.kind] || 'var(--line-strong)'}`
+    }
+  }, KIND_LABEL[e.kind] || e.kind)), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0 text-xs",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "leading-relaxed"
+  }, e.detail), e.swimmerName && /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] mt-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5C0D\u8C61\uFF1A", /*#__PURE__*/React.createElement("span", {
+    className: "display-cn",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, e.swimmerName))), e.override && /*#__PURE__*/React.createElement("span", {
+    className: "override-badge shrink-0"
+  }, "\u26A0 \u8D8A\u6B0A")))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   NOTIFICATION SHEET (parent only)
+   ════════════════════════════════════════════════════════════ */
+function NotificationSheet({
+  notifications,
+  account,
+  onClose,
+  onMarkRead
+}) {
+  const list = notifications.sort((a, b) => {
+    const ta = a.timestamp?.toMillis?.() || 0;
+    const tb = b.timestamp?.toMillis?.() || 0;
+    return tb - ta;
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.4)'
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-x-0 top-0 sm:top-4 sm:max-w-2xl sm:mx-auto slide-down flex flex-col",
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)',
+      maxHeight: '85vh'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b flex items-center justify-between flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--parent-bg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--parent)'
+    }
+  }, "NOTIFICATIONS \xB7 \u901A\u77E5"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg"
+  }, "\u60A8\u5B69\u5B50\u8A02\u55AE\u7684\u6240\u6709\u8B8A\u66F4")), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "btn-tactile px-3 py-1.5 text-sm",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--paper)'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 overflow-y-auto scroll-y"
+  }, list.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "py-10 text-center text-sm",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u76EE\u524D\u6C92\u6709\u901A\u77E5") : list.map(n => /*#__PURE__*/React.createElement("div", {
+    key: n.id,
+    className: "px-4 py-3 border-b",
+    style: {
+      borderColor: 'var(--line)',
+      background: n.read ? 'transparent' : 'var(--note-bg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-baseline justify-between mb-1"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, !n.read && /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full",
+    style: {
+      background: 'var(--red)'
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "display-cn text-sm",
+    style: {
+      color: 'var(--ink)'
+    }
+  }, ROSTER_BY_ID[n.swimmerId]?.name), /*#__PURE__*/React.createElement("span", {
+    className: "role-chip",
+    style: {
+      background: 'var(--admin-bg)',
+      color: 'var(--admin)',
+      border: '1px solid var(--admin)',
+      fontSize: 9
+    }
+  }, n.byActor)), /*#__PURE__*/React.createElement("span", {
+    className: "num-mono text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, fmtDateTime(n.timestamp))), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs leading-relaxed pl-4",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, n.message)))), list.some(n => !n.read) && /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-2 border-t flex justify-end flex-shrink-0",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--paper-2)'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onMarkRead,
+    className: "btn-tactile text-xs px-3 py-1.5",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, "\u5168\u90E8\u6A19\u70BA\u5DF2\u8B80"))));
+}
+
+/* ════════════════════════════════════════════════════════════
+   ACCOUNTS VIEW — NEW (admin/super-admin only)
+   ════════════════════════════════════════════════════════════ */
+function AccountsView({
+  accounts,
+  account,
+  dispatch
+}) {
+  const [editingBindings, setEditingBindings] = useState(null); // uid being edited
+
+  if (!isAdminRole(account)) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u6B0A\u9650\u4E0D\u8DB3"));
+  }
+  const supers = accounts.filter(a => a.role === 'super-admin');
+  const admins = accounts.filter(a => a.role === 'admin');
+  const parents = accounts.filter(a => a.role === 'parent');
+  const pendingParents = parents.filter(a => (a.swimmers || []).length === 0);
+  const activeParents = parents.filter(a => (a.swimmers || []).length > 0);
+  const isSuper = isSuperAdminRole(account);
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "ADMIN \xB7 ACCOUNTS"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, "\u5E33\u865F\u7BA1\u7406"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm serif-it",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, isSuper ? 'super-admin: invite & adjust roles' : 'admin: invite parents & adjust their bindings')), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-4"
+  }), supers.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-2",
+    style: {
+      color: 'var(--super)'
+    }
+  }, "\uD83D\uDC51 SUPER-ADMIN"), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, supers.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.uid,
+    className: "p-3 flex items-center gap-3",
+    style: {
+      background: 'var(--super-bg)',
+      border: '1.5px solid var(--super)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl"
+  }, "\uD83D\uDC51"), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base"
+  }, a.name || '(未命名)'), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs num-mono",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, a.email)), /*#__PURE__*/React.createElement("span", {
+    className: "role-chip",
+    style: {
+      background: 'var(--super)',
+      color: 'var(--paper)',
+      border: '1.5px solid var(--super)'
+    }
+  }, "SUPER"))))), /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "\uD83C\uDF96 ADMIN"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u7531 super-admin \u5F9E parent \u5347\u7B49")), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, admins.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-xs italic py-3 text-center",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5C1A\u7121 admin"), admins.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.uid,
+    className: "p-3 flex items-center gap-3",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--admin)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl"
+  }, "\uD83C\uDF96"), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base"
+  }, a.name || '(未命名)'), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs num-mono",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, a.email)), isSuper && /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-1 flex-wrap justify-end"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (confirm(`確定降為 parent？`)) dispatch({
+        type: 'role_change',
+        uid: a.uid,
+        newRole: 'parent',
+        name: a.name
+      });
+    },
+    className: "btn-tactile text-[10px] px-2 py-1",
+    style: {
+      border: '1px solid var(--mute)',
+      color: 'var(--mute)'
+    }
+  }, "\u964D\u70BA\u5BB6\u9577"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (confirm(`確定移除帳號 ${a.name}？此動作無法復原`)) dispatch({
+        type: 'remove_account',
+        uid: a.uid,
+        name: a.name
+      });
+    },
+    className: "btn-tactile text-[10px] px-2 py-1",
+    style: {
+      border: '1px solid var(--red)',
+      color: 'var(--red)'
+    }
+  }, "\u79FB\u9664")))))), pendingParents.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--red)'
+    }
+  }, "\u23F3 \u7B49\u5F85\u6838\u51C6 \xB7 NEW SIGNUPS"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] num",
+    style: {
+      color: 'var(--red)'
+    }
+  }, pendingParents.length, " \u4F4D")), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, pendingParents.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.uid,
+    className: "p-3",
+    style: {
+      background: '#FBE8E5',
+      border: '1.5px solid var(--red)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-2xl"
+  }, "\uD83C\uDD95"), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-base"
+  }, a.name || '(未命名)'), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs num-mono",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, a.email))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 pl-9 flex items-center justify-end gap-1 flex-wrap"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditingBindings(a.uid),
+    className: "btn-tactile text-xs px-3 py-1.5",
+    style: {
+      background: 'var(--parent)',
+      color: 'var(--paper)'
+    }
+  }, "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 \u8A2D\u5B9A\u70BA\u5BB6\u9577 \xB7 \u7D81\u5B9A\u968A\u54E1"), isSuper && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (confirm(`確定升為 admin？升等後可改菜單、看 log、邀請家長`)) dispatch({
+        type: 'role_change',
+        uid: a.uid,
+        newRole: 'admin',
+        name: a.name
+      });
+    },
+    className: "btn-tactile text-xs px-3 py-1.5",
+    style: {
+      background: 'var(--admin)',
+      color: 'var(--paper)'
+    }
+  }, "\uD83C\uDF96 \u8A2D\u5B9A\u70BA admin")))))), /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--parent)'
+    }
+  }, "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 PARENT \xB7 \u5DF2\u7D81\u5B9A"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u65B0\u5BB6\u9577\u8ACB\u5C0D\u65B9\u5148\u7528 Google \u767B\u5165\u4E00\u6B21")), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, activeParents.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-xs italic py-3 text-center",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5C1A\u7121\u5DF2\u7D81\u5B9A\u7684\u5BB6\u9577"), activeParents.map(a => {
+    const swimmerNames = (a.swimmers || []).map(sid => ROSTER_BY_ID[sid]?.name).filter(Boolean);
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.uid,
+      className: "p-3",
+      style: {
+        background: 'var(--paper)',
+        border: '1.5px solid var(--parent)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-3"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-2xl"
+    }, "\uD83D\uDC64"), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base"
+    }, a.name || '(未命名)'), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs num-mono",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, a.email))), /*#__PURE__*/React.createElement("div", {
+      className: "mt-2 pl-9 flex items-baseline justify-between gap-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "text-xs flex-1",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u7D81\u5B9A\uFF1A"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--ink)'
+      }
+    }, swimmerNames.join('、'))), /*#__PURE__*/React.createElement("div", {
+      className: "flex gap-1 flex-wrap shrink-0"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditingBindings(a.uid),
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--parent)',
+        color: 'var(--parent)'
+      }
+    }, "\u6539\u7D81\u5B9A"), isSuper && /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (confirm(`確定升為 admin？升等後可改菜單、看 log、邀請家長`)) dispatch({
+          type: 'role_change',
+          uid: a.uid,
+          newRole: 'admin',
+          name: a.name
+        });
+      },
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--admin)',
+        color: 'var(--admin)'
+      }
+    }, "\u5347\u70BA admin"), isSuper && /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (confirm(`確定移除帳號 ${a.name}？此動作無法復原`)) dispatch({
+          type: 'remove_account',
+          uid: a.uid,
+          name: a.name
+        });
+      },
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--red)',
+        color: 'var(--red)'
+      }
+    }, "\u79FB\u9664"))));
+  }))), editingBindings && /*#__PURE__*/React.createElement(BindingModal, {
+    account: accounts.find(a => a.uid === editingBindings),
+    allAccounts: accounts,
+    dispatch: dispatch,
+    onClose: () => setEditingBindings(null)
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "mt-6 p-3 text-xs",
+    style: {
+      background: 'var(--admin-bg)',
+      border: '1px dashed var(--admin)',
+      color: 'var(--admin)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "serif-it font-bold mb-1"
+  }, "\u5982\u4F55\u52A0\u5165\u65B0\u5BB6\u9577\uFF0F\u65B0\u7BA1\u7406\u54E1"), /*#__PURE__*/React.createElement("ol", {
+    className: "list-decimal ml-5 space-y-1"
+  }, /*#__PURE__*/React.createElement("li", null, "\u628A\u7DB2\u5740\u544A\u8A34\u5C0D\u65B9\uFF0C\u8ACB\u4ED6\u7528 Google \u767B\u5165\u4E00\u6B21"), /*#__PURE__*/React.createElement("li", null, "\u767B\u5165\u5F8C\u5C0D\u65B9\u6703\u770B\u5230\u300C\u7B49\u5F85\u7BA1\u7406\u54E1\u6838\u51C6\u300D\u9801\u9762"), /*#__PURE__*/React.createElement("li", null, "\u60A8\u91CD\u65B0\u6574\u7406\u672C\u9801\uFF0C\u6703\u5728\u300C\u23F3 \u7B49\u5F85\u6838\u51C6\u300D\u5340\u584A\u770B\u5230\u4ED6"), /*#__PURE__*/React.createElement("li", null, "\u9EDE\u6309\u9215\u8A2D\u5B9A\u70BA\u300C\u5BB6\u9577\u4E26\u7D81\u5B9A\u968A\u54E1\u300D\u6216\u300C\u5347\u70BA admin\u300D\u5373\u53EF"))));
+}
+function BindingModal({
+  account: target,
+  allAccounts,
+  dispatch,
+  onClose
+}) {
+  const [swimmers, setSwimmers] = useState(target.swimmers || []);
+  const [busy, setBusy] = useState(false);
+
+  // Bound swimmers from OTHER accounts (so we can't steal)
+  const otherBound = new Set();
+  allAccounts.forEach(a => {
+    if (a.uid !== target.uid) (a.swimmers || []).forEach(s => otherBound.add(s));
+  });
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await dispatch({
+        type: 'unbind',
+        uid: target.uid,
+        name: target.name,
+        oldSwimmers: target.swimmers || [],
+        newSwimmers: swimmers
+      });
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.5)'
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-x-4 top-10 sm:top-20 sm:max-w-lg sm:mx-auto slide-up",
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b flex items-center justify-between",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--parent-bg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--parent)'
+    }
+  }, "EDIT BINDING"), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg"
+  }, "\u6539\u7D81\u5B9A \xB7 ", target.name)), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "btn-tactile px-3 py-1 text-sm",
+    style: {
+      border: '1.5px solid var(--ink)'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-64 overflow-y-auto scroll-y p-2",
+    style: {
+      border: '1.5px solid var(--line)',
+      background: 'var(--bg)'
+    }
+  }, ROSTER.map(m => {
+    const checked = swimmers.includes(m.id);
+    const otherHas = otherBound.has(m.id);
+    return /*#__PURE__*/React.createElement("label", {
+      key: m.id,
+      className: `flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer ${otherHas && !checked ? 'opacity-30' : ''}`,
+      style: {
+        background: checked ? 'var(--parent-bg)' : 'transparent',
+        border: `1px solid ${checked ? 'var(--parent)' : 'transparent'}`
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: checked,
+      disabled: otherHas && !checked,
+      onChange: e => {
+        if (e.target.checked) setSwimmers([...swimmers, m.id]);else setSwimmers(swimmers.filter(s => s !== m.id));
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "display-cn"
+    }, m.name), otherHas && !checked && /*#__PURE__*/React.createElement("span", {
+      className: "text-[9px]",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "\u5DF2\u7D81"));
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: submit,
+    disabled: busy,
+    className: "btn-tactile w-full py-2.5",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, busy ? '儲存中...' : '儲存綁定'))));
+}
+/* ════════════════════════════════════════════════════════════
+   APP — Firestore wiring, auth flow, dispatch
+   ════════════════════════════════════════════════════════════ */
+function App() {
+  // Auth state
+  const [authUser, setAuthUser] = useState(undefined); // undefined = loading, null = signed out
+  const [account, setAccount] = useState(undefined); // undefined = loading, null = no doc
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Data state (subscribed from Firestore)
+  const [shops, setShops] = useState({});
+  const [shopsLoaded, setShopsLoaded] = useState(false);
+  const [date, setDate] = useState(getToday());
+  const [selectedShopId, setSelectedShopId] = useState(null);
+  const [carts, setCarts] = useState({}); // {swimmerId: {itemKey: line}}
+  const [auditLog, setAuditLog] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+
+  // UI state
+  const [tab, setTab] = useState('order');
+  const [openSwimmer, setOpenSwimmer] = useState(null);
+  const [showNotif, setShowNotif] = useState(false);
+  const [seedBusy, setSeedBusy] = useState(false);
+  const [seedError, setSeedError] = useState('');
+
+  // Real-time clock for cutoff status (re-renders every minute)
+  const [, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+  const isCutoff = isCutoffNow();
+
+  /* ─── auth subscription ─── */
+  useEffect(() => {
+    return auth.onAuthStateChanged(u => {
+      setAuthUser(u || null);
+      if (!u) {
+        setAccount(null);
+        setShops({});
+        setShopsLoaded(false);
+        setSelectedShopId(null);
+        setCarts({});
+        setAuditLog([]);
+        setAccounts([]);
+        setNotifications([]);
+      }
+    });
+  }, []);
+
+  /* ─── account doc subscription (and auto-create on first login) ─── */
+  useEffect(() => {
+    if (!authUser) return;
+    const ref = db.collection('accounts').doc(authUser.uid);
+    return ref.onSnapshot(async snap => {
+      if (!snap.exists) {
+        // Auto-create as parent with empty swimmers
+        try {
+          await ref.set({
+            email: authUser.email,
+            name: authUser.displayName || authUser.email.split('@')[0],
+            role: 'parent',
+            swimmers: [],
+            createdAt: FieldValue.serverTimestamp()
+          });
+        } catch (e) {
+          console.error('auto-create account failed', e);
+          setAccount(null);
+        }
+        // onSnapshot will fire again with the new doc
+        return;
+      }
+      setAccount({
+        uid: authUser.uid,
+        ...snap.data()
+      });
+    }, err => {
+      console.error('account subscribe error', err);
+      setAccount(null);
+    });
+  }, [authUser]);
+
+  /* ─── shops subscription ─── */
+  useEffect(() => {
+    if (!account) return;
+    return db.collection('menus').onSnapshot(snap => {
+      const out = {};
+      snap.forEach(d => {
+        out[d.id] = {
+          id: d.id,
+          ...d.data()
+        };
+      });
+      setShops(out);
+      setShopsLoaded(true);
+    }, err => {
+      console.error('shops subscribe error', err);
+      setShopsLoaded(true);
+    });
+  }, [account]);
+
+  /* ─── dailyShop subscription for current date ─── */
+  useEffect(() => {
+    if (!account) return;
+    const ref = db.collection('dailyShop').doc(date);
+    return ref.onSnapshot(snap => {
+      if (snap.exists) setSelectedShopId(snap.data().shopId);else setSelectedShopId(null);
+    }, err => console.error('dailyShop error', err));
+  }, [account, date]);
+
+  /* ─── orders subscription for current date — collectionGroup query ─── */
+  useEffect(() => {
+    if (!account) return;
+    // We listen to each swimmer's items doc(s); use a collectionGroup query
+    const orderRef = db.collection('orders').doc(date).collection('swimmers');
+    return orderRef.onSnapshot(snap => {
+      // For each swimmer doc, we need the items subcollection.
+      // Strategy: parallel listen — but onSnapshot per swimmer would explode.
+      // Simpler: store carts as map; load items via individual queries on demand.
+      // For real-time aggregation, use a single collectionGroup on 'items'.
+      // (Set up below)
+    }, err => console.error('orders subscribe error', err));
+  }, [account, date]);
+
+  /* ─── items collectionGroup subscription (true real-time across all swimmers) ─── */
+  useEffect(() => {
+    if (!account) return;
+    return db.collectionGroup('items').onSnapshot(snap => {
+      const out = {};
+      snap.forEach(d => {
+        // Path: orders/{date}/swimmers/{swimmerId}/items/{itemKey}
+        const parts = d.ref.path.split('/');
+        if (parts[0] !== 'orders' || parts[1] !== date) return;
+        const swimmerId = parts[3];
+        if (!out[swimmerId]) out[swimmerId] = {};
+        const data = d.data();
+        out[swimmerId][d.id] = {
+          key: d.id,
+          ...data
+        };
+      });
+      setCarts(out);
+    }, err => console.error('items subscribe error', err));
+  }, [account, date]);
+
+  /* ─── audit log subscription (latest 200) ─── */
+  useEffect(() => {
+    if (!account || !isAdminRole(account)) {
+      setAuditLog([]);
+      return;
+    }
+    return db.collection('auditLog').orderBy('timestamp', 'desc').limit(200).onSnapshot(snap => {
+      const out = [];
+      snap.forEach(d => out.push({
+        id: d.id,
+        ...d.data()
+      }));
+      setAuditLog(out);
+    }, err => console.error('audit subscribe error', err));
+  }, [account]);
+
+  /* ─── accounts list (for admin/super-admin view) ─── */
+  useEffect(() => {
+    if (!account || !isAdminRole(account)) {
+      setAccounts([]);
+      return;
+    }
+    return db.collection('accounts').onSnapshot(snap => {
+      const out = [];
+      snap.forEach(d => out.push({
+        uid: d.id,
+        ...d.data()
+      }));
+      setAccounts(out);
+    }, err => console.error('accounts subscribe error', err));
+  }, [account]);
+
+  /* ─── notifications subscription (for parents) ─── */
+  useEffect(() => {
+    if (!account || account.role !== 'parent') {
+      setNotifications([]);
+      return;
+    }
+    const swimmers = account.swimmers || [];
+    if (swimmers.length === 0) {
+      setNotifications([]);
+      return;
+    }
+    // listen to each swimmer's notifications subcollection
+    const unsubs = swimmers.map(sid => db.collection('notifications').doc(sid).collection('items').orderBy('timestamp', 'desc').limit(50).onSnapshot(snap => {
+      setNotifications(prev => {
+        // remove old entries for this swimmer, add new
+        const filtered = prev.filter(n => n.swimmerId !== sid);
+        const fresh = [];
+        snap.forEach(d => fresh.push({
+          id: d.id,
+          ...d.data()
+        }));
+        return [...filtered, ...fresh];
+      });
+    }, err => console.error('notif subscribe error', err)));
+    return () => unsubs.forEach(u => u());
+  }, [account]);
+
+  /* ════════════════════════════════════════════════════════════
+     ACTIONS
+     ════════════════════════════════════════════════════════════ */
+  const handleLogin = async () => {
+    setLoginError('');
+    setLoginBusy(true);
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await auth.signInWithPopup(provider);
+    } catch (e) {
+      console.error(e);
+      let msg = e.message || '登入失敗';
+      if (e.code === 'auth/popup-closed-by-user') msg = '您取消了登入';else if (e.code === 'auth/popup-blocked') msg = '瀏覽器封鎖了彈出視窗，請允許後再試';else if (e.code === 'auth/unauthorized-domain') msg = '此網域尚未在 Firebase Auth 授權清單中（請聯絡 admin）';
+      setLoginError(msg);
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+  const handleLogout = async () => {
+    if (!confirm('確定登出？')) return;
+    await auth.signOut();
+  };
+
+  /* ─── audit logger helper ─── */
+  const writeAudit = async entry => {
+    return db.collection('auditLog').add({
+      timestamp: FieldValue.serverTimestamp(),
+      actorId: account.uid,
+      actorName: account.name || account.email,
+      actorRole: account.role,
+      override: !!entry.override,
+      ...entry
+    });
+  };
+
+  /* ─── notification helper (when admin overrides parent's order) ─── */
+  const writeNotification = async (swimmerId, message) => {
+    return db.collection('notifications').doc(swimmerId).collection('items').add({
+      timestamp: FieldValue.serverTimestamp(),
+      swimmerId,
+      message,
+      byActor: account.name || account.email,
+      read: false
+    });
+  };
+
+  /* ─── DISPATCH (writes everything to Firestore) ─── */
+  const dispatch = async action => {
+    if (!account) return;
+    if (action.type === 'add' || action.type === 'sub' || action.type === 'remove') {
+      const {
+        swimmerId,
+        shopId,
+        catId,
+        name,
+        variant,
+        price,
+        qty,
+        item
+      } = action;
+      const key = safeKey(itemKey(shopId, catId, name, variant));
+      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(key);
+      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
+      const override = isOverrideAction(account, swimmerId, isCutoff);
+      const variantLabel = variant === 'default' ? '' : ` (${variant})`;
+      if (action.type === 'remove') {
+        await ref.delete();
+        await writeAudit({
+          kind: 'remove',
+          swimmerId,
+          swimmerName,
+          detail: `移除「${name}${variantLabel}」`,
+          override
+        });
+        if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 移除了「${name}${variantLabel}」`);
+        return;
+      }
+      // add or sub
+      const snap = await ref.get();
+      const cur = snap.exists ? snap.data() : null;
+      const newQty = (cur?.qty || 0) + (action.type === 'add' ? 1 : -1);
+      if (newQty <= 0) {
+        await ref.delete();
+        await writeAudit({
+          kind: 'sub',
+          swimmerId,
+          swimmerName,
+          detail: `「${name}${variantLabel}」全數移除`,
+          override
+        });
+        if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 全數移除了「${name}${variantLabel}」`);
+        return;
+      }
+      await ref.set({
+        shop: shopId,
+        cat: catId,
+        name,
+        variant,
+        price: cur?.price ?? price,
+        qty: newQty,
+        note: cur?.note || '',
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: account.uid
+      }, {
+        merge: true
+      });
+      await writeAudit({
+        kind: action.type,
+        swimmerId,
+        swimmerName,
+        detail: `「${name}${variantLabel}」${action.type === 'add' ? '+1' : '-1'} → 共 ${newQty} 份`,
+        override
+      });
+      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} ${action.type === 'add' ? '加入' : '減少'}了「${name}${variantLabel}」（剩 ${newQty} 份）`);
+      return;
+    }
+    if (action.type === 'note') {
+      const {
+        swimmerId,
+        key,
+        note
+      } = action;
+      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(safeKey(key));
+      const snap = await ref.get();
+      if (!snap.exists) return;
+      const cur = snap.data();
+      if ((cur.note || '') === (note || '').trim()) return;
+      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
+      const override = isOverrideAction(account, swimmerId, isCutoff);
+      await ref.update({
+        note: (note || '').trim(),
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: account.uid
+      });
+      await writeAudit({
+        kind: 'note',
+        swimmerId,
+        swimmerName,
+        detail: `「${cur.name}」備註：「${note?.trim() || '(清空)'}」`,
+        override
+      });
+      if (override && note?.trim()) await writeNotification(swimmerId, `${account.name || '管理員'} 改了「${cur.name}」的備註：${note.trim()}`);
+      return;
+    }
+    if (action.type === 'shop_change') {
+      const {
+        newShopId
+      } = action;
+      const oldShopId = selectedShopId;
+      if (oldShopId === newShopId) return;
+      const oldShopName = shops[oldShopId]?.name || '(無)';
+      const newShopName = shops[newShopId]?.name || newShopId;
+      // Clear all orders for this date
+      const swimmersSnap = await db.collection('orders').doc(date).collection('swimmers').get();
+      const batch = db.batch();
+      let cleared = 0;
+      for (const swimmerDoc of swimmersSnap.docs) {
+        const itemsSnap = await swimmerDoc.ref.collection('items').get();
+        itemsSnap.forEach(d => {
+          batch.delete(d.ref);
+          cleared++;
+        });
+      }
+      batch.set(db.collection('dailyShop').doc(date), {
+        shopId: newShopId,
+        setBy: account.uid,
+        setAt: FieldValue.serverTimestamp()
+      });
+      await batch.commit();
+      await writeAudit({
+        kind: 'shop_change',
+        detail: `選店：${oldShopName} → ${newShopName}${cleared > 0 ? `（清空了 ${cleared} 筆訂單）` : ''}`
+      });
+      return;
+    }
+    if (action.type === 'menu_edit') {
+      const {
+        shopId,
+        items,
+        detail
+      } = action;
+      await db.collection('menus').doc(shopId).update({
+        items
+      });
+      await writeAudit({
+        kind: 'menu_edit',
+        detail: `${shops[shopId].name} · ${detail}`
+      });
+      return;
+    }
+    if (action.type === 'role_change') {
+      const {
+        uid,
+        newRole,
+        name
+      } = action;
+      await db.collection('accounts').doc(uid).update({
+        role: newRole
+      });
+      await writeAudit({
+        kind: 'role_change',
+        detail: `${name || uid} 角色變更為 ${newRole}`
+      });
+      return;
+    }
+    if (action.type === 'remove_account') {
+      const {
+        uid,
+        name
+      } = action;
+      await db.collection('accounts').doc(uid).delete();
+      await writeAudit({
+        kind: 'role_change',
+        detail: `移除帳號 ${name || uid}`
+      });
+      return;
+    }
+    if (action.type === 'unbind') {
+      const {
+        uid,
+        name,
+        oldSwimmers,
+        newSwimmers
+      } = action;
+      await db.collection('accounts').doc(uid).update({
+        swimmers: newSwimmers
+      });
+      const added = newSwimmers.filter(s => !oldSwimmers.includes(s)).map(s => ROSTER_BY_ID[s]?.name).filter(Boolean);
+      const removed = oldSwimmers.filter(s => !newSwimmers.includes(s)).map(s => ROSTER_BY_ID[s]?.name).filter(Boolean);
+      const parts = [];
+      if (added.length) parts.push(`+${added.join('、')}`);
+      if (removed.length) parts.push(`-${removed.join('、')}`);
+      await writeAudit({
+        kind: 'unbind',
+        detail: `${name} 綁定變更：${parts.join('，') || '無變化'}`
+      });
+      return;
+    }
+    if (action.type === 'mark_notif_read') {
+      const {
+        swimmerIds
+      } = action;
+      const batch = db.batch();
+      notifications.forEach(n => {
+        if (n.read) return;
+        if (swimmerIds && !swimmerIds.includes(n.swimmerId)) return;
+        const ref = db.collection('notifications').doc(n.swimmerId).collection('items').doc(n.id);
+        batch.update(ref, {
+          read: true
+        });
+      });
+      await batch.commit();
+      return;
+    }
+  };
+
+  /* ─── seed initial data (super-admin only, when DB is empty) ─── */
+  const seedDatabase = async () => {
+    setSeedBusy(true);
+    setSeedError('');
+    try {
+      // seed roster
+      const rosterBatch = db.batch();
+      ROSTER.forEach(m => {
+        rosterBatch.set(db.collection('roster').doc(m.id), m);
+      });
+      await rosterBatch.commit();
+      // seed menus (3 shops, can't all fit in one batch easily — do separately)
+      for (const id of SHOP_IDS) {
+        await db.collection('menus').doc(id).set(SHOP_SEEDS[id]);
+      }
+      await writeAudit({
+        kind: 'menu_edit',
+        detail: '🌱 初始化資料庫：載入 29 位隊員 + 3 家店菜單'
+      });
+    } catch (e) {
+      console.error(e);
+      setSeedError(e.message || '載入失敗');
+    } finally {
+      setSeedBusy(false);
+    }
+  };
+
+  /* ════════════════════════════════════════════════════════════
+     RENDER FLOW
+     ════════════════════════════════════════════════════════════ */
+
+  // 1. Auth still loading
+  if (authUser === undefined) {
+    return /*#__PURE__*/React.createElement(LoadingPage, {
+      message: "\u6AA2\u67E5\u767B\u5165\u72C0\u614B..."
+    });
+  }
+  // 2. Not signed in
+  if (authUser === null) {
+    return /*#__PURE__*/React.createElement(LoginPage, {
+      onLogin: handleLogin,
+      busy: loginBusy,
+      error: loginError
+    });
+  }
+  // 3. Signed in but account doc still loading
+  if (account === undefined) {
+    return /*#__PURE__*/React.createElement(LoadingPage, {
+      message: "\u8F09\u5165\u5E33\u865F..."
+    });
+  }
+  // 4. Account doc creation failed
+  if (account === null) {
+    return /*#__PURE__*/React.createElement(FullPageWrap, null, /*#__PURE__*/React.createElement(BrandHeader, null), /*#__PURE__*/React.createElement("div", {
+      className: "p-6 text-center",
+      style: {
+        background: 'var(--paper)',
+        border: '2px solid var(--red)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-lg mb-2",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u7121\u6CD5\u8F09\u5165\u5E33\u865F"), /*#__PURE__*/React.createElement("div", {
+      className: "text-xs mb-3",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u8ACB\u91CD\u65B0\u6574\u7406\u9801\u9762\uFF0C\u82E5\u6301\u7E8C\u767C\u751F\u8ACB\u806F\u7D61\u7BA1\u7406\u54E1"), /*#__PURE__*/React.createElement("button", {
+      onClick: handleLogout,
+      className: "btn-tactile px-4 py-2 text-sm",
+      style: {
+        background: 'var(--ink)',
+        color: 'var(--paper)'
+      }
+    }, "\u767B\u51FA")));
+  }
+  // 5. Parent with no swimmers bound — show pending page
+  if (account.role === 'parent' && (account.swimmers || []).length === 0) {
+    return /*#__PURE__*/React.createElement(PendingPage, {
+      user: authUser,
+      onLogout: handleLogout
+    });
+  }
+  // 6. Super-admin and DB is empty → show seed page
+  if (isSuperAdminRole(account) && shopsLoaded && Object.keys(shops).length === 0) {
+    return /*#__PURE__*/React.createElement(SeedDataPage, {
+      onSeed: seedDatabase,
+      busy: seedBusy,
+      error: seedError
+    });
+  }
+  // 7. Shops not loaded yet
+  if (!shopsLoaded) {
+    return /*#__PURE__*/React.createElement(LoadingPage, {
+      message: "\u8F09\u5165\u83DC\u55AE..."
+    });
+  }
+
+  /* ─── MAIN APP ─── */
+  const shop = selectedShopId ? shops[selectedShopId] : null;
+  const orderCount = Object.values(carts).reduce((sum, c) => sum + Object.keys(c).length, 0);
+  const unreadNotif = notifications.filter(n => !n.read).length;
+  const tabBadges = {
+    log: auditLog.length > 0 ? null : null // suppress badge for log
+  };
+
+  // when shop changes, validate carts (handled by Firestore real-time)
+  // tab availability check
+  const visibleTabs = TAB_DEFS.filter(t => t.roles.includes(account.role));
+  const currentTabValid = visibleTabs.some(t => t.id === tab);
+  if (!currentTabValid) {
+    setTimeout(() => setTab(visibleTabs[0]?.id || 'order'), 0);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen"
+  }, /*#__PURE__*/React.createElement(Header, {
+    date: date,
+    setDate: setDate,
+    shop: shop,
+    account: account,
+    isCutoff: isCutoff,
+    notifCount: unreadNotif,
+    onNotifClick: () => setShowNotif(true),
+    onLogout: handleLogout
+  }), /*#__PURE__*/React.createElement(Tabs, {
+    tab: tab,
+    setTab: setTab,
+    role: account.role,
+    badges: tabBadges
+  }), /*#__PURE__*/React.createElement("main", {
+    className: "max-w-6xl mx-auto px-4 sm:px-8 pb-16"
+  }, tab === 'shop' && /*#__PURE__*/React.createElement(ShopView, {
+    shops: shops,
+    selectedShop: selectedShopId,
+    setSelectedShop: id => {
+      if (orderCount > 0 && id !== selectedShopId) {
+        if (!confirm(`換店會清空目前所有 ${orderCount} 筆訂單，確定要換成「${shops[id]?.name}」嗎？`)) return;
+      }
+      dispatch({
+        type: 'shop_change',
+        newShopId: id
+      });
+    },
+    orderCount: orderCount,
+    account: account
+  }), tab === 'order' && /*#__PURE__*/React.createElement(OrderView, {
+    shop: shop,
+    carts: carts,
+    account: account,
+    isCutoff: isCutoff,
+    dispatch: dispatch,
+    openSwimmer: openSwimmer,
+    setOpenSwimmer: setOpenSwimmer
+  }), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryView, {
+    shop: shop,
+    carts: carts
+  }), tab === 'menu' && /*#__PURE__*/React.createElement(MenuAdminView, {
+    shops: shops,
+    account: account,
+    dispatch: dispatch
+  }), tab === 'log' && /*#__PURE__*/React.createElement(AuditLogView, {
+    auditLog: auditLog,
+    account: account
+  }), tab === 'accounts' && /*#__PURE__*/React.createElement(AccountsView, {
+    accounts: accounts,
+    account: account,
+    dispatch: dispatch
+  })), showNotif && /*#__PURE__*/React.createElement(NotificationSheet, {
+    notifications: notifications,
+    account: account,
+    onClose: () => setShowNotif(false),
+    onMarkRead: () => dispatch({
+      type: 'mark_notif_read'
+    })
+  }));
+}
+const root = ReactDOM.createRoot(document.getElementById('app'));
+root.render(/*#__PURE__*/React.createElement(App, null));
+} catch(err) {
+  var d = document.getElementById('error-display');
+  if (d) {
+    d.style.display = 'block';
+    d.textContent = '⚠ ERROR: ' + (err.message || err) + '\n\n' + (err.stack || '');
+  }
+  throw err;
+}
+</script>
+</body>
+</html>
