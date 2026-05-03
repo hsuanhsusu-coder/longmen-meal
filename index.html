@@ -4588,6 +4588,35 @@ function OrderView({
     if (hasMyKids && subtab !== 'mine' && subtab !== 'all') setSubtab('mine');
     if (!hasMyKids && subtab === 'mine') setSubtab('all');
   }, [hasMyKids]);
+
+  // ALL hooks must run unconditionally — move them BEFORE any early returns
+  const filtered = useMemo(() => {
+    if (filter === 'all') return ROSTER;
+    return ROSTER.filter(m => m.grade === parseInt(filter));
+  }, [filter]);
+  const memberStats = useMemo(() => {
+    const stats = {};
+    ROSTER.forEach(m => {
+      const ord = orders[m.id];
+      let n = 0,
+        sub = 0,
+        hasNote = false;
+      if (ord && ord.items) {
+        Object.values(ord.items).forEach(line => {
+          n += line.qty || 0;
+          sub += (line.qty || 0) * (line.price || 0);
+          if (line.note?.trim()) hasNote = true;
+        });
+      }
+      stats[m.id] = {
+        itemCount: n,
+        subtotal: sub,
+        hasNote,
+        submitted: !!ord
+      };
+    });
+    return stats;
+  }, [orders]);
   if (!shop) {
     return /*#__PURE__*/React.createElement("section", {
       className: "pt-10 text-center"
@@ -4627,33 +4656,6 @@ function OrderView({
       dispatch: dispatch
     }));
   }
-  const filtered = useMemo(() => {
-    if (filter === 'all') return ROSTER;
-    return ROSTER.filter(m => m.grade === parseInt(filter));
-  }, [filter]);
-  const memberStats = useMemo(() => {
-    const stats = {};
-    ROSTER.forEach(m => {
-      const ord = orders[m.id];
-      let n = 0,
-        sub = 0,
-        hasNote = false;
-      if (ord && ord.items) {
-        Object.values(ord.items).forEach(line => {
-          n += line.qty || 0;
-          sub += (line.qty || 0) * (line.price || 0);
-          if (line.note?.trim()) hasNote = true;
-        });
-      }
-      stats[m.id] = {
-        itemCount: n,
-        subtotal: sub,
-        hasNote,
-        submitted: !!ord
-      };
-    });
-    return stats;
-  }, [orders]);
   const isAdmin = isAdminRole(account);
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
@@ -6143,6 +6145,57 @@ function ChildOrderPanel({
 /* ════════════════════════════════════════════════════════════
    SUMMARY VIEW — collected orders for the shop (for admin to send)
    ════════════════════════════════════════════════════════════ */
+/* Error boundary — catches errors inside SummaryView so we can SEE them
+   instead of a useless cross-origin "Script error" */
+class SummaryErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      error: null,
+      info: null
+    };
+  }
+  static getDerivedStateFromError(error) {
+    return {
+      error
+    };
+  }
+  componentDidCatch(error, info) {
+    this.setState({
+      error,
+      info
+    });
+    console.error('SummaryView crashed:', error, info);
+  }
+  render() {
+    if (this.state.error) {
+      const e = this.state.error;
+      return /*#__PURE__*/React.createElement("section", {
+        className: "pt-5 sm:pt-7"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "p-4",
+        style: {
+          background: 'var(--override-bg)',
+          border: '2px solid var(--override)',
+          color: 'var(--override)'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "display-cn text-base mb-2"
+      }, "\u26A0 SUMMARY \u8F09\u5165\u5931\u6557"), /*#__PURE__*/React.createElement("div", {
+        className: "text-xs num-mono whitespace-pre-wrap",
+        style: {
+          color: 'var(--ink)'
+        }
+      }, e.message || String(e), '\n', (e.stack || '').split('\n').slice(0, 5).join('\n')), /*#__PURE__*/React.createElement("div", {
+        className: "mt-3 text-xs serif-it",
+        style: {
+          color: 'var(--ink-2)'
+        }
+      }, "\u8ACB\u628A\u9019\u6BB5\u932F\u8AA4\u8A0A\u606F\u622A\u5716\u7D66\u7BA1\u7406\u54E1")));
+    }
+    return this.props.children;
+  }
+}
 function SummaryView({
   shop,
   orders
@@ -8547,10 +8600,10 @@ function App() {
       style: {
         color: 'var(--mute)'
       }
-    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B")) : tab === 'summary' ? /*#__PURE__*/React.createElement(SummaryView, {
+    }, "\u660E\u65E5\u7684\u65E9\u9910\u5E97\u5C1A\u672A\u6C7A\u5B9A\uFF0C\u53EF\u7A0D\u5F8C\u518D\u958B")) : tab === 'summary' ? /*#__PURE__*/React.createElement(SummaryErrorBoundary, null, /*#__PURE__*/React.createElement(SummaryView, {
       shop: shop,
       orders: orders
-    }) : /*#__PURE__*/React.createElement(ParentOrderFlow, {
+    })) : /*#__PURE__*/React.createElement(ParentOrderFlow, {
       shop: shop,
       orders: orders,
       lastOrders: lastOrders,
@@ -8604,10 +8657,10 @@ function App() {
     account: account,
     isCutoff: isCutoff,
     dispatch: dispatch
-  }), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryView, {
+  }), tab === 'summary' && /*#__PURE__*/React.createElement(SummaryErrorBoundary, null, /*#__PURE__*/React.createElement(SummaryView, {
     shop: shop,
     orders: orders
-  }), tab === 'menu' && /*#__PURE__*/React.createElement(MenuAdminView, {
+  })), tab === 'menu' && /*#__PURE__*/React.createElement(MenuAdminView, {
     shops: shops,
     account: account,
     dispatch: dispatch
