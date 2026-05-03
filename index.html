@@ -100,7 +100,7 @@
     transition:all 120ms ease;position:relative;
   }
   .price-btn:hover:not(:disabled){background:var(--ink);color:var(--paper)}
-  .price-btn:active:not(:disabled){transform:scale(0.97)}
+  .price-btn:active:not(:disabled){transform:scale(0.92);transition:transform 60ms ease}
   .price-btn:disabled{opacity:0.4;cursor:not-allowed}
   .price-btn .v-label{font-size:11px;color:var(--ink-2);font-weight:500}
   .price-btn:hover:not(:disabled) .v-label{color:var(--paper)}
@@ -5187,7 +5187,7 @@ function ItemRow({
     className: "flex flex-wrap gap-1.5 justify-end shrink-0"
   }, variants.map(v => {
     const price = item.prices[v];
-    const key = itemKey(shop.id, item.cat, item.name, v);
+    const key = safeKey(itemKey(shop.id, item.cat, item.name, v));
     const qty = cart[key]?.qty || 0;
     return /*#__PURE__*/React.createElement("div", {
       key: v,
@@ -5934,7 +5934,7 @@ function ParentOrderView({
     return out;
   }, [shop]);
   return /*#__PURE__*/React.createElement("section", {
-    className: "pt-4 sm:pt-7 pb-20"
+    className: "pt-4 sm:pt-7 pb-24"
   }, swimmers.length > 1 && /*#__PURE__*/React.createElement("div", {
     className: "mb-4 flex gap-2"
   }, swimmers.map(sid => {
@@ -6084,38 +6084,63 @@ function ParentOrderView({
     }
   }, "note \xB7"), " ", shop.note), /*#__PURE__*/React.createElement("div", {
     className: "hl-strong mb-2"
-  }), (shop.categories || []).map(cat => {
+  }), (shop.categories || []).map((cat, idx) => {
     const items = itemsByCat[cat.id] || [];
     if (items.length === 0) return null;
     const groupedKeys = [...new Set(items.filter(it => it.group).map(it => it.group))];
-    return /*#__PURE__*/React.createElement("div", {
+    // count how many of this cat's items are already in cart (helps user navigate)
+    const itemsOrderedFromCat = items.reduce((n, it) => {
+      Object.keys(it.prices).forEach(v => {
+        const k = safeKey(itemKey(shop.id, cat.id, it.name, v));
+        n += cart[k]?.qty || 0;
+      });
+      return n;
+    }, 0);
+    return /*#__PURE__*/React.createElement("details", {
       key: cat.id,
-      className: "mb-5"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "cat-sticky"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline justify-between border-b pb-1.5",
+      className: "mb-2 group",
+      open: idx === 0 || itemsOrderedFromCat > 0
+    }, /*#__PURE__*/React.createElement("summary", {
+      className: "cursor-pointer list-none flex items-center justify-between py-2 px-1 sm:px-2 select-none",
       style: {
-        borderColor: shop.themeColor
+        borderBottom: `1.5px solid ${shop.themeColor}`,
+        background: 'var(--bg)'
       }
     }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline gap-2"
-    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-baseline gap-2 flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-xs transition-transform",
+      style: {
+        color: shop.themeColor
+      }
+    }, "\u25B8"), /*#__PURE__*/React.createElement("span", {
       className: "display-cn text-base sm:text-lg",
       style: {
         color: shop.themeColor
       }
-    }, cat.name), cat.variantLabel && /*#__PURE__*/React.createElement("div", {
-      className: "text-[10px]",
+    }, cat.name), cat.variantLabel && /*#__PURE__*/React.createElement("span", {
+      className: "text-[10px] truncate",
       style: {
         color: 'var(--mute)'
       }
     }, cat.variantLabel)), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-1.5 shrink-0"
+    }, itemsOrderedFromCat > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "role-chip",
+      style: {
+        background: shop.themeColor,
+        color: 'var(--paper)',
+        border: `1px solid ${shop.themeColor}`,
+        fontSize: 10
+      }
+    }, "\u5DF2\u9078 \xD7", itemsOrderedFromCat), /*#__PURE__*/React.createElement("span", {
       className: "num text-xs",
       style: {
         color: 'var(--mute)'
       }
-    }, items.length))), groupedKeys.length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, groupedKeys.map(g => /*#__PURE__*/React.createElement("div", {
+    }, items.length))), /*#__PURE__*/React.createElement("div", {
+      className: "px-1 sm:px-2 pb-2"
+    }, groupedKeys.length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, groupedKeys.map(g => /*#__PURE__*/React.createElement("div", {
       key: g
     }, /*#__PURE__*/React.createElement("div", {
       className: "text-xs serif-it mt-3 mb-1 px-1",
@@ -6182,13 +6207,49 @@ function ParentOrderView({
         item: it,
         variant: v
       })
-    })));
+    }))));
   }), /*#__PURE__*/React.createElement("div", {
     className: "py-6 text-center text-xs serif-it",
     style: {
       color: 'var(--mute)'
     }
-  }, "\xB7 end of menu \xB7")));
+  }, "\xB7 end of menu \xB7")), /*#__PURE__*/React.createElement("div", {
+    className: "fixed bottom-0 left-0 right-0 z-30 px-4 py-2 flex items-center justify-between",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)',
+      borderTop: `3px solid ${shop.themeColor}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-base"
+  }, canEdit ? '☁️' : '🔒'), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, canEdit ? '已自動儲存' : '已截單'), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-xs"
+  }, member.name))), /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, totalQty > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] num",
+    style: {
+      color: 'rgba(250,246,236,0.7)'
+    }
+  }, "\u5171 ", totalQty, " \u9805"), /*#__PURE__*/React.createElement("div", {
+    className: "num text-2xl",
+    style: {
+      color: shop.themeColor,
+      lineHeight: 1
+    }
+  }, "$", subtotal)) : /*#__PURE__*/React.createElement("div", {
+    className: "text-xs",
+    style: {
+      color: 'rgba(250,246,236,0.5)'
+    }
+  }, "\u5C1A\u672A\u9EDE\u9910"))));
 }
 /* ════════════════════════════════════════════════════════════
    MENU ADMIN VIEW (admin only)
