@@ -227,7 +227,9 @@ const FieldValue = firebase.firestore.FieldValue;
 /* ════════════════════════════════════════════════════════════
    ROSTER (33 swimmers; 4 still pending - admin can edit later)
    ════════════════════════════════════════════════════════════ */
-const ROSTER = [{
+/* ROSTER: starts as hardcoded seed (used by SeedDataPage for first-run init);
+   after Firestore is connected, App subscribes and rewrites this array in-place. */
+let ROSTER = [{
   id: 'r01',
   name: '金采儀',
   cls: 904,
@@ -402,7 +404,24 @@ const ROSTER = [{
   seat: 12,
   grade: 7
 }];
-const ROSTER_BY_ID = Object.fromEntries(ROSTER.map(m => [m.id, m]));
+let ROSTER_BY_ID = Object.fromEntries(ROSTER.map(m => [m.id, m]));
+function setGlobalRoster(newList) {
+  ROSTER.length = 0;
+  newList.forEach(m => ROSTER.push(m));
+  Object.keys(ROSTER_BY_ID).forEach(k => delete ROSTER_BY_ID[k]);
+  newList.forEach(m => {
+    ROSTER_BY_ID[m.id] = m;
+  });
+}
+function nextRosterId() {
+  let max = 0;
+  ROSTER.forEach(m => {
+    const mt = (m.id || '').match(/^r(\d+)$/);
+    if (mt) max = Math.max(max, parseInt(mt[1]));
+  });
+  const n = max + 1;
+  return 'r' + (n < 100 ? String(n).padStart(2, '0') : String(n));
+}
 const GRADE_INFO = {
   7: {
     label: '七',
@@ -4280,14 +4299,19 @@ const TAB_DEFS = [{
   cn: '菜單管理',
   roles: ['admin', 'super-admin']
 }, {
-  id: 'log',
-  en: 'LOG',
-  cn: '紀錄',
+  id: 'roster',
+  en: 'ROSTER',
+  cn: '隊員',
   roles: ['admin', 'super-admin']
 }, {
   id: 'accounts',
   en: 'PEOPLE',
   cn: '帳號',
+  roles: ['admin', 'super-admin']
+}, {
+  id: 'log',
+  en: 'LOG',
+  cn: '紀錄',
   roles: ['admin', 'super-admin']
 }];
 function Tabs({
@@ -6645,6 +6669,426 @@ function BindingModal({
     }
   }, busy ? '儲存中...' : '儲存綁定'))));
 }
+
+/* ════════════════════════════════════════════════════════════
+   ROSTER ADMIN VIEW (admin/super-admin only)
+   ════════════════════════════════════════════════════════════ */
+function RosterAdminView({
+  account,
+  accounts,
+  dispatch
+}) {
+  const [filter, setFilter] = useState('all');
+  const [editing, setEditing] = useState(null); // member object or {new:true}
+  const [busy, setBusy] = useState(false);
+  if (!isAdminRole(account)) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "pt-10 text-center"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-2xl mb-3",
+      style: {
+        color: 'var(--red)'
+      }
+    }, "\u6B0A\u9650\u4E0D\u8DB3"));
+  }
+  const list = filter === 'all' ? ROSTER : ROSTER.filter(m => m.grade === parseInt(filter));
+  // sort: grade desc → cls asc → seat asc
+  const sorted = [...list].sort((a, b) => {
+    if (a.grade !== b.grade) return b.grade - a.grade;
+    if (a.cls !== b.cls) return a.cls - b.cls;
+    return (a.seat || 0) - (b.seat || 0);
+  });
+
+  // Find which accounts are bound to which swimmers
+  const boundBy = {};
+  accounts.forEach(a => {
+    (a.swimmers || []).forEach(sid => {
+      if (!boundBy[sid]) boundBy[sid] = [];
+      boundBy[sid].push(a.name || a.email);
+    });
+  });
+  return /*#__PURE__*/React.createElement("section", {
+    className: "pt-5 sm:pt-7"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-1",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, "ADMIN \xB7 ROSTER"), /*#__PURE__*/React.createElement("h2", {
+    className: "display-cn text-2xl mb-1"
+  }, "\u968A\u54E1\u7BA1\u7406"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm serif-it",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "add \xB7 edit \xB7 remove team members")), /*#__PURE__*/React.createElement("div", {
+    className: "hl-strong mb-4"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-wrap items-center gap-2 mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, [{
+    v: 'all',
+    l: '全部',
+    c: 'var(--ink)'
+  }, {
+    v: '7',
+    l: '七年級',
+    c: GRADE_INFO[7].color
+  }, {
+    v: '8',
+    l: '八年級',
+    c: GRADE_INFO[8].color
+  }, {
+    v: '9',
+    l: '九年級',
+    c: GRADE_INFO[9].color
+  }].map(x => {
+    const on = filter === x.v;
+    return /*#__PURE__*/React.createElement("button", {
+      key: x.v,
+      onClick: () => setFilter(x.v),
+      className: "btn-tactile px-2.5 py-1 text-xs",
+      style: {
+        background: on ? x.c : 'transparent',
+        color: on ? '#FAF6EC' : x.c,
+        border: `1.5px solid ${x.c}`
+      }
+    }, x.l);
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditing({
+      new: true,
+      name: '',
+      cls: '',
+      seat: '',
+      grade: 7
+    }),
+    className: "btn-tactile px-3 py-1.5 text-sm",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, "+ \u65B0\u589E\u968A\u54E1"), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs num",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5171 ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--ink)'
+    }
+  }, ROSTER.length), " \u4F4D \xB7 \u986F\u793A ", sorted.length)), sorted.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "py-10 text-center",
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px dashed var(--line-strong)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-sm",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u7121\u968A\u54E1")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--paper)',
+      border: '1.5px solid var(--line-strong)'
+    }
+  }, sorted.map(m => {
+    const grade = GRADE_INFO[m.grade] || {
+      label: '?',
+      color: 'var(--mute)'
+    };
+    const bindings = boundBy[m.id] || [];
+    return /*#__PURE__*/React.createElement("div", {
+      key: m.id,
+      className: "px-3 py-2 border-b flex items-center gap-3",
+      style: {
+        borderColor: 'var(--line)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-1.5 num text-xs shrink-0 w-20",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: grade.color,
+        fontWeight: 900
+      }
+    }, grade.label), /*#__PURE__*/React.createElement("span", null, "\xB7"), /*#__PURE__*/React.createElement("span", null, m.cls), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mute)'
+      }
+    }, "/"), /*#__PURE__*/React.createElement("span", null, m.seat)), /*#__PURE__*/React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-base"
+    }, m.name), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] num-mono",
+      style: {
+        color: 'var(--mute)'
+      }
+    }, m.id, bindings.length > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "ml-2",
+      style: {
+        color: 'var(--parent)'
+      }
+    }, "\xB7 \u5BB6\u9577\uFF1A", bindings.join('、')))), /*#__PURE__*/React.createElement("div", {
+      className: "flex gap-1 shrink-0"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditing({
+        ...m
+      }),
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--admin)',
+        color: 'var(--admin)'
+      }
+    }, "\u7DE8\u8F2F"), /*#__PURE__*/React.createElement("button", {
+      onClick: async () => {
+        const cascadeNote = bindings.length > 0 ? `\n\n⚠ 注意：${m.name} 目前綁在「${bindings.join('、')}」帳號下。\n移除後家長將不再看到此隊員，但歷史訂單會保留。` : '';
+        if (!confirm(`確定移除 ${m.name}？${cascadeNote}`)) return;
+        setBusy(true);
+        try {
+          await dispatch({
+            type: 'roster_remove',
+            id: m.id,
+            name: m.name
+          });
+        } finally {
+          setBusy(false);
+        }
+      },
+      disabled: busy,
+      className: "btn-tactile text-[10px] px-2 py-1",
+      style: {
+        border: '1px solid var(--red)',
+        color: 'var(--red)'
+      }
+    }, "\u79FB\u9664")));
+  })), editing && /*#__PURE__*/React.createElement(RosterEditModal, {
+    member: editing,
+    dispatch: dispatch,
+    onClose: () => setEditing(null)
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "mt-6 p-3 text-xs",
+    style: {
+      background: 'var(--admin-bg)',
+      border: '1px dashed var(--admin)',
+      color: 'var(--admin)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "serif-it font-bold mb-1"
+  }, "\u95DC\u65BC\u968A\u54E1\u7BA1\u7406"), /*#__PURE__*/React.createElement("ul", {
+    className: "list-disc ml-5 space-y-1"
+  }, /*#__PURE__*/React.createElement("li", null, "\u79FB\u9664\u968A\u54E1\u6642\uFF0C\u6703\u81EA\u52D5\u628A\u4ED6\u5F9E\u6240\u6709\u5BB6\u9577\u5E33\u865F\u7684\u7D81\u5B9A\u4E2D\u79FB\u9664"), /*#__PURE__*/React.createElement("li", null, "\u904E\u53BB\u7684\u8A02\u55AE\u6B77\u53F2\u4E0D\u6703\u88AB\u522A\uFF08\u8CC7\u6599\u4FDD\u7559\uFF09"), /*#__PURE__*/React.createElement("li", null, "\u6240\u6709\u65B0\u589E\uFF0F\u7DE8\u8F2F\uFF0F\u79FB\u9664\u52D5\u4F5C\u90FD\u6703\u8A18\u9304\u5728\u300CLOG \u7D00\u9304\u300D\u5206\u9801"))));
+}
+function RosterEditModal({
+  member,
+  dispatch,
+  onClose
+}) {
+  const isNew = !!member.new;
+  const [name, setName] = useState(member.name || '');
+  const [cls, setCls] = useState(member.cls != null ? String(member.cls) : '');
+  const [seat, setSeat] = useState(member.seat != null ? String(member.seat) : '');
+  const [grade, setGrade] = useState(member.grade || 7);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  // auto-derive grade from cls (Taiwan junior high convention: 7XX/8XX/9XX)
+  useEffect(() => {
+    const c = parseInt(cls);
+    if (!isNaN(c)) {
+      const firstDigit = parseInt(String(c)[0]);
+      if (firstDigit >= 7 && firstDigit <= 9) setGrade(firstDigit);
+    }
+  }, [cls]);
+  const submit = async () => {
+    setError('');
+    if (!name.trim()) {
+      setError('請輸入姓名');
+      return;
+    }
+    const clsNum = parseInt(cls);
+    const seatNum = parseInt(seat);
+    if (isNaN(clsNum)) {
+      setError('班級請填數字（例：812）');
+      return;
+    }
+    if (isNaN(seatNum) || seatNum < 0) {
+      setError('座號請填正整數');
+      return;
+    }
+    if (![7, 8, 9].includes(parseInt(grade))) {
+      setError('年級必須是 7／8／9');
+      return;
+    }
+    setBusy(true);
+    try {
+      if (isNew) {
+        await dispatch({
+          type: 'roster_add',
+          data: {
+            name: name.trim(),
+            cls: clsNum,
+            seat: seatNum,
+            grade: parseInt(grade)
+          }
+        });
+      } else {
+        await dispatch({
+          type: 'roster_edit',
+          id: member.id,
+          oldData: {
+            name: member.name,
+            cls: member.cls,
+            seat: member.seat,
+            grade: member.grade
+          },
+          newData: {
+            name: name.trim(),
+            cls: clsNum,
+            seat: seatNum,
+            grade: parseInt(grade)
+          }
+        });
+      }
+      onClose();
+    } catch (e) {
+      setError(e.message || '儲存失敗');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 fade-in",
+    style: {
+      background: 'rgba(0,0,0,0.5)'
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-x-4 top-10 sm:top-20 sm:max-w-md sm:mx-auto slide-up",
+    style: {
+      background: 'var(--paper)',
+      border: '2px solid var(--ink)'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b flex items-center justify-between",
+    style: {
+      borderColor: 'var(--line-strong)',
+      background: 'var(--admin-bg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px]",
+    style: {
+      color: 'var(--admin)'
+    }
+  }, isNew ? 'NEW MEMBER' : 'EDIT MEMBER'), /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg"
+  }, isNew ? '新增隊員' : `編輯 · ${member.name}`)), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "btn-tactile px-3 py-1 text-sm",
+    style: {
+      border: '1.5px solid var(--ink)'
+    }
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 space-y-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs mb-1",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u59D3\u540D"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: name,
+    onChange: e => setName(e.target.value),
+    placeholder: "\u4F8B\u5982\uFF1A\u9673\u5C0F\u660E",
+    className: "w-full px-3 py-2 display-cn text-base",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--bg)'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-3 gap-2"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs mb-1",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u73ED\u7D1A"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: cls,
+    onChange: e => setCls(e.target.value),
+    placeholder: "812",
+    className: "w-full px-3 py-2 num-mono text-base",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--bg)'
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs mb-1",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5EA7\u865F"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: seat,
+    onChange: e => setSeat(e.target.value),
+    placeholder: "15",
+    className: "w-full px-3 py-2 num-mono text-base",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--bg)'
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs mb-1",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5E74\u7D1A"), /*#__PURE__*/React.createElement("select", {
+    value: grade,
+    onChange: e => setGrade(parseInt(e.target.value)),
+    className: "w-full px-2 py-2 num-mono text-base",
+    style: {
+      border: '1.5px solid var(--ink)',
+      background: 'var(--bg)'
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: 7
+  }, "\u4E03"), /*#__PURE__*/React.createElement("option", {
+    value: 8
+  }, "\u516B"), /*#__PURE__*/React.createElement("option", {
+    value: 9
+  }, "\u4E5D")))), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px]",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it"
+  }, "tip \xB7"), " \u73ED\u7D1A\u586B\u4E86\u6703\u81EA\u52D5\u5E36\u5E74\u7D1A\uFF08\u5982 812 \u2192 \u516B\u5E74\u7D1A\uFF09"), error && /*#__PURE__*/React.createElement("div", {
+    className: "p-2 text-xs",
+    style: {
+      background: 'var(--override-bg)',
+      border: '1px solid var(--override)',
+      color: 'var(--override)'
+    }
+  }, error), /*#__PURE__*/React.createElement("button", {
+    onClick: submit,
+    disabled: busy,
+    className: "btn-tactile w-full py-2.5",
+    style: {
+      background: 'var(--ink)',
+      color: 'var(--paper)'
+    }
+  }, busy ? '儲存中...' : isNew ? '新增' : '儲存變更'))));
+}
 /* ════════════════════════════════════════════════════════════
    APP — Firestore wiring, auth flow, dispatch
    ════════════════════════════════════════════════════════════ */
@@ -6808,6 +7252,35 @@ function App() {
     }, err => console.error('audit subscribe error', err));
   }, [account]);
 
+  /* ─── roster subscription (mutates global ROSTER, then bumps version to re-render) ─── */
+  const [rosterVersion, setRosterVersion] = useState(0);
+  const rosterHeardRef = useRef(false);
+  useEffect(() => {
+    if (!account) return;
+    return db.collection('roster').onSnapshot(snap => {
+      const list = [];
+      snap.forEach(d => list.push({
+        id: d.id,
+        ...d.data()
+      }));
+      list.sort((a, b) => {
+        const am = (a.id || '').match(/^r(\d+)$/);
+        const bm = (b.id || '').match(/^r(\d+)$/);
+        if (am && bm) return parseInt(am[1]) - parseInt(bm[1]);
+        return (a.id || '').localeCompare(b.id || '');
+      });
+      // First snapshot: only overwrite if non-empty (else keep hardcoded seed for SeedDataPage to use).
+      // Subsequent snapshots: always reflect Firestore (allows intentional emptying).
+      if (rosterHeardRef.current || list.length > 0) {
+        setGlobalRoster(list);
+        rosterHeardRef.current = true;
+        setRosterVersion(v => v + 1);
+      } else {
+        rosterHeardRef.current = true;
+      }
+    }, err => console.error('roster subscribe error', err));
+  }, [account]);
+
   /* ─── accounts list (for admin/super-admin view) ─── */
   useEffect(() => {
     if (!account || !isAdminRole(account)) {
@@ -6901,16 +7374,18 @@ function App() {
   const dispatch = async action => {
     if (!account) return;
     if (action.type === 'add' || action.type === 'sub' || action.type === 'remove') {
-      const {
-        swimmerId,
-        shopId,
-        catId,
-        name,
-        variant,
-        price,
-        qty,
-        item
-      } = action;
+      // Accept both v0.3+ shape (swimmerId, catId, name, price) and v0.2 shape (mid, item)
+      const swimmerId = action.swimmerId || action.mid;
+      const shopId = action.shopId;
+      const variant = action.variant;
+      const item = action.item;
+      const catId = action.catId ?? item?.cat;
+      const name = action.name ?? item?.name;
+      const price = action.price ?? item?.prices?.[variant];
+      if (!swimmerId || !shopId || !catId || !name || price == null) {
+        console.error('add/sub/remove missing fields', action);
+        return;
+      }
       const key = safeKey(itemKey(shopId, catId, name, variant));
       const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(key);
       const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
@@ -6928,7 +7403,6 @@ function App() {
         if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 移除了「${name}${variantLabel}」`);
         return;
       }
-      // add or sub
       const snap = await ref.get();
       const cur = snap.exists ? snap.data() : null;
       const newQty = (cur?.qty || 0) + (action.type === 'add' ? 1 : -1);
@@ -6967,9 +7441,68 @@ function App() {
       if (override) await writeNotification(swimmerId, `${account.name || '管理員'} ${action.type === 'add' ? '加入' : '減少'}了「${name}${variantLabel}」（剩 ${newQty} 份）`);
       return;
     }
-    if (action.type === 'note') {
-      const {
+    if (action.type === 'addKey' || action.type === 'subKey') {
+      // Adjust qty of existing cart line (called from CartSheet's +/- buttons)
+      const swimmerId = action.swimmerId || action.mid;
+      const ref = db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').doc(safeKey(action.key));
+      const snap = await ref.get();
+      if (!snap.exists) return;
+      const cur = snap.data();
+      const delta = action.type === 'addKey' ? 1 : -1;
+      const newQty = (cur.qty || 0) + delta;
+      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
+      const override = isOverrideAction(account, swimmerId, isCutoff);
+      const variantLabel = cur.variant === 'default' ? '' : ` (${cur.variant})`;
+      if (newQty <= 0) {
+        await ref.delete();
+        await writeAudit({
+          kind: 'sub',
+          swimmerId,
+          swimmerName,
+          detail: `「${cur.name}${variantLabel}」全數移除`,
+          override
+        });
+        if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 全數移除了「${cur.name}${variantLabel}」`);
+        return;
+      }
+      await ref.update({
+        qty: newQty,
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: account.uid
+      });
+      await writeAudit({
+        kind: delta > 0 ? 'add' : 'sub',
         swimmerId,
+        swimmerName,
+        detail: `「${cur.name}${variantLabel}」${delta > 0 ? '+1' : '-1'} → 共 ${newQty} 份`,
+        override
+      });
+      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} ${delta > 0 ? '加入' : '減少'}了「${cur.name}${variantLabel}」（剩 ${newQty} 份）`);
+      return;
+    }
+    if (action.type === 'clearMember') {
+      const swimmerId = action.swimmerId || action.mid;
+      const itemsSnap = await db.collection('orders').doc(date).collection('swimmers').doc(swimmerId).collection('items').get();
+      const count = itemsSnap.size;
+      if (count === 0) return;
+      const batch = db.batch();
+      itemsSnap.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      const swimmerName = ROSTER_BY_ID[swimmerId]?.name || swimmerId;
+      const override = isOverrideAction(account, swimmerId, isCutoff);
+      await writeAudit({
+        kind: 'clear',
+        swimmerId,
+        swimmerName,
+        detail: `清空 ${swimmerName} 的訂單（${count} 筆）`,
+        override
+      });
+      if (override) await writeNotification(swimmerId, `${account.name || '管理員'} 清空了所有訂單`);
+      return;
+    }
+    if (action.type === 'note') {
+      const swimmerId = action.swimmerId || action.mid;
+      const {
         key,
         note
       } = action;
@@ -7086,6 +7619,64 @@ function App() {
       await writeAudit({
         kind: 'unbind',
         detail: `${name} 綁定變更：${parts.join('，') || '無變化'}`
+      });
+      return;
+    }
+    if (action.type === 'roster_add') {
+      const {
+        data
+      } = action;
+      const id = nextRosterId();
+      await db.collection('roster').doc(id).set({
+        id,
+        ...data
+      });
+      await writeAudit({
+        kind: 'role_change',
+        detail: `🆕 新增隊員 ${data.name}（${data.cls}-${data.seat}, ${data.grade}年級）`
+      });
+      return;
+    }
+    if (action.type === 'roster_edit') {
+      const {
+        id,
+        oldData,
+        newData
+      } = action;
+      await db.collection('roster').doc(id).set({
+        id,
+        ...newData
+      });
+      const diffs = [];
+      if (oldData.name !== newData.name) diffs.push(`姓名 ${oldData.name} → ${newData.name}`);
+      if (oldData.cls !== newData.cls) diffs.push(`班級 ${oldData.cls} → ${newData.cls}`);
+      if (oldData.seat !== newData.seat) diffs.push(`座號 ${oldData.seat} → ${newData.seat}`);
+      if (oldData.grade !== newData.grade) diffs.push(`年級 ${oldData.grade} → ${newData.grade}`);
+      await writeAudit({
+        kind: 'role_change',
+        detail: `✏️ 編輯隊員 ${oldData.name}：${diffs.join('，') || '無變化'}`
+      });
+      return;
+    }
+    if (action.type === 'roster_remove') {
+      const {
+        id,
+        name
+      } = action;
+      // Cascade: remove this swimmer id from any account.swimmers
+      const affected = accounts.filter(a => (a.swimmers || []).includes(id));
+      const batch = db.batch();
+      batch.delete(db.collection('roster').doc(id));
+      affected.forEach(a => {
+        batch.update(db.collection('accounts').doc(a.uid), {
+          swimmers: a.swimmers.filter(s => s !== id)
+        });
+      });
+      await batch.commit();
+      const cascadeNote = affected.length > 0 ? `（同時從 ${affected.map(a => a.name || a.email).join('、')} 帳號的綁定中移除）` : '';
+      await writeAudit({
+        kind: 'role_change',
+        detail: `🗑 移除隊員 ${name}${cascadeNote}`
       });
       return;
     }
@@ -7268,6 +7859,10 @@ function App() {
   }), tab === 'menu' && /*#__PURE__*/React.createElement(MenuAdminView, {
     shops: shops,
     account: account,
+    dispatch: dispatch
+  }), tab === 'roster' && /*#__PURE__*/React.createElement(RosterAdminView, {
+    account: account,
+    accounts: accounts,
     dispatch: dispatch
   }), tab === 'log' && /*#__PURE__*/React.createElement(AuditLogView, {
     auditLog: auditLog,
