@@ -125,6 +125,19 @@
     align-items:center;
     justify-content:end;
   }
+  /* For items with 4+ variants — wrap in a flex row instead of fixed 3-col grid */
+  .variant-row-wide{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    align-items:center;
+    justify-content:flex-end;
+    max-width:280px;
+  }
+  .variant-row-wide .variant-cell{
+    width:auto;
+    min-width:84px;
+  }
   .variant-cell{
     display:flex;align-items:center;justify-content:flex-end;
     gap:4px;
@@ -481,7 +494,10 @@ const formatDateBig = s => {
     dd: d.getDate()
   };
 };
-const itemKey = (shopId, catId, name, variant) => `${shopId}|${catId}|${name}|${variant}`;
+const itemKey = (shopId, catId, name, variant, addons) => {
+  const addonStr = addons && addons.length ? `|+${[...addons].sort().join(',')}` : '';
+  return `${shopId}|${catId}|${name}|${variant}${addonStr}`;
+};
 const safeKey = k => k.replace(/[\/\.\#\$\[\]]/g, '_');
 const fmtTime = ts => {
   const d = ts && ts.toDate ? ts.toDate() : new Date(ts);
@@ -531,37 +547,44 @@ const YUSEE_SEED = {
     id: 'tea',
     name: '有喜茶飲',
     variants: ['M', 'L'],
-    variantLabel: 'M中／L大'
+    variantLabel: 'M中／L大',
+    desc: '❅ 僅提供冷飲；可調甜度、冰量'
   }, {
     id: 'milktea',
     name: '鮮奶茶',
     variants: ['M', 'L'],
-    variantLabel: '重乳+10元'
+    variantLabel: '重乳+10元',
+    desc: '❅ 僅提供冷飲；使用統一鮮乳；可勾選重乳 +$10'
   }, {
     id: 'honey',
     name: '百分百蜂蜜',
     variants: ['M'],
-    variantLabel: '蜂蜜系列'
+    variantLabel: '蜂蜜系列',
+    desc: '❅ 僅提供冷飲；使用情人蜂蜜'
   }, {
     id: 'fruit',
     name: '鮮果茶飲',
     variants: ['M', 'L'],
-    variantLabel: '鮮果飲品'
+    variantLabel: '鮮果飲品',
+    desc: '❅ 僅提供冷飲'
   }, {
     id: 'coffee',
     name: '有喜咖啡',
     variants: ['冰', '熱'],
-    variantLabel: '冰16oz／熱12oz'
+    variantLabel: '冰16oz／熱12oz',
+    desc: '冰／熱皆有；可勾選重乳 +$10'
   }, {
     id: 'platter',
     name: '經典拼盤',
     variants: ['default'],
-    variantLabel: '附醬料+飲品'
+    variantLabel: '附醬料+飲品',
+    desc: '附醬料 3 選 1（千島／日式和風／巴塔，由店家預設）；附中杯紅茶或玉米濃湯。要換其他飲料：另點該飲料 + 在拼盤勾「換飲品 -$25」'
   }, {
     id: 'burger',
     name: '義式手工漢堡',
     variants: ['白金', '黑金'],
-    variantLabel: '白金／黑金麵包'
+    variantLabel: '白金／黑金麵包',
+    desc: '升級套餐 +$69 含脆薯+中杯紅茶。要換飲料：另點飲料 + 勾「換飲品 -$25」'
   }, {
     id: 'toast',
     name: '有一點厚吐司',
@@ -600,7 +623,8 @@ const YUSEE_SEED = {
     id: 'ricebox',
     name: '套餐飯食',
     variants: ['丼飯', '咖哩'],
-    variantLabel: '附中杯紅茶'
+    variantLabel: '附中杯紅茶',
+    desc: '套餐皆附中杯紅茶。要換飲料：另點飲料 + 勾「換飲品 -$25」'
   }, {
     id: 'snack',
     name: '有喜小點心',
@@ -693,178 +717,247 @@ const YUSEE_SEED = {
     name: '焦糖奶茶',
     prices: {
       M: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '經典厚奶茶',
     prices: {
       M: 50,
       L: 55
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '經典厚奶綠',
     prices: {
       M: 50,
       L: 55
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '寒天珍珠紅茶',
     prices: {
       M: 35,
       L: 40
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '寒天珍珠奶茶',
     prices: {
       M: 45,
       L: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '寒天珍珠豆漿',
     prices: {
       M: 45,
       L: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '復刻多瓜茶',
     prices: {
       M: 35,
       L: 40
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '烏龍多瓜',
     prices: {
       M: 40,
       L: 45
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '金沙阿華田',
     prices: {
       M: 50,
       L: 60
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '蔓越莓遇見綠茶',
     prices: {
       M: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '蔓越莓遇見烏龍',
     prices: {
       M: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'tea',
     name: '青梅酵素飲',
     prices: {
       M: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'milktea',
     name: '紅茶鮮乳',
     prices: {
       M: 50,
       L: 60
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'milktea',
     name: '綠茶鮮乳',
     prices: {
       M: 50,
       L: 60
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'milktea',
     name: '多瓜鮮乳',
     prices: {
       M: 50,
       L: 60
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'milktea',
     name: '烏龍鮮乳',
     prices: {
       M: 55,
       L: 65
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'milktea',
     name: '抹茶鮮乳',
     prices: {
       M: 55,
       L: 65
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'milktea',
     name: '麵茶鮮乳',
     prices: {
       M: 55,
       L: 65
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
+  }, {
+    cat: 'milktea',
+    name: '地瓜鮮乳',
+    prices: {
+      M: 65,
+      L: 75
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'milktea',
     name: '葡萄鮮乳',
     prices: {
       M: 65,
       L: 75
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'milktea',
     name: '金沙阿華田鮮乳',
     prices: {
       M: 65
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'milktea',
     name: '蘋果鮮乳',
     prices: {
       M: 70
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'honey',
     name: '蜂蜜茶',
     prices: {
       M: 35
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'honey',
     name: '蜂蜜紅茶',
     prices: {
       M: 45
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'honey',
     name: '蜂蜜綠茶',
     prices: {
       M: 55
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'honey',
     name: '蜂蜜檸檬茶',
     prices: {
       M: 55
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'honey',
     name: '蜂蜜奶茶',
     prices: {
       M: 55
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'honey',
     name: '蜂蜜百香',
     prices: {
       M: 60
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'fruit',
     name: '檸檬綠茶',
@@ -892,28 +985,32 @@ const YUSEE_SEED = {
     prices: {
       M: 45,
       L: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'fruit',
     name: '柳橙果粒茶',
     prices: {
       M: 40,
       L: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'fruit',
     name: '柳橙綠茶',
     prices: {
       M: 40,
       L: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'fruit',
     name: '蘋果風味汁',
     prices: {
       M: 40,
       L: 50
-    }
+    },
+    desc: 'S 固定甜度'
   }, {
     cat: 'fruit',
     name: '鳳梨冰茶',
@@ -927,167 +1024,316 @@ const YUSEE_SEED = {
     prices: {
       冰: 45,
       熱: 45
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'coffee',
     name: '特調咖啡',
     prices: {
       冰: 55,
       熱: 55
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'coffee',
     name: '拿鐵',
     prices: {
       冰: 60,
       熱: 60
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'coffee',
     name: '榛果拿鐵咖啡',
     prices: {
       冰: 70,
       熱: 70
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'coffee',
     name: '焦糖拿鐵咖啡',
     prices: {
       冰: 70,
       熱: 70
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'coffee',
     name: '蜂蜜甘甜咖啡',
     prices: {
       冰: 70,
       熱: 70
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'coffee',
     name: '檸檬香醇咖啡',
     prices: {
       冰: 70
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }]
   }, {
     cat: 'coffee',
     name: '胚芽拿鐵咖啡',
     prices: {
       冰: 70,
       熱: 70
-    }
+    },
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
+    desc: 'S 固定甜度'
   }, {
     cat: 'platter',
     name: '鹿兒島丹童拼盤',
     prices: {
       default: 199
     },
-    desc: '法國吐司、炒蛋、香酥雞塊、熱狗、地瓜球、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+    desc: '法國吐司、炒蛋、香酥雞塊、熱狗、地瓜球、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    addons: [{
+      name: '巴塔醬',
+      price: 15
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'platter',
     name: '中華拼盤',
     prices: {
       default: 199
     },
-    desc: '蘿蔔糕、鍋貼、鮮魚條、太陽蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+    desc: '蘿蔔糕、鍋貼、鮮魚條、太陽蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    addons: [{
+      name: '巴塔醬',
+      price: 15
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'platter',
     name: '淺草丹麥拼盤',
     prices: {
       default: 209
     },
-    desc: '丹麥吐司、照燒雞肉丸、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+    desc: '丹麥吐司、照燒雞肉丸、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    addons: [{
+      name: '巴塔醬',
+      price: 15
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'platter',
     name: '法式金磚拼盤',
     prices: {
       default: 209
     },
-    desc: '法式厚片、手工培根、雞肉洋蔥圈、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+    desc: '法式厚片、手工培根、雞肉洋蔥圈、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    addons: [{
+      name: '巴塔醬',
+      price: 15
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'platter',
     name: '香蒜豐盛總匯拼盤',
     prices: {
       default: 239
     },
-    desc: '香蒜吐司條、香焙火腿、鮮嫩香酥雞、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+    desc: '香蒜吐司條、香焙火腿、鮮嫩香酥雞、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    addons: [{
+      name: '巴塔醬',
+      price: 15
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'platter',
     name: '大相撲經典拼盤',
     prices: {
       default: 239
     },
-    desc: '牛角可頌、嫩煎雞腿、德式香腸、雞肉洋蔥圈、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉'
+    desc: '牛角可頌、嫩煎雞腿、德式香腸、雞肉洋蔥圈、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    addons: [{
+      name: '巴塔醬',
+      price: 15
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '香草豚肉',
     prices: {
       白金: 109,
       黑金: 109
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '勁辣卡啦雞腿',
     prices: {
       白金: 129,
       黑金: 129
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '英式塔塔魚條',
     prices: {
       白金: 139,
       黑金: 139
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '日式相撲大豬排',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '夏威夷鳳梨蝦排',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '手工培根4盎司純牛肉',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '經典花生醬4盎司純牛肉',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '松露蕈菇4盎司純牛肉',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '起司脆薯辣雞',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'burger',
     name: '起司脆薯雙牛',
     prices: {
       白金: 149,
       黑金: 149
-    }
+    },
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }, {
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'toast',
     name: '果醬(巧克力/草莓/藍莓/奶酥/奶油/花生)',
@@ -1517,231 +1763,482 @@ const YUSEE_SEED = {
     name: '起司蛋',
     prices: {
       default: 50
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '火腿蛋',
     prices: {
       default: 55
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '薯餅蛋',
     prices: {
       default: 55
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '菇菇起司蛋',
     prices: {
       default: 55
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '香草豚肉蛋',
     prices: {
       default: 65
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '烤肉蛋',
     prices: {
       default: 65
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '牛肉蛋(澳洲純牛肉)',
     prices: {
       default: 65
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '卡啦脆腿',
     prices: {
       default: 70
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '嫩煎雞腿蛋',
     prices: {
       default: 75
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '英式塔塔魚條蛋',
     prices: {
       default: 75
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '松露蕈菇牛肉蛋',
     prices: {
       default: 80
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'mcmuffin',
     name: '英式塔塔蝦排蛋',
     prices: {
       default: 90
-    }
+    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '義式肉醬義大利麵',
     prices: {
       default: 75
     },
-    group: '義大利麵'
+    group: '義大利麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '磨菇肉醬義大利麵',
     prices: {
       default: 75
     },
-    group: '義大利麵'
+    group: '義大利麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '黑胡椒肉醬義大利麵',
     prices: {
       default: 75
     },
-    group: '義大利麵'
+    group: '義大利麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '海味XO醬義大利麵',
     prices: {
       default: 85
     },
-    group: '義大利麵'
+    group: '義大利麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '培根白醬義大利麵',
     prices: {
       default: 115
     },
-    group: '義大利麵'
+    group: '義大利麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '經典肉肉炒麵',
     prices: {
       default: 70
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '大阪豬肉炒麵',
     prices: {
       default: 80
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '打拋豬肉炒麵',
     prices: {
       default: 95
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '醬燒雞腿炒麵',
     prices: {
       default: 95
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '泡菜豬肉炒麵',
     prices: {
       default: 110
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '泡菜牛肉炒麵',
     prices: {
       default: 125
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '湖南剩椒豬肉炒麵',
     prices: {
       default: 125
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'pasta',
     name: '湖南剩椒牛肉炒麵',
     prices: {
       default: 140
     },
-    group: '炒麵'
+    group: '炒麵',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }]
   }, {
     cat: 'ricebox',
     name: '泰式打拋豚肉飯',
     prices: {
       丼飯: 159
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '湖南剩椒豬肉飯',
     prices: {
       丼飯: 169
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '湖南剩椒五花牛肉飯',
     prices: {
       丼飯: 179
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '招牌鐵板豬肉飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '照燒雞肉丸飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '香酥魚條飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '夏威夷鳳梨蝦排飯',
     prices: {
       丼飯: 169,
       咖哩: 189
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '招牌鐵板五花牛肉飯',
     prices: {
       丼飯: 179,
       咖哩: 199
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '嫩煎雞腿飯',
     prices: {
       丼飯: 179,
       咖哩: 199
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'ricebox',
     name: '日式相撲豬排飯',
     prices: {
       丼飯: 189,
       咖哩: 209
-    }
+    },
+    addons: [{
+      name: '換飲品',
+      price: -25
+    }]
   }, {
     cat: 'snack',
     name: '蛋(半熟/全熟)',
@@ -1933,12 +2430,14 @@ const BADUDU_SEED = {
     id: 'cheesefb',
     name: '酥皮乳酪餅',
     variants: ['default'],
-    variantLabel: '需等15分鐘 · 不含蛋'
+    variantLabel: '需等15分鐘 · 不含蛋',
+    desc: '⏱ 需等候約 10 分鐘；不含蛋'
   }, {
     id: 'burger',
     name: '呷霸漢堡吐司',
     variants: ['吐司', '漢堡'],
-    variantLabel: '吐司／漢堡 不同價'
+    variantLabel: '吐司／漢堡 不同價',
+    desc: '+$40 可換米漢堡 / 可頌 / 潛艇堡。可額外加料：蛋、起司、火腿、培根、生菜、漢堡肉、豬排'
   }, {
     id: 'waffle',
     name: '格格鬆餅堡',
@@ -1948,7 +2447,8 @@ const BADUDU_SEED = {
     id: 'ricebrg',
     name: '粒粒米漢堡',
     variants: ['default'],
-    variantLabel: '需等15分鐘 · Rice burger'
+    variantLabel: '需等15分鐘 · Rice burger',
+    desc: '⏱ 需等候約 15 分鐘'
   }, {
     id: 'croissant',
     name: '酥脆可頌潛艇堡',
@@ -1958,7 +2458,8 @@ const BADUDU_SEED = {
     id: 'french',
     name: '蹦啾法式吐司',
     variants: ['default'],
-    variantLabel: '需等15分鐘 · French toast'
+    variantLabel: '需等15分鐘 · French toast',
+    desc: '⏱ 需等候約 15 分鐘'
   }, {
     id: 'jam',
     name: '甜在心果醬',
@@ -1968,7 +2469,8 @@ const BADUDU_SEED = {
     id: 'gratin',
     name: '牽絲焗烤',
     variants: ['default'],
-    variantLabel: '需等20分鐘 · Gratin'
+    variantLabel: '需等20分鐘 · Gratin',
+    desc: '⏱ 需等候約 20 分鐘'
   }, {
     id: 'hidden',
     name: '獨有隱藏版',
@@ -1983,12 +2485,14 @@ const BADUDU_SEED = {
     id: 'noodle',
     name: '特選鐵板麵飯',
     variants: ['麵', '飯'],
-    variantLabel: '部分品項可換成飯+30'
+    variantLabel: '部分品項可換成飯+30',
+    desc: '⚠ 皆含蛋一顆，半熟蛋請提早告知。可額外加料：青菜 +$20、起司 +$15、蛋 +$15、火腿 +$15、培根 +$20、漢堡肉 +$20、豬排 +$25、熱狗 +$30、德式腸 +$35'
   }, {
     id: 'hotpot',
     name: '私房招牌鍋燒',
     variants: ['意麵', '烏龍', '雞絲', '冬粉', '泡飯'],
-    variantLabel: '內含海鮮 · 五種麵體'
+    variantLabel: '內含海鮮 · 五種麵體',
+    desc: '⚠ 內含海鮮，若有不吃的食材請告知。本店不主動加沙茶，需要請提前告知'
   }, {
     id: 'salad',
     name: '瘦瘦健康沙拉',
@@ -1998,12 +2502,14 @@ const BADUDU_SEED = {
     id: 'set',
     name: '舒活輕食套餐',
     variants: ['default'],
-    variantLabel: '附中飲品'
+    variantLabel: '附中飲品',
+    desc: '套餐已附中杯飲品'
   }, {
     id: 'combo',
     name: '呷霸超值套餐',
     variants: ['default'],
-    variantLabel: 'Combo · 附中飲品'
+    variantLabel: 'Combo · 附中飲品',
+    desc: '套餐已附中杯飲品'
   }, {
     id: 'fried',
     name: '精選炸快樂',
@@ -2180,146 +2686,797 @@ const BADUDU_SEED = {
     name: '煎蛋',
     prices: {
       吐司: 45
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '起司蛋',
     prices: {
       吐司: 55,
       漢堡: 55
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '蔬菜蛋',
     prices: {
       吐司: 55,
       漢堡: 55
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '火腿蛋',
     prices: {
       吐司: 55,
       漢堡: 55
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '培根蛋',
     prices: {
       吐司: 55,
       漢堡: 55
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '肉鬆蛋',
     prices: {
       吐司: 55,
       漢堡: 55
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '薯餅蛋',
     prices: {
       吐司: 60,
       漢堡: 60
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '豬肉蛋',
     prices: {
       吐司: 60,
       漢堡: 60
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '香雞蛋',
     prices: {
       吐司: 60,
       漢堡: 60
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '洋芋蛋(含水煮蛋)',
     prices: {
       吐司: 65,
       漢堡: 65
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '鮪魚蛋',
     prices: {
       吐司: 70,
       漢堡: 70
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '豬排蛋',
     prices: {
       吐司: 70,
       漢堡: 70
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '鮮蝦排蛋',
     prices: {
       吐司: 70,
       漢堡: 75
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '花枝排蛋',
     prices: {
       吐司: 75,
       漢堡: 75
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '無骨雞排蛋',
     prices: {
       吐司: 80,
       漢堡: 80
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '照燒雞腿蛋',
     prices: {
       吐司: 80,
       漢堡: 80
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '藍帶豬排蛋',
     prices: {
       吐司: 80,
       漢堡: 80
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '香酥鱈魚蛋',
     prices: {
       吐司: 80,
       漢堡: 80
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '咔啦雞腿蛋(辣味/原味)',
     prices: {
       吐司: 80,
       漢堡: 80
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '總匯',
     prices: {
       漢堡: 85
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'burger',
     name: '厚切牛肉蛋',
     prices: {
       吐司: 140,
       漢堡: 140
-    }
+    },
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }]
   }, {
     cat: 'waffle',
     name: '果醬鬆餅堡(花生/巧克力/奶油/草莓/奶酥)',
@@ -2776,67 +3933,347 @@ const BADUDU_SEED = {
     name: '蘑菇麵',
     prices: {
       麵: 80
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '黑胡椒麵',
     prices: {
       麵: 80
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '肉醬麵',
     prices: {
       麵: 80
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '醬燒板條',
     prices: {
       麵: 90
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '杏鮑菇麵',
     prices: {
       麵: 100,
       飯: 130
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '三杯雞丁麵',
     prices: {
       麵: 95,
       飯: 125
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '宮保雞丁麵',
     prices: {
       麵: 95,
       飯: 125
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '奶油雞丁麵',
     prices: {
       麵: 95,
       飯: 125
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '泰式打拋豬麵',
     prices: {
       麵: 110,
       飯: 150
-    }
+    },
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'noodle',
     name: '不一樣炒泡麵',
     prices: {
       麵: 90
     },
-    desc: '泡麵固定散蛋'
+    desc: '泡麵固定散蛋',
+    addons: [{
+      name: '青菜',
+      price: 20
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      name: '熱狗',
+      price: 30
+    }, {
+      name: '德式腸',
+      price: 35
+    }]
   }, {
     cat: 'hotpot',
     name: '經典原味',
@@ -3225,8 +4662,8 @@ const SHANLIN_SEED = {
   categories: [{
     id: 'main',
     name: '主菜品項',
-    variants: ['漢堡蛋', '吐司蛋', '丹麥蛋'],
-    variantLabel: '漢堡蛋／吐司蛋／丹麥蛋(+30)'
+    variants: ['漢堡蛋', '吐司蛋', '丹麥蛋', '乳酪餅'],
+    variantLabel: '四種變體 · 丹麥蛋+30'
   }, {
     id: 'eggcake',
     name: '蛋餅',
@@ -3269,7 +4706,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 50,
       吐司蛋: 50,
-      丹麥蛋: 80
+      丹麥蛋: 80,
+      乳酪餅: 50
     }
   }, {
     cat: 'main',
@@ -3277,7 +4715,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 50,
       吐司蛋: 50,
-      丹麥蛋: 80
+      丹麥蛋: 80,
+      乳酪餅: 50
     }
   }, {
     cat: 'main',
@@ -3285,7 +4724,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 50,
       吐司蛋: 50,
-      丹麥蛋: 80
+      丹麥蛋: 80,
+      乳酪餅: 50
     }
   }, {
     cat: 'main',
@@ -3293,7 +4733,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 50,
       吐司蛋: 50,
-      丹麥蛋: 80
+      丹麥蛋: 80,
+      乳酪餅: 50
     }
   }, {
     cat: 'main',
@@ -3301,7 +4742,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 50,
       吐司蛋: 50,
-      丹麥蛋: 80
+      丹麥蛋: 80,
+      乳酪餅: 50
     }
   }, {
     cat: 'main',
@@ -3309,7 +4751,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 55,
       吐司蛋: 55,
-      丹麥蛋: 85
+      丹麥蛋: 85,
+      乳酪餅: 55
     }
   }, {
     cat: 'main',
@@ -3317,7 +4760,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 55,
       吐司蛋: 55,
-      丹麥蛋: 85
+      丹麥蛋: 85,
+      乳酪餅: 55
     }
   }, {
     cat: 'main',
@@ -3325,7 +4769,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 60,
       吐司蛋: 60,
-      丹麥蛋: 90
+      丹麥蛋: 90,
+      乳酪餅: 60
     }
   }, {
     cat: 'main',
@@ -3333,7 +4778,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 65,
       吐司蛋: 65,
-      丹麥蛋: 95
+      丹麥蛋: 95,
+      乳酪餅: 65
     }
   }, {
     cat: 'main',
@@ -3341,7 +4787,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 65,
       吐司蛋: 65,
-      丹麥蛋: 95
+      丹麥蛋: 95,
+      乳酪餅: 65
     }
   }, {
     cat: 'main',
@@ -3349,7 +4796,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 65,
       吐司蛋: 65,
-      丹麥蛋: 95
+      丹麥蛋: 95,
+      乳酪餅: 65
     }
   }, {
     cat: 'main',
@@ -3357,7 +4805,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 70,
       吐司蛋: 70,
-      丹麥蛋: 100
+      丹麥蛋: 100,
+      乳酪餅: 70
     }
   }, {
     cat: 'main',
@@ -3365,7 +4814,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 70,
       吐司蛋: 70,
-      丹麥蛋: 100
+      丹麥蛋: 100,
+      乳酪餅: 70
     }
   }, {
     cat: 'main',
@@ -3373,7 +4823,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105
+      丹麥蛋: 105,
+      乳酪餅: 75
     }
   }, {
     cat: 'main',
@@ -3381,7 +4832,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105
+      丹麥蛋: 105,
+      乳酪餅: 75
     }
   }, {
     cat: 'main',
@@ -3389,7 +4841,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105
+      丹麥蛋: 105,
+      乳酪餅: 75
     }
   }, {
     cat: 'main',
@@ -3397,7 +4850,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105
+      丹麥蛋: 105,
+      乳酪餅: 75
     }
   }, {
     cat: 'main',
@@ -3405,7 +4859,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105
+      丹麥蛋: 105,
+      乳酪餅: 75
     }
   }, {
     cat: 'main',
@@ -3413,7 +4868,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105
+      丹麥蛋: 105,
+      乳酪餅: 75
     }
   }, {
     cat: 'main',
@@ -3421,7 +4877,8 @@ const SHANLIN_SEED = {
     prices: {
       漢堡蛋: 80,
       吐司蛋: 80,
-      丹麥蛋: 110
+      丹麥蛋: 110,
+      乳酪餅: 80
     }
   }, {
     cat: 'eggcake',
@@ -4707,7 +6164,27 @@ function OrderView({
     style: {
       color: 'var(--ink-2)'
     }
-  }, shop.branch))), /*#__PURE__*/React.createElement("div", {
+  }, shop.branch)), (shop.address || shop.phone) && /*#__PURE__*/React.createElement("div", {
+    className: "mt-1 text-[11px] flex flex-wrap gap-x-3 gap-y-0.5"
+  }, shop.phone && /*#__PURE__*/React.createElement("a", {
+    href: `tel:${shop.phone.replace(/[^0-9+\-]/g, '')}`,
+    className: "flex items-center gap-1",
+    style: {
+      color: shop.themeColor,
+      textDecoration: 'underline'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCDE"), /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, shop.phone)), shop.address && /*#__PURE__*/React.createElement("a", {
+    href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.address)}`,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    className: "flex items-center gap-1",
+    style: {
+      color: shop.themeColor,
+      textDecoration: 'underline'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCCD"), /*#__PURE__*/React.createElement("span", null, shop.address)))), /*#__PURE__*/React.createElement("div", {
     className: "text-right"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] tk-x",
@@ -4863,44 +6340,62 @@ function ItemRow({
 }) {
   const variants = Object.keys(item.prices);
   const isSingle = variants.length === 1 && variants[0] === 'default';
+  const hasAddons = (item.addons || []).length > 0;
+  // local state: which addons are currently armed for "next click"
+  const [armedAddons, setArmedAddons] = useState([]);
+  const toggleAddon = addonName => {
+    setArmedAddons(prev => prev.includes(addonName) ? prev.filter(a => a !== addonName) : [...prev, addonName]);
+  };
+
+  // compute armed addon delta price
+  const armedAddonPrice = (item.addons || []).filter(a => armedAddons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
 
   // Slot map: which column does each known variant prefer?
-  // 0 = leftmost, 2 = rightmost. Using 3 slots so M / L / XL can stack consistently.
-  // For unknown variants (e.g. 原 / 厚酥 / 丹麥), put first one in slot 0 and second in slot 2 (left & right).
+  // Only used when there are 1-3 variants (M/L type alignment).
+  // For 4+ variants we skip slot alignment and render them in source order.
+  const useSlotLayout = variants.length <= 3;
   const slotMap = {};
-  if (isSingle) {
-    slotMap['default'] = 2; // single default: right-most slot
-  } else {
-    // Known size variants go to fixed slots
-    const knownSlots = {
-      S: 0,
-      M: 1,
-      L: 2,
-      XL: 2
-    };
-    // Special-case: if variants include both L and XL, push L→1 and XL→2
-    if (variants.includes('L') && variants.includes('XL')) {
-      knownSlots.L = 1;
-      knownSlots.XL = 2;
+  if (useSlotLayout) {
+    if (isSingle) {
+      slotMap['default'] = 2;
+    } else {
+      const knownSlots = {
+        S: 0,
+        M: 1,
+        L: 2,
+        XL: 2
+      };
+      if (variants.includes('L') && variants.includes('XL')) {
+        knownSlots.L = 1;
+        knownSlots.XL = 2;
+      }
+      const unassigned = [];
+      variants.forEach(v => {
+        if (knownSlots[v] !== undefined) slotMap[v] = knownSlots[v];else unassigned.push(v);
+      });
+      const usedSlots = new Set(Object.values(slotMap));
+      const freeSlots = [0, 1, 2].filter(s => !usedSlots.has(s));
+      // If there are unknown variants, prefer right-aligned slots so they
+      // align with M/L variants in other items in the same category.
+      // 2 unknowns → slots [1, 2] (middle + right), not [0, 1] (left + middle).
+      // 1 unknown → slot 2 (right), not 0.
+      // 3 unknowns → slots [0, 1, 2] (no choice).
+      const preferredFreeSlots = unassigned.length === 1 ? [2] : unassigned.length === 2 ? [1, 2] : freeSlots;
+      const slotsToUse = preferredFreeSlots.filter(s => freeSlots.includes(s));
+      unassigned.forEach((v, i) => {
+        slotMap[v] = slotsToUse[i] !== undefined ? slotsToUse[i] : freeSlots[i] !== undefined ? freeSlots[i] : 2;
+      });
     }
-    // First pass: assign known variants
-    const unassigned = [];
-    variants.forEach(v => {
-      if (knownSlots[v] !== undefined) slotMap[v] = knownSlots[v];else unassigned.push(v);
-    });
-    // Second pass: distribute unassigned among free slots
-    const usedSlots = new Set(Object.values(slotMap));
-    const freeSlots = [0, 1, 2].filter(s => !usedSlots.has(s));
-    unassigned.forEach((v, i) => {
-      slotMap[v] = freeSlots[i] !== undefined ? freeSlots[i] : 2;
-    });
   }
-
-  // Build cells for all 3 slots (some may be empty)
-  const cellsBySlot = [null, null, null];
-  variants.forEach(v => {
-    cellsBySlot[slotMap[v]] = v;
-  });
+  // For 1-3 variants: use 3-col grid with slot alignment.
+  // For 4+ variants: use natural order, wrap as needed.
+  const cellsToRender = useSlotLayout ? (() => {
+    const cells = [null, null, null];
+    variants.forEach(v => {
+      cells[slotMap[v]] = v;
+    });
+    return cells;
+  })() : variants;
   return /*#__PURE__*/React.createElement("div", {
     className: "py-2.5 border-b",
     style: {
@@ -4921,20 +6416,22 @@ function ItemRow({
       color: 'var(--mute)'
     }
   }, item.desc)), /*#__PURE__*/React.createElement("div", {
-    className: "variant-row shrink-0"
-  }, cellsBySlot.map((v, idx) => {
+    className: useSlotLayout ? "variant-row shrink-0" : "variant-row-wide shrink-0"
+  }, cellsToRender.map((v, idx) => {
     if (!v) return /*#__PURE__*/React.createElement("div", {
       key: `empty-${idx}`,
       className: "variant-cell"
     });
     const price = item.prices[v];
-    const key = itemKey(shop.id, item.cat, item.name, v);
+    const totalPrice = price + armedAddonPrice;
+    // count qty from this base+armed-addons combination
+    const key = itemKey(shop.id, item.cat, item.name, v, armedAddons);
     const qty = draft[key]?.qty || 0;
     return /*#__PURE__*/React.createElement("div", {
       key: v,
       className: "variant-cell"
     }, qty > 0 && !disabled && /*#__PURE__*/React.createElement("button", {
-      onClick: () => onSub(v),
+      onClick: () => onSub(v, armedAddons),
       className: "btn-tactile minus-btn pop-in",
       style: {
         border: '1.5px solid var(--minus)',
@@ -4942,7 +6439,7 @@ function ItemRow({
         background: 'var(--paper)'
       }
     }, "\u2212"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => onAdd(v),
+      onClick: () => onAdd(v, armedAddons),
       disabled: disabled,
       className: `price-btn ${qty > 0 ? 'has-qty' : ''}`,
       style: qty > 0 ? {
@@ -4954,10 +6451,45 @@ function ItemRow({
       className: "v-label"
     }, v), /*#__PURE__*/React.createElement("span", {
       className: "price"
-    }, "$", price), qty > 0 && /*#__PURE__*/React.createElement("span", {
+    }, "$", totalPrice), qty > 0 && /*#__PURE__*/React.createElement("span", {
       className: "qty-badge"
     }, "\xD7", qty)));
-  }))));
+  }))), hasAddons && !disabled && /*#__PURE__*/React.createElement("div", {
+    className: "mt-1.5 flex flex-wrap gap-1.5"
+  }, item.addons.map(addon => {
+    const on = armedAddons.includes(addon.name);
+    return /*#__PURE__*/React.createElement("button", {
+      key: addon.name,
+      onClick: () => toggleAddon(addon.name),
+      className: "btn-tactile px-2 py-1 text-[11px] flex items-center gap-1",
+      style: {
+        border: `1px solid ${on ? shop.themeColor : 'var(--line)'}`,
+        background: on ? shop.themeBg : 'var(--paper)',
+        color: on ? shop.themeColor : 'var(--mute)',
+        fontWeight: on ? 700 : 400
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'inline-block',
+        width: 10,
+        height: 10,
+        border: `1.5px solid ${on ? shop.themeColor : 'var(--mute)'}`,
+        background: on ? shop.themeColor : 'transparent',
+        position: 'relative'
+      }
+    }, on && /*#__PURE__*/React.createElement("span", {
+      style: {
+        position: 'absolute',
+        top: -3,
+        left: 0,
+        color: 'var(--paper)',
+        fontSize: 10,
+        lineHeight: 1
+      }
+    }, "\u2713")), /*#__PURE__*/React.createElement("span", null, addon.name), /*#__PURE__*/React.createElement("span", {
+      className: "num"
+    }, addon.price >= 0 ? `+$${addon.price}` : `-$${Math.abs(addon.price)}`));
+  })));
 }
 
 /* Helper: render the menu (collapsible categories) — shared by drawer + parent */
@@ -5031,7 +6563,13 @@ function MenuSections({
       style: {
         color: 'var(--mute)'
       }
-    }, items.length))), /*#__PURE__*/React.createElement("div", {
+    }, items.length))), cat.desc && /*#__PURE__*/React.createElement("div", {
+      className: "px-2 py-1.5 text-[11px] serif-it",
+      style: {
+        color: shop.themeColor,
+        background: shop.themeBg
+      }
+    }, cat.desc), /*#__PURE__*/React.createElement("div", {
       className: "px-1 sm:px-2 pb-2"
     }, groupedKeys.length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, groupedKeys.map(g => /*#__PURE__*/React.createElement("div", {
       key: g
@@ -5046,24 +6584,24 @@ function MenuSections({
       draft: draft,
       shop: shop,
       disabled: disabled,
-      onAdd: v => onAdd(it, v),
-      onSub: v => onSub(it, v)
+      onAdd: (v, addons) => onAdd(it, v, addons),
+      onSub: (v, addons) => onSub(it, v, addons)
     })))), items.filter(it => !it.group).map(it => /*#__PURE__*/React.createElement(ItemRow, {
       key: it.name,
       item: it,
       draft: draft,
       shop: shop,
       disabled: disabled,
-      onAdd: v => onAdd(it, v),
-      onSub: v => onSub(it, v)
+      onAdd: (v, addons) => onAdd(it, v, addons),
+      onSub: (v, addons) => onSub(it, v, addons)
     }))) : items.map(it => /*#__PURE__*/React.createElement(ItemRow, {
       key: it.name,
       item: it,
       draft: draft,
       shop: shop,
       disabled: disabled,
-      onAdd: v => onAdd(it, v),
-      onSub: v => onSub(it, v)
+      onAdd: (v, addons) => onAdd(it, v, addons),
+      onSub: (v, addons) => onSub(it, v, addons)
     }))));
   }));
 }
@@ -5120,6 +6658,7 @@ function CartLine({
   const [editingNote, setEditingNote] = useState(false);
   const [tempNote, setTempNote] = useState(line.note || '');
   const variantLabel = line.variant === 'default' ? '' : ` (${line.variant})`;
+  const addonsList = line.addons || [];
   return /*#__PURE__*/React.createElement("div", {
     className: "border-b last:border-b-0 px-3 py-2",
     style: {
@@ -5139,7 +6678,13 @@ function CartLine({
     style: {
       color: 'var(--mute)'
     }
-  }, variantLabel)), /*#__PURE__*/React.createElement("div", {
+  }, variantLabel), addonsList.length > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "text-xs ml-1",
+    style: {
+      color: shop.themeColor,
+      fontWeight: 700
+    }
+  }, addonsList.map(a => `+${a}`).join(' '))), /*#__PURE__*/React.createElement("div", {
     className: "num text-xs mt-0.5",
     style: {
       color: 'var(--ink-2)'
@@ -5277,8 +6822,11 @@ function OrderEditorDrawer({
     });
     setDraft(newDraft);
   };
-  const onAdd = (item, variant) => {
-    const k = itemKey(shop.id, item.cat, item.name, variant);
+  const onAdd = (item, variant, addons) => {
+    addons = addons || [];
+    const k = itemKey(shop.id, item.cat, item.name, variant, addons);
+    // Compute addon price delta from item definition
+    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
     setDraft(d => {
       const cur = d[k];
       return {
@@ -5288,15 +6836,18 @@ function OrderEditorDrawer({
           cat: item.cat,
           name: item.name,
           variant,
-          price: item.prices[variant],
+          price: item.prices[variant] + addonPriceDelta,
+          basePrice: item.prices[variant],
+          addons: addons.length ? [...addons] : undefined,
           qty: (cur?.qty || 0) + 1,
           note: cur?.note || ''
         }
       };
     });
   };
-  const onSub = (item, variant) => {
-    const k = itemKey(shop.id, item.cat, item.name, variant);
+  const onSub = (item, variant, addons) => {
+    addons = addons || [];
+    const k = itemKey(shop.id, item.cat, item.name, variant, addons);
     setDraft(d => {
       const cur = d[k];
       if (!cur) return d;
@@ -5860,8 +7411,11 @@ function ChildOrderPanel({
     });
     setDraft(newDraft);
   };
-  const onAdd = (item, variant) => {
-    const k = itemKey(shop.id, item.cat, item.name, variant);
+  const onAdd = (item, variant, addons) => {
+    addons = addons || [];
+    const k = itemKey(shop.id, item.cat, item.name, variant, addons);
+    // Compute addon price delta from item definition
+    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
     setDraft(d => {
       const cur = d[k];
       return {
@@ -5871,15 +7425,18 @@ function ChildOrderPanel({
           cat: item.cat,
           name: item.name,
           variant,
-          price: item.prices[variant],
+          price: item.prices[variant] + addonPriceDelta,
+          basePrice: item.prices[variant],
+          addons: addons.length ? [...addons] : undefined,
           qty: (cur?.qty || 0) + 1,
           note: cur?.note || ''
         }
       };
     });
   };
-  const onSub = (item, variant) => {
-    const k = itemKey(shop.id, item.cat, item.name, variant);
+  const onSub = (item, variant, addons) => {
+    addons = addons || [];
+    const k = itemKey(shop.id, item.cat, item.name, variant, addons);
     setDraft(d => {
       const cur = d[k];
       if (!cur) return d;
@@ -6093,7 +7650,13 @@ function ChildOrderPanel({
       style: {
         color: 'var(--mute)'
       }
-    }, "(", l.variant, ")")), l.note && /*#__PURE__*/React.createElement("div", {
+    }, "(", l.variant, ")"), l.addons && l.addons.length > 0 && /*#__PURE__*/React.createElement("span", {
+      className: "text-xs ml-1",
+      style: {
+        color: shop.themeColor,
+        fontWeight: 700
+      }
+    }, l.addons.map(a => `+${a}`).join(''))), l.note && /*#__PURE__*/React.createElement("div", {
       className: "mt-1 text-[11px]"
     }, /*#__PURE__*/React.createElement("span", {
       className: "note-badge"
@@ -6280,7 +7843,35 @@ function ChildOrderPanel({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "num"
-  }, (shop.items || []).length), " \u500B\u54C1\u9805")), shop.note && /*#__PURE__*/React.createElement("div", {
+  }, (shop.items || []).length), " \u500B\u54C1\u9805")), (shop.address || shop.phone) && /*#__PURE__*/React.createElement("div", {
+    className: "mt-1 text-[11px] flex flex-wrap gap-x-3 gap-y-0.5",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, shop.phone && /*#__PURE__*/React.createElement("a", {
+    href: `tel:${shop.phone.replace(/[^0-9+\-]/g, '')}`,
+    className: "flex items-center gap-1",
+    style: {
+      color: shop.themeColor,
+      textDecoration: 'underline'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCDE"), /*#__PURE__*/React.createElement("span", {
+    className: "num"
+  }, shop.phone)), shop.address && /*#__PURE__*/React.createElement("a", {
+    href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.address)}`,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    className: "flex items-center gap-1",
+    style: {
+      color: shop.themeColor,
+      textDecoration: 'underline'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCCD"), /*#__PURE__*/React.createElement("span", null, shop.address)), shop.hours && /*#__PURE__*/React.createElement("span", {
+    className: "flex items-center gap-1",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDD52"), /*#__PURE__*/React.createElement("span", null, shop.hours))), shop.note && /*#__PURE__*/React.createElement("div", {
     className: "mt-2 mb-3 p-2 text-[11px]",
     style: {
       background: 'var(--paper)',
@@ -6523,6 +8114,9 @@ function SummaryView({
     if (line.variant && line.variant !== 'default') {
       nameStr += `(${line.variant})`;
     }
+    if (line.addons && line.addons.length) {
+      nameStr += line.addons.map(a => `+${a}`).join('');
+    }
     parts.push(nameStr);
     const lineSubtotal = (line.qty || 0) * (line.price || 0);
     if ((line.qty || 0) > 1) {
@@ -6668,6 +8262,7 @@ function SummaryView({
     }, r.items.map((l, i) => {
       const showCatPrefix = ambiguousNames.has(l.name);
       const variantStr = l.variant && l.variant !== 'default' ? `(${l.variant})` : '';
+      const addonsStr = l.addons && l.addons.length ? l.addons.map(a => `+${a}`).join('') : '';
       const lineSubtotal = (l.qty || 0) * (l.price || 0);
       return /*#__PURE__*/React.createElement("div", {
         key: i,
@@ -6688,7 +8283,12 @@ function SummaryView({
         style: {
           color: 'var(--mute)'
         }
-      }, variantStr)), /*#__PURE__*/React.createElement("span", {
+      }, variantStr), addonsStr && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: shop.themeColor,
+          fontWeight: 700
+        }
+      }, addonsStr)), /*#__PURE__*/React.createElement("span", {
         className: "num text-[11px]",
         style: {
           color: 'var(--mute)'
@@ -6762,6 +8362,29 @@ function MenuAdminView({
       shopId,
       items: newItems,
       detail
+    });
+  };
+
+  /* Update top-level shop info field (branch / address / phone / hours / note) */
+  const updateShopField = (field, newVal) => {
+    const trimmed = (newVal || '').trim();
+    const cur = shop[field] || '';
+    if (trimmed === cur) return;
+    const labels = {
+      branch: '分店名稱',
+      address: '地址',
+      phone: '電話',
+      hours: '營業時間',
+      note: '店家備註'
+    };
+    const label = labels[field] || field;
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      shopMeta: {
+        [field]: trimmed
+      },
+      detail: `${label} 「${cur || '（無）'}」 → 「${trimmed || '（無）'}」`
     });
   };
   const updateItemPrice = (catId, idx, variant, newPrice) => {
@@ -6860,6 +8483,29 @@ function MenuAdminView({
       detail: `調整分類順序：「${movedName}」${direction === 'up' ? '上移' : '下移'}`
     });
   };
+  const updateCategoryDesc = (catIdx, newDesc) => {
+    const oldCategories = shops[shopId].categories || [];
+    const target = oldCategories[catIdx];
+    if (!target) return;
+    const trimmed = (newDesc || '').trim();
+    if (trimmed === (target.desc || '')) return;
+    const newCategories = oldCategories.map((c, i) => {
+      if (i !== catIdx) return c;
+      const next = {
+        ...c
+      };
+      if (trimmed) next.desc = trimmed;else delete next.desc;
+      return next;
+    });
+    const beforeDesc = target.desc || '（無）';
+    const afterDesc = trimmed || '（無）';
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      categories: newCategories,
+      detail: `「${target.name}」分類備註 「${beforeDesc}」 → 「${afterDesc}」`
+    });
+  };
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
   }, /*#__PURE__*/React.createElement("div", {
@@ -6910,7 +8556,80 @@ function MenuAdminView({
     style: {
       color: 'var(--mute)'
     }
-  }, "\u9078\u64C7\u5E97\u5BB6\u4EE5\u7DE8\u8F2F")) : /*#__PURE__*/React.createElement("div", {
+  }, "\u9078\u64C7\u5E97\u5BB6\u4EE5\u7DE8\u8F2F")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 p-3",
+    style: {
+      background: shop.themeBg,
+      border: `1.5px solid ${shop.themeColor}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tk-x text-[10px] mb-2",
+    style: {
+      color: shop.themeColor
+    }
+  }, "SHOP INFO \xB7 \u9EDE\u6B04\u4F4D\u7DE8\u8F2F\uFF0C\u5931\u7126\u81EA\u52D5\u5132\u5B58"), /*#__PURE__*/React.createElement("div", {
+    className: "grid sm:grid-cols-2 gap-x-3 gap-y-2"
+  }, [{
+    field: 'branch',
+    label: '分店名稱',
+    placeholder: '例：大安和平店'
+  }, {
+    field: 'phone',
+    label: '電話',
+    placeholder: '例：(02) 2325-0335'
+  }, {
+    field: 'address',
+    label: '地址',
+    placeholder: '例：台北市大安區和平東路二段117號'
+  }, {
+    field: 'hours',
+    label: '營業時間',
+    placeholder: '例：5:30am-13:00 週日休'
+  }].map(({
+    field,
+    label,
+    placeholder
+  }) => /*#__PURE__*/React.createElement("label", {
+    key: field,
+    className: "block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x mb-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, label), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    defaultValue: shop[field] || '',
+    placeholder: placeholder,
+    onBlur: e => updateShopField(field, e.target.value),
+    onKeyDown: e => {
+      if (e.key === 'Enter') e.target.blur();
+    },
+    className: "w-full px-2 py-1.5 text-sm num",
+    style: {
+      background: 'var(--paper)',
+      border: '1px solid var(--line)',
+      color: 'var(--ink)'
+    }
+  }))), /*#__PURE__*/React.createElement("label", {
+    className: "block sm:col-span-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] tk-x mb-0.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u5E97\u5BB6\u5099\u8A3B\uFF08\u5BB6\u9577\u4E0B\u55AE\u6642\u770B\u5F97\u5230\uFF09"), /*#__PURE__*/React.createElement("textarea", {
+    defaultValue: shop.note || '',
+    placeholder: "\u4F8B\uFF1A\u672C\u5E97\u4E0D\u4E3B\u52D5\u52A0\u6C99\u8336\uFF0C\u9700\u8981\u8ACB\u63D0\u65E9\u544A\u77E5",
+    onBlur: e => updateShopField('note', e.target.value),
+    rows: 2,
+    className: "w-full px-2 py-1.5 text-sm",
+    style: {
+      background: 'var(--paper)',
+      border: '1px solid var(--line)',
+      color: 'var(--ink)'
+    }
+  })))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-3"
   }, shop.categories.map((cat, catIdx) => {
     const items = shop.items.filter(it => it.cat === cat.id);
@@ -6983,6 +8702,31 @@ function MenuAdminView({
         color: 'var(--ink-2)'
       }
     }, items.length, " \u9805")), /*#__PURE__*/React.createElement("div", {
+      className: "px-3 py-1.5",
+      style: {
+        background: shop.themeBg,
+        borderBottom: `1px dashed ${shop.themeColor}`
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      defaultValue: cat.desc || '',
+      placeholder: "+ \u52A0\u5206\u985E\u5099\u8A3B\uFF08\u4F8B\uFF1A\u50C5\u63D0\u4F9B\u51B7\u98F2\u3001\u56FA\u5B9A\u751C\u5EA6\uFF09",
+      onBlur: e => {
+        const nv = e.target.value.trim();
+        if (nv !== (cat.desc || '')) updateCategoryDesc(catIdx, nv);
+      },
+      onKeyDown: e => {
+        if (e.key === 'Enter') e.target.blur();
+      },
+      className: "text-[11px] w-full py-0.5 px-1 serif-it",
+      style: {
+        borderBottom: '1px dashed transparent',
+        background: 'transparent',
+        color: shop.themeColor
+      },
+      onFocus: e => e.target.style.borderBottomColor = 'var(--admin)',
+      onBlurCapture: e => e.target.style.borderBottomColor = 'transparent'
+    })), /*#__PURE__*/React.createElement("div", {
       className: "divide-y",
       style: {
         borderColor: 'var(--line)'
@@ -7118,7 +8862,119 @@ function MenuAdminView({
         borderTop: '1px dashed var(--admin)'
       }
     }, "+ \u65B0\u589E\u54C1\u9805\u5230\u300C", cat.name, "\u300D")));
-  })), /*#__PURE__*/React.createElement("div", {
+  }))), shop && shop.items && (() => {
+    // Check seed for things that the live menu is missing.
+    // We migrate: addons, item.desc, category.desc, NEW items (in seed but missing from live)
+    const seed = SHOP_SEEDS[shopId];
+    if (!seed) return null;
+    const seedItemKey = it => `${it.cat}|${it.name}`;
+    const liveItemMap = {};
+    shop.items.forEach(it => {
+      liveItemMap[seedItemKey(it)] = it;
+    });
+    const liveCatMap = {};
+    (shop.categories || []).forEach(c => {
+      liveCatMap[c.id] = c;
+    });
+    const missingAddons = [];
+    const missingItemDescs = [];
+    const missingCategoryDescs = [];
+    const missingNewItems = [];
+    seed.items.forEach(seedItem => {
+      const live = liveItemMap[seedItemKey(seedItem)];
+      if (!live) {
+        // Item exists in seed but not live → new item
+        missingNewItems.push(seedItem);
+        return;
+      }
+      if (seedItem.addons && seedItem.addons.length && (!live.addons || !live.addons.length)) {
+        missingAddons.push(seedItem);
+      }
+      if (seedItem.desc && !live.desc) {
+        missingItemDescs.push(seedItem);
+      }
+    });
+    (seed.categories || []).forEach(seedCat => {
+      const live = liveCatMap[seedCat.id];
+      if (!live) return;
+      if (seedCat.desc && !live.desc) {
+        missingCategoryDescs.push(seedCat);
+      }
+    });
+    const totalMissing = missingAddons.length + missingItemDescs.length + missingCategoryDescs.length + missingNewItems.length;
+    if (totalMissing === 0) return null;
+    const applyAll = () => {
+      const summary = [];
+      if (missingAddons.length) summary.push(`${missingAddons.length} 項加購選項`);
+      if (missingItemDescs.length) summary.push(`${missingItemDescs.length} 項描述`);
+      if (missingCategoryDescs.length) summary.push(`${missingCategoryDescs.length} 個分類備註`);
+      if (missingNewItems.length) summary.push(`${missingNewItems.length} 個新品項`);
+      if (!confirm(`將套用：\n${summary.map(s => '・' + s).join('\n')}\n\n這只會新增資料，不會改變您已調整的價格／品名／順序。\n\n確定執行？`)) return;
+
+      // Update items: addons + descs + new items (appended at end)
+      const newItems = shop.items.map(it => {
+        const k = seedItemKey(it);
+        const seedMatch = seed.items.find(s => seedItemKey(s) === k);
+        if (!seedMatch) return it;
+        const next = {
+          ...it
+        };
+        if (seedMatch.addons && seedMatch.addons.length && (!next.addons || !next.addons.length)) {
+          next.addons = seedMatch.addons;
+        }
+        if (seedMatch.desc && !next.desc) {
+          next.desc = seedMatch.desc;
+        }
+        return next;
+      });
+      // Append new items (preserve seed order among new ones)
+      missingNewItems.forEach(ni => newItems.push(ni));
+
+      // Update categories: descs only
+      const newCategories = (shop.categories || []).map(c => {
+        const seedMatch = (seed.categories || []).find(s => s.id === c.id);
+        if (!seedMatch || !seedMatch.desc || c.desc) return c;
+        return {
+          ...c,
+          desc: seedMatch.desc
+        };
+      });
+      dispatch({
+        type: 'menu_edit',
+        shopId,
+        items: newItems,
+        categories: newCategories,
+        detail: `✨ 同步原始菜單：${summary.join('、')}`
+      });
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      className: "mt-3 p-3 text-xs",
+      style: {
+        background: 'var(--note-bg)',
+        border: '1.5px solid var(--note)',
+        color: 'var(--note)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "display-cn text-sm mb-1"
+    }, "\u26A0 \u5075\u6E2C\u5230\u6B64\u5E97\u6709\u53EF\u540C\u6B65\u7684\u83DC\u55AE\u8CC7\u6599"), /*#__PURE__*/React.createElement("ul", {
+      className: "mb-2 ml-4 list-disc",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, missingAddons.length > 0 && /*#__PURE__*/React.createElement("li", null, missingAddons.length, " \u9805\u53EF\u52A0\u4E0A\u52A0\u8CFC\u9078\u9805\uFF08\u5982\u91CD\u4E73 +$10\uFF09"), missingItemDescs.length > 0 && /*#__PURE__*/React.createElement("li", null, missingItemDescs.length, " \u9805\u53EF\u52A0\u4E0A\u63CF\u8FF0\uFF08\u5982 S \u56FA\u5B9A\u751C\u5EA6\uFF09"), missingCategoryDescs.length > 0 && /*#__PURE__*/React.createElement("li", null, missingCategoryDescs.length, " \u500B\u5206\u985E\u53EF\u52A0\u5099\u8A3B\uFF08\u5982 \u2745 \u50C5\u63D0\u4F9B\u51B7\u98F2\uFF09"), missingNewItems.length > 0 && /*#__PURE__*/React.createElement("li", null, missingNewItems.length, " \u500B\u539F\u83DC\u55AE\u54C1\u9805\u76EE\u524D\u4E0D\u5728 Firestore \u4E2D")), /*#__PURE__*/React.createElement("div", {
+      className: "mb-2",
+      style: {
+        color: 'var(--ink-2)'
+      }
+    }, "\u9EDE\u4E0B\u65B9\u6309\u9215\u4E00\u6B21\u6027\u5957\u7528\uFF0C\u4E0D\u6703\u52D5\u5230\u60A8\u5DF2\u8ABF\u6574\u904E\u7684\u50F9\u683C\uFF0F\u54C1\u540D\uFF0F\u9806\u5E8F\u3002"), /*#__PURE__*/React.createElement("button", {
+      onClick: applyAll,
+      className: "btn-tactile px-3 py-1.5",
+      style: {
+        background: 'var(--note)',
+        color: 'var(--paper)'
+      }
+    }, "\u2728 \u540C\u6B65\u539F\u59CB\u83DC\u55AE"));
+  })(), /*#__PURE__*/React.createElement("div", {
     className: "mt-5 p-3 text-xs",
     style: {
       background: 'var(--admin-bg)',
@@ -7127,7 +8983,7 @@ function MenuAdminView({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "serif-it"
-  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u54C1\u540D\uFF0F\u50F9\u683C\u6B04\u4F4D \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u3002\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u3002\u5DF2\u4E0B\u8A02\u7684\u8A02\u55AE\u4E0D\u53D7\u5F71\u97FF\u3002"));
+  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u54C1\u540D\uFF0F\u50F9\u683C\uFF0F\u63CF\u8FF0\uFF0F\u5206\u985E\u5099\u8A3B \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u3002\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u3002\u5DF2\u4E0B\u8A02\u7684\u8A02\u55AE\u4E0D\u53D7\u5F71\u97FF\u3002"));
 }
 
 /* New item form: appears inside a category when admin clicks "+ 新增品項" */
@@ -9283,11 +11139,20 @@ function App() {
         shopId,
         items,
         categories,
+        shopMeta,
         detail
       } = action;
       const update = {};
       if (items !== undefined) update.items = items;
       if (categories !== undefined) update.categories = categories;
+      if (shopMeta && typeof shopMeta === 'object') {
+        // Whitelist allowed fields to avoid accidental writes
+        const allowedFields = ['branch', 'address', 'phone', 'hours', 'note', 'name', 'nameEn', 'themeColor', 'themeBg'];
+        Object.entries(shopMeta).forEach(([k, v]) => {
+          if (allowedFields.includes(k)) update[k] = v;
+        });
+      }
+      if (Object.keys(update).length === 0) return;
       await db.collection('menus').doc(shopId).update(update);
       await writeAudit({
         kind: 'menu_edit',
