@@ -6776,6 +6776,16 @@ function MenuAdminView({
       target.name = trimmed;
     }, (before, after) => `品名 「${before.name}」 → 「${after.name}」`);
   };
+  const updateItemDesc = (catId, idx, newDesc) => {
+    const trimmed = (newDesc || '').trim();
+    updateItemAt(catId, idx, target => {
+      if (trimmed) target.desc = trimmed;else delete target.desc;
+    }, (before, after) => {
+      const beforeDesc = before.desc || '（無）';
+      const afterDesc = after.desc || '（無）';
+      return `「${after.name}」描述 「${beforeDesc}」 → 「${afterDesc}」`;
+    });
+  };
   const deleteItem = (catId, idx) => {
     const oldItems = shops[shopId].items || [];
     const inCat = oldItems.filter(it => it.cat === catId);
@@ -6811,6 +6821,44 @@ function MenuAdminView({
       detail: `➕ 新增品項「${name}」(${Object.entries(prices).map(([v, p]) => `${v === 'default' ? '' : v + ':'}$${p}`).join(' / ')})`
     });
     return true;
+  };
+
+  /* Move item within its category by 1 step (reorder ONLY among same-cat items) */
+  const moveItem = (catId, idxInCat, direction) => {
+    const oldItems = shops[shopId].items || [];
+    // Get items in this category, in their current order
+    const itemsInCat = oldItems.filter(it => it.cat === catId);
+    const targetIdx = direction === 'up' ? idxInCat - 1 : idxInCat + 1;
+    if (targetIdx < 0 || targetIdx >= itemsInCat.length) return;
+    // Swap in itemsInCat
+    const swapped = [...itemsInCat];
+    [swapped[idxInCat], swapped[targetIdx]] = [swapped[targetIdx], swapped[idxInCat]];
+    // Reconstruct full items array: walk oldItems, but for each cat-slot pull from swapped queue
+    const swappedQueue = [...swapped];
+    const newItems = oldItems.map(it => it.cat === catId ? swappedQueue.shift() : it);
+    const movedName = itemsInCat[idxInCat].name;
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      items: newItems,
+      detail: `調整順序：「${movedName}」${direction === 'up' ? '上移' : '下移'}`
+    });
+  };
+
+  /* Move category up/down (changes categories array order) */
+  const moveCategory = (catIdx, direction) => {
+    const oldCategories = shops[shopId].categories || [];
+    const targetIdx = direction === 'up' ? catIdx - 1 : catIdx + 1;
+    if (targetIdx < 0 || targetIdx >= oldCategories.length) return;
+    const newCategories = [...oldCategories];
+    [newCategories[catIdx], newCategories[targetIdx]] = [newCategories[targetIdx], newCategories[catIdx]];
+    const movedName = oldCategories[catIdx].name;
+    dispatch({
+      type: 'menu_edit',
+      shopId,
+      categories: newCategories,
+      detail: `調整分類順序：「${movedName}」${direction === 'up' ? '上移' : '下移'}`
+    });
   };
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
@@ -6864,8 +6912,10 @@ function MenuAdminView({
     }
   }, "\u9078\u64C7\u5E97\u5BB6\u4EE5\u7DE8\u8F2F")) : /*#__PURE__*/React.createElement("div", {
     className: "space-y-3"
-  }, shop.categories.map(cat => {
+  }, shop.categories.map((cat, catIdx) => {
     const items = shop.items.filter(it => it.cat === cat.id);
+    const isFirstCat = catIdx === 0;
+    const isLastCat = catIdx === shop.categories.length - 1;
     return /*#__PURE__*/React.createElement("details", {
       key: cat.id,
       className: "overflow-hidden",
@@ -6880,8 +6930,44 @@ function MenuAdminView({
         background: shop.themeBg
       }
     }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-baseline gap-2"
+      className: "flex items-center gap-2"
     }, /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-0.5"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: e => {
+        e.preventDefault();
+        e.stopPropagation();
+        moveCategory(catIdx, 'up');
+      },
+      disabled: isFirstCat,
+      className: "btn-tactile text-xs",
+      style: {
+        border: '1px solid var(--ink-2)',
+        color: 'var(--ink-2)',
+        background: 'var(--paper)',
+        opacity: isFirstCat ? 0.25 : 1,
+        lineHeight: 1,
+        padding: '1px 4px'
+      },
+      title: "\u5206\u985E\u4E0A\u79FB"
+    }, "\u2B06"), /*#__PURE__*/React.createElement("button", {
+      onClick: e => {
+        e.preventDefault();
+        e.stopPropagation();
+        moveCategory(catIdx, 'down');
+      },
+      disabled: isLastCat,
+      className: "btn-tactile text-xs",
+      style: {
+        border: '1px solid var(--ink-2)',
+        color: 'var(--ink-2)',
+        background: 'var(--paper)',
+        opacity: isLastCat ? 0.25 : 1,
+        lineHeight: 1,
+        padding: '1px 4px'
+      },
+      title: "\u5206\u985E\u4E0B\u79FB"
+    }, "\u2B07")), /*#__PURE__*/React.createElement("div", {
       className: "display-cn text-base",
       style: {
         color: shop.themeColor
@@ -6903,10 +6989,40 @@ function MenuAdminView({
       }
     }, items.map((it, idx) => {
       const variants = Object.keys(it.prices);
+      const isFirstItem = idx === 0;
+      const isLastItem = idx === items.length - 1;
       return /*#__PURE__*/React.createElement("div", {
         key: it.name + idx,
-        className: "px-3 py-2 flex items-center gap-2 sm:gap-3"
+        className: "px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3"
       }, /*#__PURE__*/React.createElement("div", {
+        className: "flex flex-col gap-0.5 shrink-0"
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => moveItem(cat.id, idx, 'up'),
+        disabled: isFirstItem,
+        className: "btn-tactile text-xs",
+        style: {
+          border: '1px solid var(--ink-2)',
+          color: 'var(--ink-2)',
+          background: 'var(--paper)',
+          opacity: isFirstItem ? 0.25 : 1,
+          lineHeight: 1,
+          padding: '1px 4px'
+        },
+        title: "\u4E0A\u79FB"
+      }, "\u2B06"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => moveItem(cat.id, idx, 'down'),
+        disabled: isLastItem,
+        className: "btn-tactile text-xs",
+        style: {
+          border: '1px solid var(--ink-2)',
+          color: 'var(--ink-2)',
+          background: 'var(--paper)',
+          opacity: isLastItem ? 0.25 : 1,
+          lineHeight: 1,
+          padding: '1px 4px'
+        },
+        title: "\u4E0B\u79FB"
+      }, "\u2B07")), /*#__PURE__*/React.createElement("div", {
         className: "flex-1 min-w-0"
       }, /*#__PURE__*/React.createElement("input", {
         type: "text",
@@ -6926,12 +7042,26 @@ function MenuAdminView({
         },
         onFocus: e => e.target.style.borderBottomColor = 'var(--admin)',
         onBlurCapture: e => e.target.style.borderBottomColor = 'transparent'
-      }), it.desc && /*#__PURE__*/React.createElement("div", {
-        className: "text-[11px] px-1",
+      }), /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        defaultValue: it.desc || '',
+        placeholder: "+ \u52A0\u63CF\u8FF0\uFF08\u9078\u586B\uFF0C\u4F8B\uFF1A\u624B\u5DE5\u73FE\u70E4\uFF09",
+        onBlur: e => {
+          const nv = e.target.value.trim();
+          if (nv !== (it.desc || '')) updateItemDesc(cat.id, idx, nv);
+        },
+        onKeyDown: e => {
+          if (e.key === 'Enter') e.target.blur();
+        },
+        className: "text-[11px] w-full py-0.5 px-1",
         style: {
+          borderBottom: '1px dashed transparent',
+          background: 'transparent',
           color: 'var(--mute)'
-        }
-      }, it.desc)), /*#__PURE__*/React.createElement("div", {
+        },
+        onFocus: e => e.target.style.borderBottomColor = 'var(--admin)',
+        onBlurCapture: e => e.target.style.borderBottomColor = 'transparent'
+      })), /*#__PURE__*/React.createElement("div", {
         className: "flex gap-2"
       }, variants.map(v => /*#__PURE__*/React.createElement("div", {
         key: v,
@@ -7930,13 +8060,11 @@ function RosterAdminView({
       }
     }, "\u6B0A\u9650\u4E0D\u8DB3"));
   }
+
+  // Use ROSTER directly — it's already sorted by `order` field (or fallback to id)
   const list = filter === 'all' ? ROSTER : ROSTER.filter(m => m.grade === parseInt(filter));
-  // sort: grade desc → cls asc → seat asc
-  const sorted = [...list].sort((a, b) => {
-    if (a.grade !== b.grade) return b.grade - a.grade;
-    if (a.cls !== b.cls) return a.cls - b.cls;
-    return (a.seat || 0) - (b.seat || 0);
-  });
+  const sorted = list; // already in order
+  const canReorder = filter === 'all';
 
   // Find which accounts are bound to which swimmers
   const boundBy = {};
@@ -7946,6 +8074,21 @@ function RosterAdminView({
       boundBy[sid].push(a.name || a.email);
     });
   });
+  const moveItem = (memberIdx, direction) => {
+    // memberIdx is index in ROSTER (the global list) — find it
+    const m = sorted[memberIdx];
+    const globalIdx = ROSTER.findIndex(x => x.id === m.id);
+    if (globalIdx < 0) return;
+    const targetIdx = direction === 'up' ? globalIdx - 1 : globalIdx + 1;
+    if (targetIdx < 0 || targetIdx >= ROSTER.length) return;
+    const newRoster = [...ROSTER];
+    [newRoster[globalIdx], newRoster[targetIdx]] = [newRoster[targetIdx], newRoster[globalIdx]];
+    const newOrder = newRoster.map(x => x.id);
+    dispatch({
+      type: 'roster_reorder',
+      newOrder
+    });
+  };
   return /*#__PURE__*/React.createElement("section", {
     className: "pt-5 sm:pt-7"
   }, /*#__PURE__*/React.createElement("div", {
@@ -8020,7 +8163,16 @@ function RosterAdminView({
     style: {
       color: 'var(--ink)'
     }
-  }, ROSTER.length), " \u4F4D \xB7 \u986F\u793A ", sorted.length)), sorted.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, ROSTER.length), " \u4F4D \xB7 \u986F\u793A ", sorted.length)), !canReorder && /*#__PURE__*/React.createElement("div", {
+    className: "mb-2 px-3 py-1.5 text-[11px]",
+    style: {
+      background: 'var(--bg)',
+      border: '1px dashed var(--mute)',
+      color: 'var(--mute)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "serif-it"
+  }, "tip \xB7"), " \u5207\u5230\u300C\u5168\u90E8\u300D\u624D\u80FD\u7528 \u2B06 \u2B07 \u8ABF\u6574\u968A\u54E1\u9806\u5E8F"), sorted.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "py-10 text-center",
     style: {
       background: 'var(--paper)',
@@ -8036,19 +8188,49 @@ function RosterAdminView({
       background: 'var(--paper)',
       border: '1.5px solid var(--line-strong)'
     }
-  }, sorted.map(m => {
+  }, sorted.map((m, idx) => {
     const grade = GRADE_INFO[m.grade] || {
       label: '?',
       color: 'var(--mute)'
     };
     const bindings = boundBy[m.id] || [];
+    const isFirst = idx === 0;
+    const isLast = idx === sorted.length - 1;
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
-      className: "px-3 py-2 border-b flex items-center gap-3",
+      className: "px-2 sm:px-3 py-2 border-b flex items-center gap-2 sm:gap-3",
       style: {
         borderColor: 'var(--line)'
       }
-    }, /*#__PURE__*/React.createElement("div", {
+    }, canReorder && /*#__PURE__*/React.createElement("div", {
+      className: "flex flex-col gap-0.5 shrink-0"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => moveItem(idx, 'up'),
+      disabled: isFirst,
+      className: "btn-tactile px-1 text-xs",
+      style: {
+        border: '1px solid var(--ink-2)',
+        color: 'var(--ink-2)',
+        background: 'var(--paper)',
+        opacity: isFirst ? 0.25 : 1,
+        lineHeight: 1,
+        padding: '2px 4px'
+      },
+      title: "\u4E0A\u79FB"
+    }, "\u2B06"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => moveItem(idx, 'down'),
+      disabled: isLast,
+      className: "btn-tactile px-1 text-xs",
+      style: {
+        border: '1px solid var(--ink-2)',
+        color: 'var(--ink-2)',
+        background: 'var(--paper)',
+        opacity: isLast ? 0.25 : 1,
+        lineHeight: 1,
+        padding: '2px 4px'
+      },
+      title: "\u4E0B\u79FB"
+    }, "\u2B07")), /*#__PURE__*/React.createElement("div", {
       className: "flex items-center gap-1.5 num text-xs shrink-0 w-20",
       style: {
         color: 'var(--ink-2)'
@@ -8849,6 +9031,13 @@ function App() {
         ...d.data()
       }));
       list.sort((a, b) => {
+        // Primary: explicit order field (set by manual reorder)
+        if (typeof a.order === 'number' && typeof b.order === 'number') {
+          return a.order - b.order;
+        }
+        if (typeof a.order === 'number') return -1;
+        if (typeof b.order === 'number') return 1;
+        // Fallback: numeric id
         const am = (a.id || '').match(/^r(\d+)$/);
         const bm = (b.id || '').match(/^r(\d+)$/);
         if (am && bm) return parseInt(am[1]) - parseInt(bm[1]);
@@ -9093,11 +9282,13 @@ function App() {
       const {
         shopId,
         items,
+        categories,
         detail
       } = action;
-      await db.collection('menus').doc(shopId).update({
-        items
-      });
+      const update = {};
+      if (items !== undefined) update.items = items;
+      if (categories !== undefined) update.categories = categories;
+      await db.collection('menus').doc(shopId).update(update);
       await writeAudit({
         kind: 'menu_edit',
         detail: `${shops[shopId].name} · ${detail}`
@@ -9161,8 +9352,11 @@ function App() {
         data
       } = action;
       const id = nextRosterId();
+      // Append to end of order
+      const maxOrder = ROSTER.reduce((m, x) => Math.max(m, typeof x.order === 'number' ? x.order : -1), -1);
       await db.collection('roster').doc(id).set({
         id,
+        order: maxOrder + 1,
         ...data
       });
       await writeAudit({
@@ -9177,8 +9371,14 @@ function App() {
         oldData,
         newData
       } = action;
+      // Preserve existing order field if present
+      const existing = ROSTER.find(m => m.id === id);
+      const orderField = existing && typeof existing.order === 'number' ? {
+        order: existing.order
+      } : {};
       await db.collection('roster').doc(id).set({
         id,
+        ...orderField,
         ...newData
       });
       const diffs = [];
@@ -9213,6 +9413,21 @@ function App() {
       });
       return;
     }
+    if (action.type === 'roster_reorder') {
+      // action: { newOrder: [id1, id2, ...] }  — full ordered list of IDs
+      const {
+        newOrder
+      } = action;
+      const batch = db.batch();
+      newOrder.forEach((id, idx) => {
+        batch.update(db.collection('roster').doc(id), {
+          order: idx
+        });
+      });
+      await batch.commit();
+      // Don't write audit log here — reorder is high-frequency UI action
+      return;
+    }
 
     /* ─── NOTIFICATIONS ─── */
     if (action.type === 'mark_notif_read') {
@@ -9235,8 +9450,11 @@ function App() {
     setSeedError('');
     try {
       const rosterBatch = db.batch();
-      ROSTER.forEach(m => {
-        rosterBatch.set(db.collection('roster').doc(m.id), m);
+      ROSTER.forEach((m, idx) => {
+        rosterBatch.set(db.collection('roster').doc(m.id), {
+          ...m,
+          order: idx
+        });
       });
       await rosterBatch.commit();
       for (const id of SHOP_IDS) {
