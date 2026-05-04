@@ -12200,7 +12200,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.0"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.1"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
@@ -12763,7 +12763,7 @@ function App() {
       const sanitized = {};
       Object.entries(items).forEach(([k, v]) => {
         if (v && v.qty > 0 && v.name && v.cat) {
-          sanitized[k] = {
+          const line = {
             shop: v.shop,
             cat: v.cat,
             name: v.name,
@@ -12772,8 +12772,18 @@ function App() {
             qty: v.qty,
             note: v.note || ''
           };
+          if (v.addons && v.addons.length) line.addons = v.addons;
+          if (v.basePrice !== undefined) line.basePrice = v.basePrice;
+          if (v.swapApplied) line.swapApplied = true;
+          if (v.swapQty) line.swapQty = v.swapQty;
+          if (v.addedAt) line.addedAt = v.addedAt;
+          sanitized[k] = line;
         }
       });
+
+      // 計算 totalPrice 要扣掉套餐折抵
+      const totalQty = Object.values(sanitized).reduce((s, l) => s + l.qty, 0);
+      const totalPrice = Object.values(sanitized).reduce((s, l) => s + l.qty * l.price - 25 * (l.swapQty || 0), 0);
       if (Object.keys(sanitized).length === 0) {
         // Empty submission = delete
         if (isUpdate) {
@@ -12789,8 +12799,6 @@ function App() {
         }
         return;
       }
-      const totalQty = Object.values(sanitized).reduce((s, l) => s + l.qty, 0);
-      const totalPrice = Object.values(sanitized).reduce((s, l) => s + l.qty * l.price, 0);
       await ref.set({
         items: sanitized,
         submittedBy: account.uid,
