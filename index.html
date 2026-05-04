@@ -527,58 +527,74 @@ const isOverrideAction = (account, swimmerId, isCutoff) => {
   return !(account.swimmers || []).includes(swimmerId) || isCutoff;
 };
 
-/* combo discount detection — early-warn parents who ordered combo + drink but didn't tick "換飲品 -$25" */
+/* combo discount system — early-warn parents who ordered combo + drink but didn't tick "換飲品 -$25" */
 const COMBO_CATS = ['platter', 'burger', 'ricebox']; // 早安有喜套餐分類
 const DRINK_CATS = ['tea', 'milktea', 'honey', 'fruit', 'coffee']; // 早安有喜飲品分類
-function detectComboDiscountIssue(orderItems, shopId) {
-  // Only applies to yusee
-  if (shopId !== 'yusee') return null;
-  if (!orderItems) return null;
+
+/* 計算訂單裡的套餐總數量 (展開 qty) */
+function countCombos(orderItems, shopId) {
+  if (shopId !== 'yusee' || !orderItems) return 0;
   const lines = Array.isArray(orderItems) ? orderItems : Object.values(orderItems);
-  let hasCombo = false,
-    hasDrink = false,
-    hasSwap = false;
-  let comboCount = 0,
-    swapCount = 0;
+  let n = 0;
   for (const l of lines) {
     if (!l || !l.qty) continue;
-    if (COMBO_CATS.includes(l.cat)) {
-      hasCombo = true;
-      comboCount += l.qty;
+    if (COMBO_CATS.includes(l.cat)) n += l.qty;
+  }
+  return n;
+}
+
+/* 計算訂單裡已配對折抵的飲料總數量 */
+function countSwappedDrinks(orderItems, shopId) {
+  if (shopId !== 'yusee' || !orderItems) return 0;
+  const lines = Array.isArray(orderItems) ? orderItems : Object.values(orderItems);
+  let n = 0;
+  for (const l of lines) {
+    if (!l || !l.qty) continue;
+    if (DRINK_CATS.includes(l.cat) && l.swapApplied) n += l.swapQty || l.qty;
+  }
+  return n;
+}
+
+/* 重新計算訂單中飲料的套餐折抵
+   邏輯：依加入順序，前 N 杯飲料（N = 套餐數）享受 -$25 折抵
+   用 addedAt 時間戳排序、 swapQty 表示該行有多少杯獲得折抵 (1..qty)
+   會重新分配整個訂單的 swap 狀態 */
+function recomputeComboSwap(draft, shopId) {
+  if (shopId !== 'yusee' || !draft) return draft;
+  const comboQty = countCombos(draft, shopId);
+
+  // 找出所有飲料行、依 addedAt 排序
+  const drinkEntries = Object.entries(draft).filter(([k, v]) => v && v.qty > 0 && DRINK_CATS.includes(v.cat)).sort((a, b) => (a[1].addedAt || 0) - (b[1].addedAt || 0));
+
+  // 依序分配折抵額度
+  let remaining = comboQty;
+  const next = {
+    ...draft
+  };
+  drinkEntries.forEach(([k, line]) => {
+    const swapQty = Math.max(0, Math.min(remaining, line.qty));
+    remaining -= swapQty;
+
+    // 計算新的單價（如果有部份折抵、平均分攤）
+    // 但其實平均分攤會讓單價變奇怪。所以採取「每杯獨立判斷」 — swapQty 杯折抵、其餘正常
+    // 為了顯示方便，我們在 line 上記 swapApplied + swapQty
+    if (swapQty > 0) {
+      next[k] = {
+        ...line,
+        swapApplied: true,
+        swapQty
+      };
+    } else {
+      // 移除折抵標記
+      const {
+        swapApplied,
+        swapQty: _sq,
+        ...rest
+      } = line;
+      next[k] = rest;
     }
-    if (DRINK_CATS.includes(l.cat)) hasDrink = true;
-    // 換飲品 addon — line.addons is array of strings (addon names only)
-    const addons = l.addons || [];
-    if (addons.includes('換飲品')) {
-      hasSwap = true;
-      swapCount += l.qty;
-    }
-  }
-  if (hasCombo && hasDrink && !hasSwap) {
-    // Has combo + drink, no swap = likely missing discount
-    return {
-      type: 'missing_swap',
-      comboCount,
-      msg: '點了套餐+飲品，但未勾「換飲品 -$25」折抵'
-    };
-  }
-  if (hasSwap && !hasDrink) {
-    // Swapped but no drink picked
-    return {
-      type: 'swap_no_drink',
-      swapCount,
-      msg: '已勾「換飲品 -$25」但未點任何飲品'
-    };
-  }
-  if (hasSwap && comboCount > 0 && swapCount > comboCount) {
-    return {
-      type: 'swap_exceeds_combo',
-      swapCount,
-      comboCount,
-      msg: `勾選「換飲品」次數(${swapCount}) 超過套餐數量(${comboCount})`
-    };
-  }
-  return null;
+  });
+  return next;
 }
 
 /* ─── COMPONENTS BELOW ─── */
@@ -632,13 +648,13 @@ const YUSEE_SEED = {
     name: '經典拼盤',
     variants: ['default'],
     variantLabel: '附醬料+飲品',
-    desc: '附醬料 3 選 1（千島／日式和風／巴塔，由店家預設）；附中杯紅茶或玉米濃湯。要換其他飲料：另點該飲料 + 在拼盤勾「換飲品 -$25」'
+    desc: '附醬料 3 選 1（千島／日式和風／巴塔，由店家預設）；附中杯紅茶或玉米濃湯。要換其他飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）'
   }, {
     id: 'burger',
     name: '義式手工漢堡',
     variants: ['白金', '黑金'],
     variantLabel: '白金／黑金麵包',
-    desc: '升級套餐 +$69 含脆薯+中杯紅茶。要換飲料：另點飲料 + 勾「換飲品 -$25」'
+    desc: '升級套餐 +$69 含脆薯+中杯紅茶。要換飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）'
   }, {
     id: 'toast',
     name: '有一點厚吐司',
@@ -678,7 +694,7 @@ const YUSEE_SEED = {
     name: '套餐飯食',
     variants: ['丼飯', '咖哩'],
     variantLabel: '附中杯紅茶',
-    desc: '套餐皆附中杯紅茶。要換飲料：另點飲料 + 勾「換飲品 -$25」'
+    desc: '套餐皆附中杯紅茶。要換飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）'
   }, {
     id: 'snack',
     name: '有喜小點心',
@@ -2163,9 +2179,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '巴塔醬',
       price: 15
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'platter',
@@ -2177,9 +2190,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '巴塔醬',
       price: 15
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'platter',
@@ -2191,9 +2201,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '巴塔醬',
       price: 15
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'platter',
@@ -2205,9 +2212,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '巴塔醬',
       price: 15
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'platter',
@@ -2219,9 +2223,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '巴塔醬',
       price: 15
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'platter',
@@ -2233,9 +2234,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '巴塔醬',
       price: 15
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2247,9 +2245,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2261,9 +2256,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2275,9 +2267,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2289,9 +2278,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2303,9 +2289,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2317,9 +2300,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2331,9 +2311,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2345,9 +2322,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2359,9 +2333,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'burger',
@@ -2373,9 +2344,6 @@ const YUSEE_SEED = {
     addons: [{
       name: '升級套餐',
       price: 69
-    }, {
-      name: '換飲品',
-      price: -25
     }]
   }, {
     cat: 'toast',
@@ -3180,108 +3148,68 @@ const YUSEE_SEED = {
     name: '泰式打拋豚肉飯',
     prices: {
       丼飯: 159
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '湖南剩椒豬肉飯',
     prices: {
       丼飯: 169
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '湖南剩椒五花牛肉飯',
     prices: {
       丼飯: 179
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '招牌鐵板豬肉飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '照燒雞肉丸飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '香酥魚條飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '夏威夷鳳梨蝦排飯',
     prices: {
       丼飯: 169,
       咖哩: 189
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '招牌鐵板五花牛肉飯',
     prices: {
       丼飯: 179,
       咖哩: 199
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '嫩煎雞腿飯',
     prices: {
       丼飯: 179,
       咖哩: 199
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'ricebox',
     name: '日式相撲豬排飯',
     prices: {
       丼飯: 189,
       咖哩: 209
-    },
-    addons: [{
-      name: '換飲品',
-      price: -25
-    }]
+    }
   }, {
     cat: 'snack',
     name: '蛋(半熟/全熟)',
@@ -8283,12 +8211,28 @@ function CartLine({
     style: {
       color: 'var(--ink-2)'
     }
-  }, "$", line.price, " \xD7 ", line.qty, " = ", /*#__PURE__*/React.createElement("span", {
+  }, line.swapApplied ? /*#__PURE__*/React.createElement(React.Fragment, null, "$", line.price, " \xD7 ", line.qty, ' - $25 × ', /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--red)'
+    }
+  }, line.swapQty), ' = ', /*#__PURE__*/React.createElement("span", {
     style: {
       color: shop.themeColor,
       fontWeight: 700
     }
-  }, "$", line.qty * line.price)), line.note && !editingNote && /*#__PURE__*/React.createElement("div", {
+  }, "$", line.qty * line.price - 25 * (line.swapQty || 0)), /*#__PURE__*/React.createElement("span", {
+    className: "ml-2 text-[10px] px-1.5 py-0.5",
+    style: {
+      background: 'var(--admin-bg)',
+      color: 'var(--admin)',
+      border: '1px dashed var(--admin)'
+    }
+  }, "\u2726 \u914D\u5957\u9910\u6298\u62B5 -$25 \xD7 ", line.swapQty)) : /*#__PURE__*/React.createElement(React.Fragment, null, "$", line.price, " \xD7 ", line.qty, " = ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: shop.themeColor,
+      fontWeight: 700
+    }
+  }, "$", line.qty * line.price))), line.note && !editingNote && /*#__PURE__*/React.createElement("div", {
     className: "mt-1 text-[11px] flex items-center gap-1.5"
   }, /*#__PURE__*/React.createElement("span", {
     className: "note-badge"
@@ -8366,9 +8310,12 @@ function OrderEditorDrawer({
   onClose
 }) {
   // Local draft state (not synced to Firestore until submit)
-  const [draft, setDraft] = useState(() => existingOrder?.items ? {
-    ...existingOrder.items
-  } : {});
+  const [draft, setDraft] = useState(() => {
+    const initial = existingOrder?.items ? {
+      ...existingOrder.items
+    } : {};
+    return recomputeComboSwap(initial, shop.id);
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const grade = GRADE_INFO[member.grade] || {
@@ -8402,28 +8349,39 @@ function OrderEditorDrawer({
   const applyLastOrder = () => {
     if (!lastOrder?.items) return;
     const newDraft = {};
+    let counter = 0;
     Object.values(lastOrder.items).forEach(line => {
-      const k = itemKey(shop.id, line.cat, line.name, line.variant);
+      const addons = line.addons || [];
+      const k = itemKey(shop.id, line.cat, line.name, line.variant, addons);
       newDraft[k] = {
         shop: shop.id,
         cat: line.cat,
         name: line.name,
         variant: line.variant,
         price: line.price,
+        basePrice: line.basePrice || line.price,
+        addons: addons.length ? [...addons] : undefined,
         qty: line.qty,
-        note: line.note || ''
+        note: line.note || '',
+        addedAt: Date.now() + counter++ // 保持加入順序
       };
     });
-    setDraft(newDraft);
+    setDraft(recomputeComboSwap(newDraft, shop.id));
   };
   const onAdd = (item, variant, addons) => {
     addons = addons || [];
     const k = itemKey(shop.id, item.cat, item.name, variant, addons);
-    // Compute addon price delta from item definition
     const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
+
+    // 點套餐跳提示
+    if (shop.id === 'yusee' && COMBO_CATS.includes(item.cat)) {
+      setTimeout(() => {
+        alert(`🍱 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `提醒：套餐已附中杯紅茶 M。\n\n` + `✦ 不換 → 不用做事，店家會給預設紅茶\n` + `✦ 想換其他飲品 → 去飲料分類點 1 杯（系統會自動套用 -$25 折抵）`);
+      }, 100);
+    }
     setDraft(d => {
       const cur = d[k];
-      return {
+      const next = {
         ...d,
         [k]: {
           shop: shop.id,
@@ -8434,9 +8392,24 @@ function OrderEditorDrawer({
           basePrice: item.prices[variant],
           addons: addons.length ? [...addons] : undefined,
           qty: (cur?.qty || 0) + 1,
-          note: cur?.note || ''
+          note: cur?.note || '',
+          addedAt: cur?.addedAt || Date.now()
         }
       };
+      const recomputed = recomputeComboSwap(next, shop.id);
+
+      // 如果是飲料、且這次 add 後此行新增折抵、跳出提示
+      if (shop.id === 'yusee' && DRINK_CATS.includes(item.cat)) {
+        const newLine = recomputed[k];
+        const oldSwapQty = cur?.swapQty || 0;
+        const newSwapQty = newLine.swapQty || 0;
+        if (newSwapQty > oldSwapQty) {
+          setTimeout(() => {
+            alert(`☕ 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `✦ 自動套用套餐折抵 -$25\n` + `✦ 此杯實際 $${Math.max(0, item.prices[variant] + addonPriceDelta - 25)}`);
+          }, 100);
+        }
+      }
+      return recomputed;
     });
   };
   const onSub = (item, variant, addons) => {
@@ -8453,20 +8426,21 @@ function OrderEditorDrawer({
         ...cur,
         qty: newQty
       };
-      return next;
+      return recomputeComboSwap(next, shop.id);
     });
   };
   const onAddKey = k => {
     setDraft(d => {
       const cur = d[k];
       if (!cur) return d;
-      return {
+      const next = {
         ...d,
         [k]: {
           ...cur,
           qty: cur.qty + 1
         }
       };
+      return recomputeComboSwap(next, shop.id);
     });
   };
   const onSubKey = k => {
@@ -8481,7 +8455,7 @@ function OrderEditorDrawer({
         ...cur,
         qty: newQty
       };
-      return next;
+      return recomputeComboSwap(next, shop.id);
     });
   };
   const onNoteKey = (k, note) => {
@@ -8502,7 +8476,7 @@ function OrderEditorDrawer({
     ...v
   })).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || ''));
   const totalQty = cartLines.reduce((s, l) => s + (l.qty || 0), 0);
-  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0) - 25 * (l.swapQty || 0), 0);
 
   // dirty = local draft differs from existingOrder
   const dirty = useMemo(() => {
@@ -8520,21 +8494,15 @@ function OrderEditorDrawer({
   }, [draft, existingOrder]);
   const onSubmit = async () => {
     setError('');
-    // Check combo discount issue
-    const issue = detectComboDiscountIssue(draft, shop.id);
-    if (issue) {
-      let detailMsg = '';
-      if (issue.type === 'missing_swap') {
-        detailMsg = `您點了套餐 + 飲品，但沒勾「換飲品 -$25」折抵。\n\n` + `早安有喜的套餐（拼盤／漢堡／飯食）已附中杯飲品。\n\n` + `情境一：想把套餐附的飲品換成自選的這杯？\n` + `→ 按【取消】回去，在套餐勾選「換飲品 -$25」\n\n` + `情境二：就是要 2 杯飲料（套餐附的 + 多點 1 杯）？\n` + `→ 按【確定】提交（將多付 $25）`;
-      } else if (issue.type === 'swap_no_drink') {
-        detailMsg = `您勾了「換飲品 -$25」折抵，但沒點任何飲品。\n\n` + `按【取消】回去：補點飲品，或取消「換飲品」勾選\n` + `按【確定】提交：店家會給您預設飲品（已折 $25）`;
-      } else if (issue.type === 'swap_exceeds_combo') {
-        detailMsg = `您勾選「換飲品」次數 (${issue.swapCount}) 超過套餐數量 (${issue.comboCount})。\n\n` + `按【取消】回去檢查\n` + `按【確定】提交（可能會被店家扣回多餘的折抵）`;
-      } else {
-        detailMsg = `${issue.msg}\n\n按【確定】仍要提交\n按【取消】回去檢查`;
+    // 套餐 vs 飲料數量檢查
+    if (shop.id === 'yusee') {
+      const comboQty = countCombos(draft, shop.id);
+      const swapQty = countSwappedDrinks(draft, shop.id);
+      if (comboQty > swapQty) {
+        const missing = comboQty - swapQty;
+        const proceed = confirm(`⚠ 您點了 ${comboQty} 個套餐、但只配了 ${swapQty} 杯飲料\n\n` + `剩 ${missing} 個套餐沒選飲料。\n\n` + `按【確定】→ 維持預設（剩 ${missing} 份套餐用預設中杯紅茶 M）\n` + `按【取消】→ 回去再選 ${missing} 杯飲料`);
+        if (!proceed) return;
       }
-      const proceed = confirm(`⚠ 訂單可能有問題\n\n${detailMsg}`);
-      if (!proceed) return;
     }
     setSubmitting(true);
     try {
@@ -9007,28 +8975,39 @@ function ChildOrderPanel({
     if (!lastOrder?.items) return;
     // Re-stamp items so they have current shop ID and re-key them
     const newDraft = {};
+    let counter = 0;
     Object.values(lastOrder.items).forEach(line => {
-      const k = itemKey(shop.id, line.cat, line.name, line.variant);
+      const addons = line.addons || [];
+      const k = itemKey(shop.id, line.cat, line.name, line.variant, addons);
       newDraft[k] = {
         shop: shop.id,
         cat: line.cat,
         name: line.name,
         variant: line.variant,
         price: line.price,
+        basePrice: line.basePrice || line.price,
+        addons: addons.length ? [...addons] : undefined,
         qty: line.qty,
-        note: line.note || ''
+        note: line.note || '',
+        addedAt: Date.now() + counter++
       };
     });
-    setDraft(newDraft);
+    setDraft(recomputeComboSwap(newDraft, shop.id));
   };
   const onAdd = (item, variant, addons) => {
     addons = addons || [];
     const k = itemKey(shop.id, item.cat, item.name, variant, addons);
-    // Compute addon price delta from item definition
     const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
+
+    // 點套餐跳提示
+    if (shop.id === 'yusee' && COMBO_CATS.includes(item.cat)) {
+      setTimeout(() => {
+        alert(`🍱 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `提醒：套餐已附中杯紅茶 M。\n\n` + `✦ 不換 → 不用做事，店家會給預設紅茶\n` + `✦ 想換其他飲品 → 去飲料分類點 1 杯（系統會自動套用 -$25 折抵）`);
+      }, 100);
+    }
     setDraft(d => {
       const cur = d[k];
-      return {
+      const next = {
         ...d,
         [k]: {
           shop: shop.id,
@@ -9039,9 +9018,24 @@ function ChildOrderPanel({
           basePrice: item.prices[variant],
           addons: addons.length ? [...addons] : undefined,
           qty: (cur?.qty || 0) + 1,
-          note: cur?.note || ''
+          note: cur?.note || '',
+          addedAt: cur?.addedAt || Date.now()
         }
       };
+      const recomputed = recomputeComboSwap(next, shop.id);
+
+      // 如果是飲料、且這次 add 後此行新增折抵、跳出提示
+      if (shop.id === 'yusee' && DRINK_CATS.includes(item.cat)) {
+        const newLine = recomputed[k];
+        const oldSwapQty = cur?.swapQty || 0;
+        const newSwapQty = newLine.swapQty || 0;
+        if (newSwapQty > oldSwapQty) {
+          setTimeout(() => {
+            alert(`☕ 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `✦ 自動套用套餐折抵 -$25\n` + `✦ 此杯實際 $${Math.max(0, item.prices[variant] + addonPriceDelta - 25)}`);
+          }, 100);
+        }
+      }
+      return recomputed;
     });
   };
   const onSub = (item, variant, addons) => {
@@ -9058,20 +9052,21 @@ function ChildOrderPanel({
         ...cur,
         qty: newQty
       };
-      return next;
+      return recomputeComboSwap(next, shop.id);
     });
   };
   const onAddKey = k => {
     setDraft(d => {
       const cur = d[k];
       if (!cur) return d;
-      return {
+      const next = {
         ...d,
         [k]: {
           ...cur,
           qty: cur.qty + 1
         }
       };
+      return recomputeComboSwap(next, shop.id);
     });
   };
   const onSubKey = k => {
@@ -9086,7 +9081,7 @@ function ChildOrderPanel({
         ...cur,
         qty: newQty
       };
-      return next;
+      return recomputeComboSwap(next, shop.id);
     });
   };
   const onNoteKey = (k, note) => {
@@ -9120,24 +9115,18 @@ function ChildOrderPanel({
     ...v
   })).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || (a.name || '').localeCompare(b.name || ''));
   const totalQty = cartLines.reduce((s, l) => s + (l.qty || 0), 0);
-  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+  const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0) - 25 * (l.swapQty || 0), 0);
   const onSubmit = async () => {
     setError('');
-    // Check combo discount issue
-    const issue = detectComboDiscountIssue(draft, shop.id);
-    if (issue) {
-      let detailMsg = '';
-      if (issue.type === 'missing_swap') {
-        detailMsg = `您點了套餐 + 飲品，但沒勾「換飲品 -$25」折抵。\n\n` + `早安有喜的套餐（拼盤／漢堡／飯食）已附中杯飲品。\n\n` + `情境一：想把套餐附的飲品換成自選的這杯？\n` + `→ 按【取消】回去，在套餐勾選「換飲品 -$25」\n\n` + `情境二：就是要 2 杯飲料（套餐附的 + 多點 1 杯）？\n` + `→ 按【確定】提交（將多付 $25）`;
-      } else if (issue.type === 'swap_no_drink') {
-        detailMsg = `您勾了「換飲品 -$25」折抵，但沒點任何飲品。\n\n` + `按【取消】回去：補點飲品，或取消「換飲品」勾選\n` + `按【確定】提交：店家會給您預設飲品（已折 $25）`;
-      } else if (issue.type === 'swap_exceeds_combo') {
-        detailMsg = `您勾選「換飲品」次數 (${issue.swapCount}) 超過套餐數量 (${issue.comboCount})。\n\n` + `按【取消】回去檢查\n` + `按【確定】提交（可能會被店家扣回多餘的折抵）`;
-      } else {
-        detailMsg = `${issue.msg}\n\n按【確定】仍要提交\n按【取消】回去檢查`;
+    // 套餐 vs 飲料數量檢查
+    if (shop.id === 'yusee') {
+      const comboQty = countCombos(draft, shop.id);
+      const swapQty = countSwappedDrinks(draft, shop.id);
+      if (comboQty > swapQty) {
+        const missing = comboQty - swapQty;
+        const proceed = confirm(`⚠ 您點了 ${comboQty} 個套餐、但只配了 ${swapQty} 杯飲料\n\n` + `剩 ${missing} 個套餐沒選飲料。\n\n` + `按【確定】→ 維持預設（剩 ${missing} 份套餐用預設中杯紅茶 M）\n` + `按【取消】→ 回去再選 ${missing} 杯飲料`);
+        if (!proceed) return;
       }
-      const proceed = confirm(`⚠ 訂單可能有問題\n\n${detailMsg}`);
-      if (!proceed) return;
     }
     setSubmitting(true);
     try {
@@ -9158,9 +9147,9 @@ function ChildOrderPanel({
   };
   const onCancelEdit = () => {
     if (dirty && !confirm('確定取消？變更會遺失')) return;
-    setDraft(existingOrder?.items ? {
+    setDraft(recomputeComboSwap(existingOrder?.items ? {
       ...existingOrder.items
-    } : {});
+    } : {}, shop.id));
     if (existingOrder) setMode('view');
   };
   const onDelete = async () => {
@@ -9703,15 +9692,13 @@ function SummaryView({
         return (a.name || '').localeCompare(b.name || '');
       });
       const totalQty = items.reduce((s, l) => s + (l.qty || 0), 0);
-      const totalPrice = items.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
-      const issue = detectComboDiscountIssue(items, shop.id);
+      const totalPrice = items.reduce((s, l) => s + (l.qty || 0) * (l.price || 0) - 25 * (l.swapQty || 0), 0);
       out.push({
         swimmerId: sid,
         name: swimmer.name,
         items,
         totalQty,
-        totalPrice,
-        issue
+        totalPrice
       });
     });
     // Sort rows by swimmer name (or by ID/seat — keep stable)
@@ -9746,11 +9733,16 @@ function SummaryView({
       nameStr += line.addons.map(a => `+${a}`).join('');
     }
     parts.push(nameStr);
-    const lineSubtotal = (line.qty || 0) * (line.price || 0);
+    const grossSubtotal = (line.qty || 0) * (line.price || 0);
+    const swapDiscount = 25 * (line.swapQty || 0);
+    const netSubtotal = grossSubtotal - swapDiscount;
     if ((line.qty || 0) > 1) {
-      parts.push(`$${line.price}×${line.qty}=$${lineSubtotal}`);
+      parts.push(`$${line.price}×${line.qty}=$${grossSubtotal}`);
     } else {
       parts.push(`$${line.price}`);
+    }
+    if (line.swapQty) {
+      parts.push(`✦套餐折抵-$25×${line.swapQty}=$${netSubtotal}`);
     }
     if (line.note && line.note.trim()) {
       parts.push(`「${line.note.trim()}」`);
@@ -9891,7 +9883,9 @@ function SummaryView({
       const showCatPrefix = ambiguousNames.has(l.name);
       const variantStr = l.variant && l.variant !== 'default' ? `(${l.variant})` : '';
       const addonsStr = l.addons && l.addons.length ? l.addons.map(a => `+${a}`).join('') : '';
-      const lineSubtotal = (l.qty || 0) * (l.price || 0);
+      const grossSubtotal = (l.qty || 0) * (l.price || 0);
+      const swapDiscount = 25 * (l.swapQty || 0);
+      const netSubtotal = grossSubtotal - swapDiscount;
       return /*#__PURE__*/React.createElement("div", {
         key: i,
         className: "text-xs flex items-baseline gap-1.5 flex-wrap",
@@ -9921,17 +9915,17 @@ function SummaryView({
         style: {
           color: 'var(--mute)'
         }
-      }, "$", l.price, (l.qty || 0) > 1 ? ` × ${l.qty} = $${lineSubtotal}` : ''), l.note && l.note.trim() && /*#__PURE__*/React.createElement("span", {
+      }, "$", l.price, (l.qty || 0) > 1 ? ` × ${l.qty} = $${grossSubtotal}` : ''), l.swapQty > 0 && /*#__PURE__*/React.createElement("span", {
+        className: "num text-[11px] px-1.5 py-0.5",
+        style: {
+          background: 'var(--admin-bg)',
+          color: 'var(--admin)',
+          border: '1px dashed var(--admin)'
+        }
+      }, "\u2726 \u5957\u9910\u6298\u62B5 -$25\xD7", l.swapQty, " = $", netSubtotal), l.note && l.note.trim() && /*#__PURE__*/React.createElement("span", {
         className: "note-badge"
       }, "\uD83D\uDCDD ", l.note.trim()));
-    }), r.issue && /*#__PURE__*/React.createElement("div", {
-      className: "mt-1.5 text-[11px] px-2 py-1 inline-block",
-      style: {
-        color: 'var(--red)',
-        background: '#FEE',
-        border: '1px dashed var(--red)'
-      }
-    }, r.issue.type === 'missing_swap' && /*#__PURE__*/React.createElement(React.Fragment, null, "\u26A0 \u9EDE\u4E86\u5957\u9910+\u98F2\u54C1\u4F46\u6C92\u52FE\u300C\u63DB\u98F2\u54C1 -$25\u300D\u6298\u62B5 (", r.issue.comboCount, " \u4EFD\u5957\u9910) \u2014 \u78BA\u8A8D\u5BB6\u9577\u662F\u5426\u8981 2 \u676F\u98F2\u6599"), r.issue.type === 'swap_no_drink' && /*#__PURE__*/React.createElement(React.Fragment, null, "\u26A0 \u52FE\u4E86\u300C\u63DB\u98F2\u54C1 -$25\u300D\u4F46\u6C92\u9EDE\u98F2\u54C1 (", r.issue.swapCount, " \u4EFD) \u2014 \u5E97\u5BB6\u6703\u7D66\u9810\u8A2D\u98F2\u54C1"), r.issue.type === 'swap_exceeds_combo' && /*#__PURE__*/React.createElement(React.Fragment, null, "\u26A0 \u300C\u63DB\u98F2\u54C1\u300D\u52FE\u9078 ", r.issue.swapCount, " \u6B21\u4F46\u53EA\u6709 ", r.issue.comboCount, " \u4EFD\u5957\u9910"))));
+    })));
   }), /*#__PURE__*/React.createElement("div", {
     className: "px-3 sm:px-4 py-2.5 flex items-baseline justify-between",
     style: {
@@ -12206,7 +12200,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.25"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.0"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
