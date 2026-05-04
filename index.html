@@ -6338,7 +6338,14 @@ function ItemRow({
   onAdd,
   onSub
 }) {
-  const variants = Object.keys(item.prices);
+  // Order variants by the category's defined variants order (Firestore object key order is unreliable).
+  // Fall back to item.prices keys for items where the variant isn't in the category def.
+  const cat = (shop.categories || []).find(c => c.id === item.cat);
+  const catVariants = cat && Array.isArray(cat.variants) ? cat.variants : [];
+  const priceKeys = Object.keys(item.prices || {});
+  const orderedFromCat = catVariants.filter(v => priceKeys.includes(v));
+  const extras = priceKeys.filter(k => !catVariants.includes(k));
+  const variants = orderedFromCat.length ? [...orderedFromCat, ...extras] : priceKeys;
   const isSingle = variants.length === 1 && variants[0] === 'default';
   const hasAddons = (item.addons || []).length > 0;
   // local state: which addons are currently armed for "next click"
@@ -8880,6 +8887,9 @@ function MenuAdminView({
     const missingItemDescs = [];
     const missingCategoryDescs = [];
     const missingNewItems = [];
+    const missingItemVariants = []; // {item, addedKeys:[]}
+    const missingCategoryVariants = []; // {category, addedVariants:[]}
+
     seed.items.forEach(seedItem => {
       const live = liveItemMap[seedItemKey(seedItem)];
       if (!live) {
@@ -8893,6 +8903,16 @@ function MenuAdminView({
       if (seedItem.desc && !live.desc) {
         missingItemDescs.push(seedItem);
       }
+      // Check missing variants in prices
+      const seedKeys = Object.keys(seedItem.prices || {});
+      const liveKeys = Object.keys(live.prices || {});
+      const addedKeys = seedKeys.filter(k => !liveKeys.includes(k));
+      if (addedKeys.length) {
+        missingItemVariants.push({
+          item: seedItem,
+          addedKeys
+        });
+      }
     });
     (seed.categories || []).forEach(seedCat => {
       const live = liveCatMap[seedCat.id];
@@ -8900,8 +8920,18 @@ function MenuAdminView({
       if (seedCat.desc && !live.desc) {
         missingCategoryDescs.push(seedCat);
       }
+      // Check missing variants in category
+      const seedVars = seedCat.variants || [];
+      const liveVars = live.variants || [];
+      const addedVariants = seedVars.filter(v => !liveVars.includes(v));
+      if (addedVariants.length) {
+        missingCategoryVariants.push({
+          category: seedCat,
+          addedVariants
+        });
+      }
     });
-    const totalMissing = missingAddons.length + missingItemDescs.length + missingCategoryDescs.length + missingNewItems.length;
+    const totalMissing = missingAddons.length + missingItemDescs.length + missingCategoryDescs.length + missingNewItems.length + missingItemVariants.length + missingCategoryVariants.length;
     if (totalMissing === 0) return null;
     const applyAll = () => {
       const summary = [];
@@ -8909,9 +8939,11 @@ function MenuAdminView({
       if (missingItemDescs.length) summary.push(`${missingItemDescs.length} 項描述`);
       if (missingCategoryDescs.length) summary.push(`${missingCategoryDescs.length} 個分類備註`);
       if (missingNewItems.length) summary.push(`${missingNewItems.length} 個新品項`);
+      if (missingItemVariants.length) summary.push(`${missingItemVariants.length} 項補變體`);
+      if (missingCategoryVariants.length) summary.push(`${missingCategoryVariants.length} 個分類補變體`);
       if (!confirm(`將套用：\n${summary.map(s => '・' + s).join('\n')}\n\n這只會新增資料，不會改變您已調整的價格／品名／順序。\n\n確定執行？`)) return;
 
-      // Update items: addons + descs + new items (appended at end)
+      // Update items: addons + descs + new items (appended at end) + variants
       const newItems = shop.items.map(it => {
         const k = seedItemKey(it);
         const seedMatch = seed.items.find(s => seedItemKey(s) === k);
@@ -8925,19 +8957,44 @@ function MenuAdminView({
         if (seedMatch.desc && !next.desc) {
           next.desc = seedMatch.desc;
         }
+        // Merge missing variants into prices (using seed's price for the new variant)
+        const seedKeys = Object.keys(seedMatch.prices || {});
+        const liveKeys = Object.keys(next.prices || {});
+        const addedKeys = seedKeys.filter(kk => !liveKeys.includes(kk));
+        if (addedKeys.length) {
+          next.prices = {
+            ...next.prices
+          };
+          addedKeys.forEach(kk => {
+            next.prices[kk] = seedMatch.prices[kk];
+          });
+        }
         return next;
       });
       // Append new items (preserve seed order among new ones)
       missingNewItems.forEach(ni => newItems.push(ni));
 
-      // Update categories: descs only
+      // Update categories: descs + variants
       const newCategories = (shop.categories || []).map(c => {
         const seedMatch = (seed.categories || []).find(s => s.id === c.id);
-        if (!seedMatch || !seedMatch.desc || c.desc) return c;
-        return {
-          ...c,
-          desc: seedMatch.desc
+        if (!seedMatch) return c;
+        const next = {
+          ...c
         };
+        if (seedMatch.desc && !next.desc) {
+          next.desc = seedMatch.desc;
+        }
+        // Append missing variants in original seed order
+        const seedVars = seedMatch.variants || [];
+        const addedVariants = seedVars.filter(v => !(next.variants || []).includes(v));
+        if (addedVariants.length) {
+          next.variants = [...(next.variants || []), ...addedVariants];
+          // Also update variantLabel from seed if it changed
+          if (seedMatch.variantLabel && seedMatch.variantLabel !== next.variantLabel) {
+            next.variantLabel = seedMatch.variantLabel;
+          }
+        }
+        return next;
       });
       dispatch({
         type: 'menu_edit',
@@ -8961,7 +9018,7 @@ function MenuAdminView({
       style: {
         color: 'var(--ink-2)'
       }
-    }, missingAddons.length > 0 && /*#__PURE__*/React.createElement("li", null, missingAddons.length, " \u9805\u53EF\u52A0\u4E0A\u52A0\u8CFC\u9078\u9805\uFF08\u5982\u91CD\u4E73 +$10\uFF09"), missingItemDescs.length > 0 && /*#__PURE__*/React.createElement("li", null, missingItemDescs.length, " \u9805\u53EF\u52A0\u4E0A\u63CF\u8FF0\uFF08\u5982 S \u56FA\u5B9A\u751C\u5EA6\uFF09"), missingCategoryDescs.length > 0 && /*#__PURE__*/React.createElement("li", null, missingCategoryDescs.length, " \u500B\u5206\u985E\u53EF\u52A0\u5099\u8A3B\uFF08\u5982 \u2745 \u50C5\u63D0\u4F9B\u51B7\u98F2\uFF09"), missingNewItems.length > 0 && /*#__PURE__*/React.createElement("li", null, missingNewItems.length, " \u500B\u539F\u83DC\u55AE\u54C1\u9805\u76EE\u524D\u4E0D\u5728 Firestore \u4E2D")), /*#__PURE__*/React.createElement("div", {
+    }, missingAddons.length > 0 && /*#__PURE__*/React.createElement("li", null, missingAddons.length, " \u9805\u53EF\u52A0\u4E0A\u52A0\u8CFC\u9078\u9805\uFF08\u5982\u91CD\u4E73 +$10\uFF09"), missingItemDescs.length > 0 && /*#__PURE__*/React.createElement("li", null, missingItemDescs.length, " \u9805\u53EF\u52A0\u4E0A\u63CF\u8FF0\uFF08\u5982 S \u56FA\u5B9A\u751C\u5EA6\uFF09"), missingCategoryDescs.length > 0 && /*#__PURE__*/React.createElement("li", null, missingCategoryDescs.length, " \u500B\u5206\u985E\u53EF\u52A0\u5099\u8A3B\uFF08\u5982 \u2745 \u50C5\u63D0\u4F9B\u51B7\u98F2\uFF09"), missingNewItems.length > 0 && /*#__PURE__*/React.createElement("li", null, missingNewItems.length, " \u500B\u539F\u83DC\u55AE\u54C1\u9805\u76EE\u524D\u4E0D\u5728 Firestore \u4E2D"), missingItemVariants.length > 0 && /*#__PURE__*/React.createElement("li", null, missingItemVariants.length, " \u500B\u54C1\u9805\u53EF\u65B0\u589E\u8B8A\u9AD4\uFF08\u5982\u4E73\u916A\u9905 \u7B49\uFF09"), missingCategoryVariants.length > 0 && /*#__PURE__*/React.createElement("li", null, missingCategoryVariants.length, " \u500B\u5206\u985E\u53EF\u65B0\u589E\u8B8A\u9AD4")), /*#__PURE__*/React.createElement("div", {
       className: "mb-2",
       style: {
         color: 'var(--ink-2)'
