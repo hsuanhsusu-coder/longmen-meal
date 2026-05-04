@@ -527,6 +527,60 @@ const isOverrideAction = (account, swimmerId, isCutoff) => {
   return !(account.swimmers || []).includes(swimmerId) || isCutoff;
 };
 
+/* combo discount detection — early-warn parents who ordered combo + drink but didn't tick "換飲品 -$25" */
+const COMBO_CATS = ['platter', 'burger', 'ricebox']; // 早安有喜套餐分類
+const DRINK_CATS = ['tea', 'milktea', 'honey', 'fruit', 'coffee']; // 早安有喜飲品分類
+function detectComboDiscountIssue(orderItems, shopId) {
+  // Only applies to yusee
+  if (shopId !== 'yusee') return null;
+  if (!orderItems) return null;
+  const lines = Array.isArray(orderItems) ? orderItems : Object.values(orderItems);
+  let hasCombo = false,
+    hasDrink = false,
+    hasSwap = false;
+  let comboCount = 0,
+    swapCount = 0;
+  for (const l of lines) {
+    if (!l || !l.qty) continue;
+    if (COMBO_CATS.includes(l.cat)) {
+      hasCombo = true;
+      comboCount += l.qty;
+    }
+    if (DRINK_CATS.includes(l.cat)) hasDrink = true;
+    // 換飲品 addon = price -25; check both addon names
+    const addons = l.addons || [];
+    if (addons.some(a => a.name === '換飲品')) {
+      hasSwap = true;
+      swapCount += l.qty;
+    }
+  }
+  if (hasCombo && hasDrink && !hasSwap) {
+    // Has combo + drink, no swap = likely missing discount
+    return {
+      type: 'missing_swap',
+      comboCount,
+      msg: '點了套餐+飲品，但未勾「換飲品 -$25」折抵'
+    };
+  }
+  if (hasSwap && !hasDrink) {
+    // Swapped but no drink picked
+    return {
+      type: 'swap_no_drink',
+      swapCount,
+      msg: '已勾「換飲品 -$25」但未點任何飲品'
+    };
+  }
+  if (hasSwap && comboCount > 0 && swapCount > comboCount) {
+    return {
+      type: 'swap_exceeds_combo',
+      swapCount,
+      comboCount,
+      msg: `勾選「換飲品」次數(${swapCount}) 超過套餐數量(${comboCount})`
+    };
+  }
+  return null;
+}
+
 /* ─── COMPONENTS BELOW ─── */
 /* ════════════════════════════════════════════════════════════
    MENU SEED DATA — used to populate Firestore on first run
@@ -8466,6 +8520,12 @@ function OrderEditorDrawer({
   }, [draft, existingOrder]);
   const onSubmit = async () => {
     setError('');
+    // Check combo discount issue
+    const issue = detectComboDiscountIssue(draft, shop.id);
+    if (issue) {
+      const proceed = confirm(`⚠ ${issue.msg}\n\n此問題可能導致金額差 $25。\n\n按【確定】仍要提交\n按【取消】回去檢查訂單`);
+      if (!proceed) return;
+    }
     setSubmitting(true);
     try {
       await dispatch({
@@ -9053,6 +9113,12 @@ function ChildOrderPanel({
   const subtotal = cartLines.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
   const onSubmit = async () => {
     setError('');
+    // Check combo discount issue
+    const issue = detectComboDiscountIssue(draft, shop.id);
+    if (issue) {
+      const proceed = confirm(`⚠ ${issue.msg}\n\n此問題可能導致金額差 $25。\n\n按【確定】仍要提交\n按【取消】回去檢查訂單`);
+      if (!proceed) return;
+    }
     setSubmitting(true);
     try {
       await dispatch({
@@ -9618,12 +9684,14 @@ function SummaryView({
       });
       const totalQty = items.reduce((s, l) => s + (l.qty || 0), 0);
       const totalPrice = items.reduce((s, l) => s + (l.qty || 0) * (l.price || 0), 0);
+      const issue = detectComboDiscountIssue(items, shop.id);
       out.push({
         swimmerId: sid,
         name: swimmer.name,
         items,
         totalQty,
-        totalPrice
+        totalPrice,
+        issue
       });
     });
     // Sort rows by swimmer name (or by ID/seat — keep stable)
@@ -9836,7 +9904,14 @@ function SummaryView({
       }, "$", l.price, (l.qty || 0) > 1 ? ` × ${l.qty} = $${lineSubtotal}` : ''), l.note && l.note.trim() && /*#__PURE__*/React.createElement("span", {
         className: "note-badge"
       }, "\uD83D\uDCDD ", l.note.trim()));
-    })));
+    }), r.issue && /*#__PURE__*/React.createElement("div", {
+      className: "mt-1.5 text-[11px] px-2 py-1 inline-block",
+      style: {
+        color: 'var(--red)',
+        background: '#FEE',
+        border: '1px dashed var(--red)'
+      }
+    }, "\u26A0 ", r.issue.msg)));
   }), /*#__PURE__*/React.createElement("div", {
     className: "px-3 sm:px-4 py-2.5 flex items-baseline justify-between",
     style: {
@@ -12111,7 +12186,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.22"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.23"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
