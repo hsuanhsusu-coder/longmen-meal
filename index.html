@@ -8523,7 +8523,17 @@ function OrderEditorDrawer({
     // Check combo discount issue
     const issue = detectComboDiscountIssue(draft, shop.id);
     if (issue) {
-      const proceed = confirm(`⚠ ${issue.msg}\n\n此問題可能導致金額差 $25。\n\n按【確定】仍要提交\n按【取消】回去檢查訂單`);
+      let detailMsg = '';
+      if (issue.type === 'missing_swap') {
+        detailMsg = `您點了套餐 + 飲品，但沒勾「換飲品 -$25」折抵。\n\n` + `早安有喜的套餐（拼盤／漢堡／飯食）已附中杯飲品。\n\n` + `情境一：想把套餐附的飲品換成自選的這杯？\n` + `→ 按【取消】回去，在套餐勾選「換飲品 -$25」\n\n` + `情境二：就是要 2 杯飲料（套餐附的 + 多點 1 杯）？\n` + `→ 按【確定】提交（將多付 $25）`;
+      } else if (issue.type === 'swap_no_drink') {
+        detailMsg = `您勾了「換飲品 -$25」折抵，但沒點任何飲品。\n\n` + `按【取消】回去：補點飲品，或取消「換飲品」勾選\n` + `按【確定】提交：店家會給您預設飲品（已折 $25）`;
+      } else if (issue.type === 'swap_exceeds_combo') {
+        detailMsg = `您勾選「換飲品」次數 (${issue.swapCount}) 超過套餐數量 (${issue.comboCount})。\n\n` + `按【取消】回去檢查\n` + `按【確定】提交（可能會被店家扣回多餘的折抵）`;
+      } else {
+        detailMsg = `${issue.msg}\n\n按【確定】仍要提交\n按【取消】回去檢查`;
+      }
+      const proceed = confirm(`⚠ 訂單可能有問題\n\n${detailMsg}`);
       if (!proceed) return;
     }
     setSubmitting(true);
@@ -9116,7 +9126,17 @@ function ChildOrderPanel({
     // Check combo discount issue
     const issue = detectComboDiscountIssue(draft, shop.id);
     if (issue) {
-      const proceed = confirm(`⚠ ${issue.msg}\n\n此問題可能導致金額差 $25。\n\n按【確定】仍要提交\n按【取消】回去檢查訂單`);
+      let detailMsg = '';
+      if (issue.type === 'missing_swap') {
+        detailMsg = `您點了套餐 + 飲品，但沒勾「換飲品 -$25」折抵。\n\n` + `早安有喜的套餐（拼盤／漢堡／飯食）已附中杯飲品。\n\n` + `情境一：想把套餐附的飲品換成自選的這杯？\n` + `→ 按【取消】回去，在套餐勾選「換飲品 -$25」\n\n` + `情境二：就是要 2 杯飲料（套餐附的 + 多點 1 杯）？\n` + `→ 按【確定】提交（將多付 $25）`;
+      } else if (issue.type === 'swap_no_drink') {
+        detailMsg = `您勾了「換飲品 -$25」折抵，但沒點任何飲品。\n\n` + `按【取消】回去：補點飲品，或取消「換飲品」勾選\n` + `按【確定】提交：店家會給您預設飲品（已折 $25）`;
+      } else if (issue.type === 'swap_exceeds_combo') {
+        detailMsg = `您勾選「換飲品」次數 (${issue.swapCount}) 超過套餐數量 (${issue.comboCount})。\n\n` + `按【取消】回去檢查\n` + `按【確定】提交（可能會被店家扣回多餘的折抵）`;
+      } else {
+        detailMsg = `${issue.msg}\n\n按【確定】仍要提交\n按【取消】回去檢查`;
+      }
+      const proceed = confirm(`⚠ 訂單可能有問題\n\n${detailMsg}`);
       if (!proceed) return;
     }
     setSubmitting(true);
@@ -9911,7 +9931,7 @@ function SummaryView({
         background: '#FEE',
         border: '1px dashed var(--red)'
       }
-    }, "\u26A0 ", r.issue.msg)));
+    }, r.issue.type === 'missing_swap' && /*#__PURE__*/React.createElement(React.Fragment, null, "\u26A0 \u9EDE\u4E86\u5957\u9910+\u98F2\u54C1\u4F46\u6C92\u52FE\u300C\u63DB\u98F2\u54C1 -$25\u300D\u6298\u62B5 (", r.issue.comboCount, " \u4EFD\u5957\u9910) \u2014 \u78BA\u8A8D\u5BB6\u9577\u662F\u5426\u8981 2 \u676F\u98F2\u6599"), r.issue.type === 'swap_no_drink' && /*#__PURE__*/React.createElement(React.Fragment, null, "\u26A0 \u52FE\u4E86\u300C\u63DB\u98F2\u54C1 -$25\u300D\u4F46\u6C92\u9EDE\u98F2\u54C1 (", r.issue.swapCount, " \u4EFD) \u2014 \u5E97\u5BB6\u6703\u7D66\u9810\u8A2D\u98F2\u54C1"), r.issue.type === 'swap_exceeds_combo' && /*#__PURE__*/React.createElement(React.Fragment, null, "\u26A0 \u300C\u63DB\u98F2\u54C1\u300D\u52FE\u9078 ", r.issue.swapCount, " \u6B21\u4F46\u53EA\u6709 ", r.issue.comboCount, " \u4EFD\u5957\u9910"))));
   }), /*#__PURE__*/React.createElement("div", {
     className: "px-3 sm:px-4 py-2.5 flex items-baseline justify-between",
     style: {
@@ -12186,7 +12206,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.23"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.24"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
