@@ -9040,7 +9040,44 @@ function MenuAdminView({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "serif-it"
-  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u54C1\u540D\uFF0F\u50F9\u683C\uFF0F\u63CF\u8FF0\uFF0F\u5206\u985E\u5099\u8A3B \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u3002\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u3002\u5DF2\u4E0B\u8A02\u7684\u8A02\u55AE\u4E0D\u53D7\u5F71\u97FF\u3002"));
+  }, "tip \xB7"), " \u76F4\u63A5\u7DE8\u8F2F\u54C1\u540D\uFF0F\u50F9\u683C\uFF0F\u63CF\u8FF0\uFF0F\u5206\u985E\u5099\u8A3B \u2192 \u5931\u53BB\u7126\u9EDE\u5373\u5132\u5B58\u3002\u6240\u6709\u6539\u52D5\u6703\u8A18\u5728\u300CLOG \u7D00\u9304\u300D\u3002\u5DF2\u4E0B\u8A02\u7684\u8A02\u55AE\u4E0D\u53D7\u5F71\u97FF\u3002"), shop && SHOP_SEEDS[shopId] && /*#__PURE__*/React.createElement("details", {
+    className: "mt-3 p-3 text-xs",
+    style: {
+      background: '#FEE',
+      border: '1.5px dashed var(--red)',
+      color: 'var(--red)'
+    }
+  }, /*#__PURE__*/React.createElement("summary", {
+    className: "cursor-pointer display-cn text-sm"
+  }, "\u26A0 \u5371\u96AA\u5340\uFF1A\u5F9E\u539F\u59CB\u83DC\u55AE\u5B8C\u6574\u91CD\u5EFA\uFF08\u7834\u58DE\u6027\uFF09"), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 space-y-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u6B64\u529F\u80FD\u6703\u5C07\u6574\u5BB6\u5E97\u83DC\u55AE", /*#__PURE__*/React.createElement("strong", null, "\u5B8C\u5168\u8986\u5BEB"), "\u70BA\u539F\u59CB\u7A2E\u5B50\u83DC\u55AE\uFF0C\u5305\u542B\uFF1A", /*#__PURE__*/React.createElement("ul", {
+    className: "ml-4 list-disc mt-1"
+  }, /*#__PURE__*/React.createElement("li", null, "\u6240\u6709\u54C1\u9805\u7684\u50F9\u683C\u3001\u8B8A\u9AD4\u3001\u63CF\u8FF0\u3001\u52A0\u8CFC\u9078\u9805"), /*#__PURE__*/React.createElement("li", null, "\u6240\u6709\u5206\u985E\u7684\u9806\u5E8F\u3001\u8B8A\u9AD4\u3001\u5099\u8A3B")), /*#__PURE__*/React.createElement("p", {
+    className: "mt-1"
+  }, /*#__PURE__*/React.createElement("strong", null, "\u6703\u6E05\u9664\u6240\u6709\u60A8\u5148\u524D\u7684\u83DC\u55AE\u7DE8\u8F2F"), "\u3002\u5DF2\u4E0B\u8A02\u7684\u8A02\u55AE\u4E0D\u53D7\u5F71\u97FF\u3002")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!confirm(`⚠ 即將完全覆寫【${shop.name}】菜單為原始版本！\n\n所有您先前的編輯（價格、品名、順序、加購）將被清除。\n\n此操作不可復原。確定執行？`)) return;
+      if (!confirm(`再次確認：真的要重建【${shop.name}】嗎？`)) return;
+      const seed = SHOP_SEEDS[shopId];
+      dispatch({
+        type: 'menu_edit',
+        shopId,
+        items: JSON.parse(JSON.stringify(seed.items)),
+        categories: JSON.parse(JSON.stringify(seed.categories)),
+        detail: `⚠ 從原始菜單完整重建`
+      });
+    },
+    className: "btn-tactile px-3 py-1.5",
+    style: {
+      background: 'var(--red)',
+      color: 'var(--paper)'
+    }
+  }, "\uD83D\uDD04 \u5B8C\u6574\u91CD\u5EFA"))));
 }
 
 /* New item form: appears inside a category when admin clicks "+ 新增品項" */
