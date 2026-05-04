@@ -547,9 +547,9 @@ function detectComboDiscountIssue(orderItems, shopId) {
       comboCount += l.qty;
     }
     if (DRINK_CATS.includes(l.cat)) hasDrink = true;
-    // 換飲品 addon = price -25; check both addon names
+    // 換飲品 addon — line.addons is array of strings (addon names only)
     const addons = l.addons || [];
-    if (addons.some(a => a.name === '換飲品')) {
+    if (addons.includes('換飲品')) {
       hasSwap = true;
       swapCount += l.qty;
     }
@@ -12206,7 +12206,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.24"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.7.25"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
