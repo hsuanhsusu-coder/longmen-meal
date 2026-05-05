@@ -600,146 +600,133 @@ function recomputeComboSwap(draft, shopId) {
 /* ─── COMPONENTS BELOW ─── */
 /* ════════════════════════════════════════════════════════════
    MENU SEED DATA — used to populate Firestore on first run
+   Synced from production Firestore on 2026-05-05
+   (corrects user-edited names & layouts)
    ════════════════════════════════════════════════════════════ */
 
 const YUSEE_SEED = {
-  id: 'yusee',
-  name: '早安有喜',
-  nameEn: 'Morning Yusee',
-  branch: '大安和平店',
-  address: '台北市大安區和平東路二段117號',
-  phone: '(02) 2325-0335',
-  hours: '早餐專賣',
-  themeColor: 'var(--yusee)',
-  themeBg: 'var(--yusee-bg)',
-  note: '飲品可調甜度、冰量；使用統一鮮乳；情人蜂蜜',
   categories: [{
-    id: 'tea',
     name: '有喜茶飲',
     variants: ['M', 'L'],
+    id: 'tea',
     variantLabel: 'M中／L大',
     desc: '❅ 僅提供冷飲；可調甜度、冰量'
   }, {
-    id: 'milktea',
-    name: '鮮奶茶',
     variants: ['M', 'L'],
+    name: '鮮奶茶',
     variantLabel: '重乳+10元',
+    id: 'milktea',
     desc: '❅ 僅提供冷飲；使用統一鮮乳；可勾選重乳 +$10'
   }, {
     id: 'honey',
+    variantLabel: '蜂蜜系列',
     name: '百分百蜂蜜',
     variants: ['M'],
-    variantLabel: '蜂蜜系列',
     desc: '❅ 僅提供冷飲；使用情人蜂蜜'
   }, {
-    id: 'fruit',
-    name: '鮮果茶飲',
-    variants: ['M', 'L'],
     variantLabel: '鮮果飲品',
+    id: 'fruit',
+    variants: ['M', 'L'],
+    name: '鮮果茶飲',
     desc: '❅ 僅提供冷飲'
   }, {
+    desc: '冰／熱皆有；可勾選重乳 +$10',
     id: 'coffee',
-    name: '有喜咖啡',
-    variants: ['冰', '熱'],
     variantLabel: '冰16oz／熱12oz',
-    desc: '冰／熱皆有；可勾選重乳 +$10'
+    variants: ['冰', '熱'],
+    name: '有喜咖啡'
   }, {
+    desc: '附醬料 3 選 1（千島／日式和風／巴塔，由店家預設）；附中杯紅茶或玉米濃湯。要換其他飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）',
+    variantLabel: '附醬料+飲品',
     id: 'platter',
     name: '經典拼盤',
-    variants: ['default'],
-    variantLabel: '附醬料+飲品',
-    desc: '附醬料 3 選 1（千島／日式和風／巴塔，由店家預設）；附中杯紅茶或玉米濃湯。要換其他飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）'
-  }, {
-    id: 'burger',
-    name: '義式手工漢堡',
-    variants: ['白金', '黑金'],
-    variantLabel: '白金／黑金麵包',
-    desc: '升級套餐 +$69 含脆薯+中杯紅茶。要換飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）'
-  }, {
-    id: 'toast',
-    name: '有一點厚吐司',
-    variants: ['原', '薄'],
-    variantLabel: '原／薄'
-  }, {
-    id: 'eggtoast',
-    name: '吐司佐蛋',
-    variants: ['原', '丹麥'],
-    variantLabel: '原／丹麥'
-  }, {
-    id: 'french',
-    name: '法國吐司',
     variants: ['default']
   }, {
-    id: 'eggcake',
-    name: '雙蛋蛋餅',
+    desc: '升級套餐 +$69 含脆薯+中杯紅茶。要換飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）',
+    id: 'burger',
+    variantLabel: '白金／黑金麵包',
+    variants: ['白金', '黑金'],
+    name: '義式手工漢堡'
+  }, {
+    variantLabel: '原／薄',
+    id: 'toast',
+    name: '有一點厚吐司',
+    variants: ['原', '薄']
+  }, {
+    id: 'eggtoast',
+    variantLabel: '原／丹麥',
+    name: '吐司佐蛋',
+    variants: ['原', '丹麥']
+  }, {
+    name: '法國吐司',
+    variants: ['default'],
+    id: 'french'
+  }, {
     variants: ['原', '厚酥'],
+    name: '雙蛋蛋餅',
+    id: 'eggcake',
     variantLabel: '原／厚酥'
   }, {
     id: 'veggie',
+    variantLabel: '原／厚酥',
     name: '蔬食脆捲餅',
-    variants: ['原', '厚酥'],
-    variantLabel: '原／厚酥'
+    variants: ['原', '厚酥']
   }, {
-    id: 'mcmuffin',
-    name: '朝氣滿福堡',
     variants: ['default'],
-    variantLabel: '加起司+15元'
+    name: '朝氣滿福堡',
+    variantLabel: '加起司+15元',
+    id: 'mcmuffin'
   }, {
-    id: 'pasta',
     name: '美味麵食',
     variants: ['default'],
-    variantLabel: 'A加烤肉.蛋+40 / B加蛋+15'
+    variantLabel: 'A加烤肉.蛋+40 / B加蛋+15',
+    id: 'pasta'
   }, {
-    id: 'ricebox',
-    name: '套餐飯食',
     variants: ['丼飯', '咖哩'],
+    name: '套餐飯食',
+    id: 'ricebox',
     variantLabel: '附中杯紅茶',
     desc: '套餐皆附中杯紅茶。要換飲料：去飲料分類另點 1 杯（系統會自動套用 -$25 折抵）'
   }, {
     id: 'snack',
-    name: '有喜小點心',
-    variants: ['default']
+    variants: ['default'],
+    name: '有喜小點心'
   }, {
     id: 'hotpot',
+    variantLabel: 'A加起司+15 / B換牛肉+15',
     name: '鍋燒系列',
-    variants: ['原味', '泡菜'],
-    variantLabel: 'A加起司+15 / B換牛肉+15'
+    variants: ['原味', '泡菜']
   }],
+  themeBg: 'var(--yusee-bg)',
   items: [{
-    cat: 'tea',
-    name: '有喜紅茶',
-    prices: {
-      M: 25,
-      L: 30
-    },
     addons: [{
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
     }, {
       name: '全糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '八分糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '八分糖'
     }, {
       name: '半糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '三分糖',
       price: 0,
@@ -749,60 +736,65 @@ const YUSEE_SEED = {
       price: 0,
       group: '甜度'
     }, {
-      name: '無糖',
       price: 0,
-      group: '甜度'
-    }]
+      group: '甜度',
+      name: '無糖'
+    }],
+    name: '有喜紅茶',
+    prices: {
+      L: 30,
+      M: 25
+    },
+    cat: 'tea'
   }, {
     cat: 'tea',
     name: '有喜綠茶',
     prices: {
-      M: 30,
-      L: 35
+      L: 35,
+      M: 30
     },
     addons: [{
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '微冰'
     }, {
       name: '去冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '全糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '全糖'
     }, {
-      name: '八分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '八分糖'
     }, {
-      name: '半糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '半糖'
     }, {
       name: '三分糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '一分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '無糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '無糖'
     }]
   }, {
-    cat: 'tea',
     name: '有喜烏龍茶',
     prices: {
       M: 35,
@@ -810,20 +802,20 @@ const YUSEE_SEED = {
     },
     addons: [{
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '去冰'
     }, {
       name: '全糖',
       price: 0,
@@ -833,49 +825,49 @@ const YUSEE_SEED = {
       price: 0,
       group: '甜度'
     }, {
-      name: '半糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '半糖'
     }, {
       name: '三分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '一分糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '一分糖'
     }, {
-      name: '無糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
-    }]
+      name: '無糖'
+    }],
+    cat: 'tea'
   }, {
-    cat: 'tea',
-    name: '有喜奶茶',
     prices: {
       M: 35,
       L: 40
     },
+    name: '有喜奶茶',
     addons: [{
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
     }, {
-      name: '全糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '全糖'
     }, {
       name: '八分糖',
       price: 0,
@@ -885,41 +877,41 @@ const YUSEE_SEED = {
       price: 0,
       group: '甜度'
     }, {
-      name: '三分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '三分糖'
     }, {
       name: '一分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '無糖',
       price: 0,
-      group: '甜度'
-    }]
+      group: '甜度',
+      name: '無糖'
+    }],
+    cat: 'tea'
   }, {
-    cat: 'tea',
     name: '茉香奶綠',
     prices: {
-      M: 35,
-      L: 40
+      L: 40,
+      M: 35
     },
     addons: [{
       name: '正常冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
-      name: '微冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '微冰'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '去冰'
     }, {
       name: '全糖',
       price: 0,
@@ -930,84 +922,128 @@ const YUSEE_SEED = {
       group: '甜度'
     }, {
       name: '半糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '三分糖',
       price: 0,
       group: '甜度'
     }, {
       name: '一分糖',
+      group: '甜度',
+      price: 0
+    }, {
+      price: 0,
+      group: '甜度',
+      name: '無糖'
+    }],
+    cat: 'tea'
+  }, {
+    addons: [{
+      price: 0,
+      group: '冰量',
+      name: '正常冰'
+    }, {
+      name: '少冰',
+      group: '冰量',
+      price: 0
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '微冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '去冰'
+    }, {
+      name: '全糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '無糖',
+      name: '八分糖',
+      group: '甜度',
+      price: 0
+    }, {
+      name: '半糖',
       price: 0,
       group: '甜度'
-    }]
-  }, {
-    cat: 'tea',
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '三分糖'
+    }, {
+      name: '一分糖',
+      price: 0,
+      group: '甜度'
+    }, {
+      price: 0,
+      group: '甜度',
+      name: '無糖'
+    }],
     name: '烏龍奶茶',
     prices: {
       M: 40,
       L: 45
     },
+    cat: 'tea'
+  }, {
     addons: [{
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
     }, {
-      name: '全糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '全糖'
     }, {
-      name: '八分糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '八分糖'
     }, {
       name: '半糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '三分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '三分糖'
     }, {
       name: '一分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '無糖',
       price: 0,
-      group: '甜度'
-    }]
-  }, {
-    cat: 'tea',
+      group: '甜度',
+      name: '無糖'
+    }],
     name: '非基改豆漿',
     prices: {
       M: 35,
       L: 40
     },
+    cat: 'tea'
+  }, {
+    cat: 'tea',
     addons: [{
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
-      name: '少冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
@@ -1017,37 +1053,36 @@ const YUSEE_SEED = {
       price: 0,
       group: '冰量'
     }, {
-      name: '全糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '全糖'
     }, {
-      name: '八分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '八分糖'
     }, {
-      name: '半糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '半糖'
     }, {
       name: '三分糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '一分糖',
       price: 0,
       group: '甜度'
     }, {
       name: '無糖',
-      price: 0,
-      group: '甜度'
-    }]
-  }, {
-    cat: 'tea',
-    name: '紅茶豆漿',
+      group: '甜度',
+      price: 0
+    }],
     prices: {
-      M: 35,
-      L: 40
+      L: 40,
+      M: 35
     },
+    name: '紅茶豆漿'
+  }, {
     addons: [{
       name: '正常冰',
       price: 0,
@@ -1057,93 +1092,50 @@ const YUSEE_SEED = {
       price: 0,
       group: '冰量'
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
     }, {
-      name: '全糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '全糖'
     }, {
-      name: '八分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '八分糖'
     }, {
       name: '半糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '三分糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '一分糖',
       price: 0,
       group: '甜度'
     }, {
       name: '無糖',
-      price: 0,
-      group: '甜度'
-    }]
-  }, {
-    cat: 'tea',
+      group: '甜度',
+      price: 0
+    }],
     name: '抹茶豆漿',
     prices: {
-      M: 45,
-      L: 50
+      L: 50,
+      M: 45
     },
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '全糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '八分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '半糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '三分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '一分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '無糖',
-      price: 0,
-      group: '甜度'
-    }]
+    cat: 'tea'
   }, {
-    cat: 'tea',
-    name: '胚芽豆漿',
     prices: {
-      M: 45,
-      L: 50
+      L: 50,
+      M: 45
     },
+    name: '胚芽豆漿',
     addons: [{
       name: '正常冰',
       price: 0,
@@ -1154,8 +1146,52 @@ const YUSEE_SEED = {
       group: '冰量'
     }, {
       name: '微冰',
+      group: '冰量',
+      price: 0
+    }, {
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '去冰'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '全糖'
+    }, {
+      price: 0,
+      group: '甜度',
+      name: '八分糖'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '半糖'
+    }, {
+      name: '三分糖',
+      group: '甜度',
+      price: 0
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '一分糖'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '無糖'
+    }],
+    cat: 'tea'
+  }, {
+    cat: 'tea',
+    addons: [{
+      name: '正常冰',
+      group: '冰量',
+      price: 0
+    }, {
+      name: '少冰',
+      group: '冰量',
+      price: 0
+    }, {
+      name: '微冰',
+      group: '冰量',
+      price: 0
     }, {
       name: '去冰',
       price: 0,
@@ -1169,366 +1205,323 @@ const YUSEE_SEED = {
       price: 0,
       group: '甜度'
     }, {
-      name: '半糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '半糖'
     }, {
       name: '三分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '一分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '一分糖'
     }, {
-      name: '無糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
-    }]
-  }, {
-    cat: 'tea',
+      name: '無糖'
+    }],
     name: '胚芽奶茶',
     prices: {
-      M: 45,
-      L: 50
-    },
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '全糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '八分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '半糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '三分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '一分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '無糖',
-      price: 0,
-      group: '甜度'
-    }]
+      L: 50,
+      M: 45
+    }
   }, {
-    cat: 'tea',
     name: '焦糖奶茶',
+    desc: 'S 固定甜度',
+    cat: 'tea',
+    addons: [{
+      group: '冰量',
+      price: 0,
+      name: '正常冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '少冰'
+    }, {
+      name: '微冰',
+      group: '冰量',
+      price: 0
+    }, {
+      name: '去冰',
+      group: '冰量',
+      price: 0
+    }],
     prices: {
+      M: 50
+    }
+  }, {
+    addons: [{
+      name: '正常冰',
+      price: 0,
+      group: '冰量'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '少冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '微冰'
+    }, {
+      name: '去冰',
+      price: 0,
+      group: '冰量'
+    }],
+    prices: {
+      L: 55,
       M: 50
     },
     desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
     cat: 'tea',
-    name: '經典厚奶茶',
-    prices: {
-      M: 50,
-      L: 55
-    },
-    desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    name: '經典厚奶茶'
   }, {
-    cat: 'tea',
     name: '經典厚奶綠',
-    prices: {
-      M: 50,
-      L: 55
-    },
+    cat: 'tea',
     desc: 'S 固定甜度',
+    prices: {
+      L: 55,
+      M: 50
+    },
     addons: [{
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '去冰'
     }]
   }, {
-    cat: 'tea',
     name: '寒天珍珠紅茶',
+    desc: 'S 固定甜度',
+    cat: 'tea',
+    addons: [{
+      name: '正常冰',
+      group: '冰量',
+      price: 0
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '少冰'
+    }, {
+      name: '微冰',
+      group: '冰量',
+      price: 0
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '去冰'
+    }],
     prices: {
       M: 35,
       L: 40
-    },
-    desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    }
   }, {
-    cat: 'tea',
     name: '寒天珍珠奶茶',
+    addons: [{
+      name: '正常冰',
+      group: '冰量',
+      price: 0
+    }, {
+      name: '少冰',
+      price: 0,
+      group: '冰量'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '微冰'
+    }, {
+      name: '去冰',
+      group: '冰量',
+      price: 0
+    }],
     prices: {
-      M: 45,
-      L: 50
+      L: 50,
+      M: 45
     },
     desc: 'S 固定甜度',
+    cat: 'tea'
+  }, {
+    cat: 'tea',
+    desc: 'S 固定甜度',
+    prices: {
+      L: 50,
+      M: 45
+    },
     addons: [{
       name: '正常冰',
       price: 0,
       group: '冰量'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '微冰'
     }, {
       name: '去冰',
       price: 0,
       group: '冰量'
-    }]
+    }],
+    name: '寒天珍珠豆漿'
   }, {
-    cat: 'tea',
-    name: '寒天珍珠豆漿',
-    prices: {
-      M: 45,
-      L: 50
-    },
+    name: '復刻冬瓜茶',
     desc: 'S 固定甜度',
+    cat: 'tea',
+    addons: [{
+      group: '冰量',
+      price: 0,
+      name: '正常冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '少冰'
+    }, {
+      name: '微冰',
+      group: '冰量',
+      price: 0
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '去冰'
+    }],
+    prices: {
+      L: 40,
+      M: 35
+    }
+  }, {
+    name: '烏龍冬瓜',
+    prices: {
+      L: 45,
+      M: 40
+    },
     addons: [{
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '少冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'tea',
-    name: '復刻多瓜茶',
-    prices: {
-      M: 35,
-      L: 40
-    },
-    desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
+      name: '少冰'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
+      group: '冰量',
+      price: 0
+    }],
     cat: 'tea',
-    name: '烏龍多瓜',
-    prices: {
-      M: 40,
-      L: 45
-    },
-    desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    desc: 'S 固定甜度'
   }, {
-    cat: 'tea',
     name: '金沙阿華田',
-    prices: {
-      M: 50,
-      L: 60
-    },
     desc: 'S 固定甜度',
+    cat: 'tea',
+    addons: [{
+      price: 0,
+      group: '冰量',
+      name: '正常冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '少冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '微冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '去冰'
+    }],
+    prices: {
+      L: 60,
+      M: 50
+    }
+  }, {
+    cat: 'tea',
+    desc: 'S 固定甜度',
+    prices: {
+      M: 50
+    },
     addons: [{
       name: '正常冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
+      group: '冰量',
+      price: 0
+    }, {
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
+    }],
+    name: '蔓越莓遇見綠茶'
+  }, {
+    addons: [{
+      price: 0,
+      group: '冰量',
+      name: '正常冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '少冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '微冰'
     }, {
       name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'tea',
-    name: '蔓越莓遇見綠茶',
+      group: '冰量',
+      price: 0
+    }],
     prices: {
       M: 50
     },
     desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    cat: 'tea',
+    name: '蔓越莓遇見烏龍'
   }, {
     cat: 'tea',
-    name: '蔓越莓遇見烏龍',
+    desc: 'S 固定甜度',
     prices: {
       M: 50
     },
-    desc: 'S 固定甜度',
     addons: [{
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
-      name: '少冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
       group: '冰量'
     }, {
       name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'tea',
-    name: '青梅酵素飲',
-    prices: {
-      M: 50
-    },
-    desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+      group: '冰量',
+      price: 0
+    }],
+    name: '青梅酵素飲'
   }, {
     cat: 'milktea',
     name: '紅茶鮮乳',
@@ -1548,91 +1541,89 @@ const YUSEE_SEED = {
       L: 60
     },
     addons: [{
-      name: '重乳',
-      price: 10
+      price: 10,
+      name: '重乳'
     }]
   }, {
     cat: 'milktea',
     name: '多瓜鮮乳',
     prices: {
-      M: 50,
-      L: 60
+      L: 60,
+      M: 50
     },
     addons: [{
       name: '重乳',
       price: 10
     }]
   }, {
-    cat: 'milktea',
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
     name: '烏龍鮮乳',
     prices: {
-      M: 55,
-      L: 65
+      L: 65,
+      M: 55
     },
+    cat: 'milktea'
+  }, {
     addons: [{
       name: '重乳',
       price: 10
-    }]
-  }, {
-    cat: 'milktea',
+    }],
     name: '抹茶鮮乳',
     prices: {
-      M: 55,
-      L: 65
+      L: 65,
+      M: 55
+    },
+    cat: 'milktea'
+  }, {
+    name: '麵茶鮮乳',
+    cat: 'milktea',
+    desc: 'S 固定甜度',
+    prices: {
+      L: 65,
+      M: 55
     },
     addons: [{
       name: '重乳',
       price: 10
     }]
   }, {
-    cat: 'milktea',
-    name: '麵茶鮮乳',
-    prices: {
-      M: 55,
-      L: 65
-    },
     addons: [{
       name: '重乳',
       price: 10
     }],
-    desc: 'S 固定甜度'
-  }, {
-    cat: 'milktea',
-    name: '地瓜鮮乳',
     prices: {
-      M: 65,
-      L: 75
+      L: 75,
+      M: 65
     },
-    addons: [{
-      name: '重乳',
-      price: 10
-    }],
-    desc: 'S 固定甜度'
-  }, {
+    desc: 'S 固定甜度',
     cat: 'milktea',
+    name: '地瓜鮮乳'
+  }, {
+    addons: [{
+      price: 10,
+      name: '重乳'
+    }],
     name: '葡萄鮮乳',
     prices: {
       M: 65,
       L: 75
     },
-    addons: [{
-      name: '重乳',
-      price: 10
-    }]
+    cat: 'milktea'
   }, {
-    cat: 'milktea',
     name: '金沙阿華田鮮乳',
+    cat: 'milktea',
+    desc: 'S 固定甜度',
     prices: {
       M: 65
     },
     addons: [{
-      name: '重乳',
-      price: 10
-    }],
-    desc: 'S 固定甜度'
+      price: 10,
+      name: '重乳'
+    }]
   }, {
-    cat: 'milktea',
-    name: '蘋果鮮乳',
     prices: {
       M: 70
     },
@@ -1640,86 +1631,86 @@ const YUSEE_SEED = {
       name: '重乳',
       price: 10
     }],
-    desc: 'S 固定甜度'
+    cat: 'milktea',
+    desc: 'S 固定甜度',
+    name: '蘋果鮮乳'
   }, {
+    desc: 'S 固定甜度',
     cat: 'honey',
-    name: '蜂蜜茶',
+    addons: [{
+      name: '正常冰',
+      price: 0,
+      group: '冰量'
+    }, {
+      name: '少冰',
+      price: 0,
+      group: '冰量'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '微冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '去冰'
+    }],
     prices: {
       M: 35
     },
-    desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    name: '蜂蜜茶'
   }, {
-    cat: 'honey',
     name: '蜂蜜紅茶',
+    cat: 'honey',
+    desc: 'S 固定甜度',
     prices: {
       M: 45
     },
-    desc: 'S 固定甜度',
     addons: [{
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '去冰'
     }]
   }, {
-    cat: 'honey',
     name: '蜂蜜綠茶',
     prices: {
       M: 55
     },
-    desc: 'S 固定甜度',
     addons: [{
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
-    }]
-  }, {
+      name: '去冰'
+    }],
     cat: 'honey',
+    desc: 'S 固定甜度'
+  }, {
     name: '蜂蜜檸檬茶',
     prices: {
       M: 55
     },
-    desc: 'S 固定甜度',
     addons: [{
       name: '正常冰',
       price: 0,
@@ -1729,53 +1720,52 @@ const YUSEE_SEED = {
       price: 0,
       group: '冰量'
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
-    }]
-  }, {
+      name: '去冰'
+    }],
     cat: 'honey',
-    name: '蜂蜜奶茶',
+    desc: 'S 固定甜度'
+  }, {
     prices: {
       M: 55
     },
-    desc: 'S 固定甜度',
     addons: [{
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
-      name: '微冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '微冰'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
-    }]
-  }, {
+      group: '冰量',
+      name: '去冰'
+    }],
     cat: 'honey',
-    name: '蜂蜜百香',
+    desc: 'S 固定甜度',
+    name: '蜂蜜奶茶'
+  }, {
     prices: {
       M: 60
     },
-    desc: 'S 固定甜度',
     addons: [{
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
@@ -1784,9 +1774,11 @@ const YUSEE_SEED = {
       name: '去冰',
       price: 0,
       group: '冰量'
-    }]
+    }],
+    cat: 'honey',
+    desc: 'S 固定甜度',
+    name: '蜂蜜百香'
   }, {
-    cat: 'fruit',
     name: '檸檬綠茶',
     prices: {
       M: 45,
@@ -1794,52 +1786,53 @@ const YUSEE_SEED = {
     },
     addons: [{
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
     }, {
-      name: '全糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '全糖'
     }, {
-      name: '八分糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '八分糖'
     }, {
-      name: '半糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '半糖'
     }, {
       name: '三分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '一分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '一分糖'
     }, {
-      name: '無糖',
       price: 0,
-      group: '甜度'
-    }]
+      group: '甜度',
+      name: '無糖'
+    }],
+    cat: 'fruit'
   }, {
     cat: 'fruit',
-    name: '檸檬紅茶',
     prices: {
       M: 45,
       L: 50
     },
+    name: '檸檬紅茶',
     addons: [{
       name: '正常冰',
       price: 0,
@@ -1849,144 +1842,115 @@ const YUSEE_SEED = {
       price: 0,
       group: '冰量'
     }, {
-      name: '微冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '微冰'
     }, {
       name: '去冰',
       price: 0,
       group: '冰量'
     }, {
       name: '全糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
       name: '八分糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '半糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '半糖'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '三分糖'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '一分糖'
+    }, {
+      name: '無糖',
+      group: '甜度',
+      price: 0
+    }]
+  }, {
+    cat: 'fruit',
+    addons: [{
+      price: 0,
+      group: '冰量',
+      name: '正常冰'
+    }, {
+      name: '少冰',
+      price: 0,
+      group: '冰量'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '微冰'
+    }, {
+      name: '去冰',
+      price: 0,
+      group: '冰量'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '全糖'
+    }, {
+      group: '甜度',
+      price: 0,
+      name: '八分糖'
+    }, {
+      price: 0,
+      group: '甜度',
+      name: '半糖'
     }, {
       name: '三分糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
-      name: '一分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '一分糖'
     }, {
       name: '無糖',
       price: 0,
       group: '甜度'
-    }]
-  }, {
-    cat: 'fruit',
+    }],
     name: '鮮檸檬百香綠茶',
     prices: {
-      M: 45,
-      L: 50
-    },
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '全糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '八分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '半糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '三分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '一分糖',
-      price: 0,
-      group: '甜度'
-    }, {
-      name: '無糖',
-      price: 0,
-      group: '甜度'
-    }]
+      L: 50,
+      M: 45
+    }
   }, {
     cat: 'fruit',
-    name: '檸檬多瓜',
-    prices: {
-      M: 45,
-      L: 50
-    },
     desc: 'S 固定甜度',
-    addons: [{
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'fruit',
-    name: '柳橙果粒茶',
     prices: {
-      M: 40,
-      L: 50
+      L: 50,
+      M: 40
     },
-    desc: 'S 固定甜度',
     addons: [{
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
-    }]
+      name: '去冰'
+    }],
+    name: '柳橙果粒茶'
   }, {
-    cat: 'fruit',
     name: '柳橙綠茶',
-    prices: {
-      M: 40,
-      L: 50
-    },
     desc: 'S 固定甜度',
+    cat: 'fruit',
     addons: [{
       name: '正常冰',
       price: 0,
@@ -1997,49 +1961,53 @@ const YUSEE_SEED = {
       group: '冰量'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '去冰',
       price: 0,
       group: '冰量'
-    }]
-  }, {
-    cat: 'fruit',
-    name: '蘋果風味汁',
+    }],
     prices: {
       M: 40,
       L: 50
-    },
-    desc: 'S 固定甜度',
+    }
+  }, {
     addons: [{
       name: '正常冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '少冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
-    }]
+      group: '冰量',
+      name: '去冰'
+    }],
+    prices: {
+      L: 50,
+      M: 40
+    },
+    desc: 'S 固定甜度',
+    cat: 'fruit',
+    name: '蘋果風味汁'
   }, {
     cat: 'fruit',
+    prices: {
+      L: 50,
+      M: 40
+    },
     name: '鳳梨冰茶',
-    prices: {
-      M: 40,
-      L: 50
-    },
     addons: [{
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
       price: 0,
@@ -2057,319 +2025,319 @@ const YUSEE_SEED = {
       price: 0,
       group: '甜度'
     }, {
-      name: '八分糖',
+      group: '甜度',
       price: 0,
-      group: '甜度'
+      name: '八分糖'
     }, {
       name: '半糖',
       price: 0,
       group: '甜度'
     }, {
-      name: '三分糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '三分糖'
     }, {
       name: '一分糖',
-      price: 0,
-      group: '甜度'
+      group: '甜度',
+      price: 0
     }, {
-      name: '無糖',
       price: 0,
-      group: '甜度'
+      group: '甜度',
+      name: '無糖'
     }]
   }, {
-    cat: 'coffee',
-    name: '美式咖啡',
+    addons: [{
+      name: '重乳',
+      price: 10
+    }],
     prices: {
       冰: 45,
       熱: 45
     },
+    name: '美式咖啡',
+    cat: 'coffee'
+  }, {
     addons: [{
       name: '重乳',
       price: 10
-    }]
-  }, {
-    cat: 'coffee',
+    }],
     name: '特調咖啡',
     prices: {
-      冰: 55,
-      熱: 55
+      熱: 55,
+      冰: 55
     },
-    addons: [{
-      name: '重乳',
-      price: 10
-    }]
+    cat: 'coffee'
   }, {
+    desc: 'S 固定甜度',
     cat: 'coffee',
-    name: '拿鐵',
-    prices: {
-      冰: 60,
-      熱: 60
-    },
     addons: [{
-      name: '重乳',
-      price: 10
+      price: 10,
+      name: '重乳'
     }],
-    desc: 'S 固定甜度'
+    prices: {
+      熱: 60,
+      冰: 60
+    },
+    name: '拿鐵咖啡'
   }, {
-    cat: 'coffee',
     name: '榛果拿鐵咖啡',
-    prices: {
-      冰: 70,
-      熱: 70
-    },
     addons: [{
       name: '重乳',
       price: 10
     }],
-    desc: 'S 固定甜度'
-  }, {
-    cat: 'coffee',
-    name: '焦糖拿鐵咖啡',
     prices: {
-      冰: 70,
-      熱: 70
+      熱: 70,
+      冰: 70
     },
-    addons: [{
-      name: '重乳',
-      price: 10
-    }],
-    desc: 'S 固定甜度'
+    desc: 'S 固定甜度',
+    cat: 'coffee'
   }, {
     cat: 'coffee',
-    name: '蜂蜜甘甜咖啡',
+    desc: 'S 固定甜度',
     prices: {
-      冰: 70,
-      熱: 70
-    },
-    addons: [{
-      name: '重乳',
-      price: 10
-    }],
-    desc: 'S 固定甜度'
-  }, {
-    cat: 'coffee',
-    name: '檸檬香醇咖啡',
-    prices: {
+      熱: 70,
       冰: 70
     },
     addons: [{
-      name: '重乳',
-      price: 10
-    }]
+      price: 10,
+      name: '重乳'
+    }],
+    name: '焦糖拿鐵咖啡'
   }, {
-    cat: 'coffee',
-    name: '胚芽拿鐵咖啡',
+    name: '蜂蜜甘甜咖啡',
+    addons: [{
+      price: 10,
+      name: '重乳'
+    }],
     prices: {
       冰: 70,
       熱: 70
     },
+    desc: 'S 固定甜度',
+    cat: 'coffee'
+  }, {
+    cat: 'coffee',
+    addons: [{
+      price: 10,
+      name: '重乳'
+    }],
+    prices: {
+      冰: 70
+    },
+    name: '檸檬香醇咖啡'
+  }, {
+    desc: 'S 固定甜度',
+    cat: 'coffee',
     addons: [{
       name: '重乳',
       price: 10
     }],
-    desc: 'S 固定甜度'
-  }, {
-    cat: 'platter',
-    name: '鹿兒島丹童拼盤',
     prices: {
-      default: 199
+      冰: 70,
+      熱: 70
     },
+    name: '胚芽拿鐵咖啡'
+  }, {
     desc: '法國吐司、炒蛋、香酥雞塊、熱狗、地瓜球、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    cat: 'platter',
     addons: [{
       name: '巴塔醬',
       price: 15
-    }]
-  }, {
-    cat: 'platter',
-    name: '中華拼盤',
+    }],
     prices: {
       default: 199
     },
+    name: '鹿兒島兒童拼盤'
+  }, {
+    name: '中華拼盤',
     desc: '蘿蔔糕、鍋貼、鮮魚條、太陽蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
-    addons: [{
-      name: '巴塔醬',
-      price: 15
-    }]
-  }, {
     cat: 'platter',
+    addons: [{
+      price: 15,
+      name: '巴塔醬'
+    }],
+    prices: {
+      default: 199
+    }
+  }, {
     name: '淺草丹麥拼盤',
-    prices: {
-      default: 209
-    },
     desc: '丹麥吐司、照燒雞肉丸、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
+    cat: 'platter',
     addons: [{
       name: '巴塔醬',
       price: 15
-    }]
+    }],
+    prices: {
+      default: 209
+    }
   }, {
     cat: 'platter',
-    name: '法式金磚拼盤',
+    desc: '法式厚片、手工培根、雞肉洋蔥圈、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
     prices: {
       default: 209
     },
-    desc: '法式厚片、手工培根、雞肉洋蔥圈、玉米布丁酥、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
     addons: [{
       name: '巴塔醬',
       price: 15
-    }]
+    }],
+    name: '法式金磚拼盤'
   }, {
-    cat: 'platter',
     name: '香蒜豐盛總匯拼盤',
+    addons: [{
+      price: 15,
+      name: '巴塔醬'
+    }],
     prices: {
       default: 239
     },
     desc: '香蒜吐司條、香焙火腿、鮮嫩香酥雞、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
-    addons: [{
-      name: '巴塔醬',
-      price: 15
-    }]
+    cat: 'platter'
   }, {
-    cat: 'platter',
     name: '大相撲經典拼盤',
+    cat: 'platter',
+    desc: '牛角可頌、嫩煎雞腿、德式香腸、雞肉洋蔥圈、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
     prices: {
       default: 239
     },
-    desc: '牛角可頌、嫩煎雞腿、德式香腸、雞肉洋蔥圈、炒蛋、薯塊、鮮蔬果、馬鈴薯蛋沙拉',
     addons: [{
-      name: '巴塔醬',
-      price: 15
+      price: 15,
+      name: '巴塔醬'
     }]
   }, {
     cat: 'burger',
+    prices: {
+      黑金: 109,
+      白金: 109
+    },
     name: '香草豚肉',
-    prices: {
-      白金: 109,
-      黑金: 109
-    },
+    addons: [{
+      price: 69,
+      name: '升級套餐'
+    }]
+  }, {
     addons: [{
       name: '升級套餐',
       price: 69
-    }]
-  }, {
-    cat: 'burger',
+    }],
+    prices: {
+      黑金: 129,
+      白金: 129
+    },
     name: '勁辣卡啦雞腿',
-    prices: {
-      白金: 129,
-      黑金: 129
-    },
-    addons: [{
-      name: '升級套餐',
-      price: 69
-    }]
+    cat: 'burger'
   }, {
-    cat: 'burger',
+    addons: [{
+      price: 69,
+      name: '升級套餐'
+    }],
     name: '英式塔塔魚條',
     prices: {
-      白金: 139,
-      黑金: 139
+      黑金: 139,
+      白金: 139
     },
+    cat: 'burger'
+  }, {
     addons: [{
       name: '升級套餐',
       price: 69
-    }]
-  }, {
-    cat: 'burger',
+    }],
+    prices: {
+      白金: 149,
+      黑金: 149
+    },
     name: '日式相撲大豬排',
+    cat: 'burger'
+  }, {
+    cat: 'burger',
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }],
     prices: {
       白金: 149,
       黑金: 149
     },
-    addons: [{
-      name: '升級套餐',
-      price: 69
-    }]
+    name: '夏威夷鳳梨蝦排'
   }, {
     cat: 'burger',
-    name: '夏威夷鳳梨蝦排',
     prices: {
-      白金: 149,
-      黑金: 149
+      黑金: 149,
+      白金: 149
     },
-    addons: [{
-      name: '升級套餐',
-      price: 69
-    }]
-  }, {
-    cat: 'burger',
     name: '手工培根4盎司純牛肉',
-    prices: {
-      白金: 149,
-      黑金: 149
-    },
     addons: [{
       name: '升級套餐',
       price: 69
     }]
   }, {
-    cat: 'burger',
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }],
     name: '經典花生醬4盎司純牛肉',
     prices: {
-      白金: 149,
-      黑金: 149
+      黑金: 149,
+      白金: 149
     },
+    cat: 'burger'
+  }, {
+    cat: 'burger',
     addons: [{
       name: '升級套餐',
       price: 69
-    }]
+    }],
+    prices: {
+      黑金: 149,
+      白金: 149
+    },
+    name: '松露蕈菇4盎司純牛肉'
   }, {
-    cat: 'burger',
-    name: '松露蕈菇4盎司純牛肉',
+    addons: [{
+      name: '升級套餐',
+      price: 69
+    }],
     prices: {
       白金: 149,
       黑金: 149
     },
-    addons: [{
-      name: '升級套餐',
-      price: 69
-    }]
-  }, {
-    cat: 'burger',
     name: '起司脆薯辣雞',
-    prices: {
-      白金: 149,
-      黑金: 149
-    },
-    addons: [{
-      name: '升級套餐',
-      price: 69
-    }]
+    cat: 'burger'
   }, {
     cat: 'burger',
+    addons: [{
+      price: 69,
+      name: '升級套餐'
+    }],
     name: '起司脆薯雙牛',
     prices: {
       白金: 149,
       黑金: 149
-    },
-    addons: [{
-      name: '升級套餐',
-      price: 69
-    }]
+    }
   }, {
     cat: 'toast',
-    name: '果醬(巧克力/草莓/藍莓/奶酥/奶油/花生)',
     prices: {
       原: 40,
       薄: 25
-    }
+    },
+    name: '果醬(巧克力/草莓/藍莓/奶酥/奶油/花生)'
   }, {
-    cat: 'toast',
     name: '香蒜吐司條',
     prices: {
       原: 45
-    }
+    },
+    cat: 'toast'
   }, {
-    cat: 'toast',
     name: '安妮抹茶奶酥',
     prices: {
       原: 60
-    }
+    },
+    cat: 'toast'
   }, {
-    cat: 'toast',
-    name: '阿華田脆酷力',
     prices: {
       原: 60
-    }
+    },
+    name: '阿華田脆酷力',
+    cat: 'toast'
   }, {
     cat: 'toast',
     name: '鮪魚起司焗烤',
@@ -2377,12 +2345,12 @@ const YUSEE_SEED = {
       原: 85
     }
   }, {
-    cat: 'eggtoast',
-    name: '吐司夾蛋',
     prices: {
       原: 30,
       丹麥: 45
-    }
+    },
+    name: '吐司夾蛋',
+    cat: 'eggtoast'
   }, {
     cat: 'eggtoast',
     name: '田園蔬菜',
@@ -2392,11 +2360,11 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'eggtoast',
-    name: '切達起司',
     prices: {
-      原: 45,
-      丹麥: 60
-    }
+      丹麥: 60,
+      原: 45
+    },
+    name: '切達起司'
   }, {
     cat: 'eggtoast',
     name: '香純肉鬆',
@@ -2405,26 +2373,26 @@ const YUSEE_SEED = {
       丹麥: 60
     }
   }, {
-    cat: 'eggtoast',
     name: '起司菇菇',
     prices: {
-      原: 50,
-      丹麥: 65
-    }
+      丹麥: 65,
+      原: 50
+    },
+    cat: 'eggtoast'
   }, {
     cat: 'eggtoast',
-    name: '地瓜蔬菜(不加蛋)',
     prices: {
-      原: 50,
-      丹麥: 65
-    }
+      丹麥: 65,
+      原: 50
+    },
+    name: '地瓜蔬菜(不加蛋)'
   }, {
-    cat: 'eggtoast',
-    name: '香焙純火腿',
     prices: {
       原: 55,
       丹麥: 70
-    }
+    },
+    name: '香焙純火腿',
+    cat: 'eggtoast'
   }, {
     cat: 'eggtoast',
     name: '香脆薯餅',
@@ -2434,11 +2402,11 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'eggtoast',
-    name: '海洋水蒸鮪魚',
     prices: {
       原: 55,
       丹麥: 70
-    }
+    },
+    name: '海洋水蒸鮪魚'
   }, {
     cat: 'eggtoast',
     name: '馬鈴薯蛋沙拉',
@@ -2448,54 +2416,56 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'eggtoast',
-    name: '手工培根',
     prices: {
       原: 60,
       丹麥: 75
-    }
+    },
+    name: '手工培根'
   }, {
-    cat: 'eggtoast',
     name: '板燒烤肉',
     prices: {
-      原: 65,
-      丹麥: 80
-    }
+      丹麥: 80,
+      原: 65
+    },
+    cat: 'eggtoast'
   }, {
     cat: 'eggtoast',
-    name: '澳洲純牛肉',
     prices: {
       原: 65,
       丹麥: 80
-    }
+    },
+    name: '澳洲純牛肉'
   }, {
     cat: 'eggtoast',
     name: '香草豚肉',
     prices: {
-      原: 65,
-      丹麥: 80
+      丹麥: 80,
+      原: 65
     }
   }, {
-    cat: 'eggtoast',
-    name: '卡啦脆腿',
     prices: {
       原: 70,
       丹麥: 85
-    }
+    },
+    name: '卡啦脆腿',
+    cat: 'eggtoast'
   }, {
-    cat: 'eggtoast',
     name: '英式塔塔魚條',
     prices: {
       原: 70,
       丹麥: 85
-    }
+    },
+    cat: 'eggtoast'
   }, {
-    cat: 'eggtoast',
-    name: '嫩煎雞排',
+    name: '嫩煎雞腿',
     prices: {
       原: 75,
       丹麥: 90
-    }
+    },
+    desc: '(辣)',
+    cat: 'eggtoast'
   }, {
+    desc: '(辣)',
     cat: 'eggtoast',
     name: '勁辣卡啦雞腿',
     prices: {
@@ -2504,25 +2474,25 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'eggtoast',
-    name: '板燒烤肉總匯',
     prices: {
-      原: 80,
-      丹麥: 100
-    }
+      丹麥: 100,
+      原: 80
+    },
+    name: '板燒烤肉總匯'
   }, {
     cat: 'eggtoast',
     name: '英式塔塔蝦排',
     prices: {
-      原: 90,
-      丹麥: 105
+      丹麥: 105,
+      原: 90
     }
   }, {
-    cat: 'eggtoast',
     name: '嫩煎雞腿總匯',
     prices: {
       原: 90,
       丹麥: 110
-    }
+    },
+    cat: 'eggtoast'
   }, {
     cat: 'french',
     name: '有喜原味',
@@ -2530,98 +2500,99 @@ const YUSEE_SEED = {
       default: 40
     }
   }, {
-    cat: 'french',
     name: '美味果醬(巧克力/草莓/藍莓/奶酥/奶油/花生)',
     prices: {
       default: 45
-    }
+    },
+    cat: 'french'
   }, {
-    cat: 'french',
     name: '香純肉鬆',
     prices: {
       default: 45
-    }
+    },
+    cat: 'french'
   }, {
     cat: 'french',
-    name: '板燒烤肉',
     prices: {
       default: 65
-    }
+    },
+    name: '板燒烤肉'
   }, {
-    cat: 'french',
     name: '卡啦脆腿',
     prices: {
       default: 70
-    }
+    },
+    cat: 'french'
   }, {
+    desc: '(辣)',
     cat: 'french',
-    name: '嫩煎雞腿',
     prices: {
       default: 75
-    }
+    },
+    name: '嫩煎雞腿'
   }, {
-    cat: 'eggcake',
+    prices: {
+      厚酥: 45,
+      原: 35
+    },
     name: '有喜原味',
-    prices: {
-      原: 35,
-      厚酥: 45
-    }
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
+    prices: {
+      厚酥: 55,
+      原: 45
+    },
     name: '香甜玉米',
-    prices: {
-      原: 45,
-      厚酥: 55
-    }
+    cat: 'eggcake'
   }, {
     cat: 'eggcake',
-    name: '蔬菜洋蔥',
     prices: {
-      原: 50,
-      厚酥: 60
-    }
+      厚酥: 60,
+      原: 50
+    },
+    name: '蔬菜洋蔥'
   }, {
     cat: 'eggcake',
     name: '切達起司',
     prices: {
-      原: 50,
-      厚酥: 60
+      厚酥: 60,
+      原: 50
     }
   }, {
     cat: 'eggcake',
-    name: '香純肉鬆',
+    prices: {
+      厚酥: 60,
+      原: 50
+    },
+    name: '香純肉鬆'
+  }, {
     prices: {
       原: 50,
       厚酥: 60
-    }
-  }, {
-    cat: 'eggcake',
+    },
     name: '鮮嫩熱狗',
-    prices: {
-      原: 50,
-      厚酥: 60
-    }
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '香焙純火腿',
     prices: {
-      原: 55,
-      厚酥: 65
-    }
+      厚酥: 65,
+      原: 55
+    },
+    cat: 'eggcake'
   }, {
     cat: 'eggcake',
-    name: '香脆薯餅',
     prices: {
-      原: 55,
-      厚酥: 65
-    }
+      厚酥: 65,
+      原: 55
+    },
+    name: '香脆薯餅'
   }, {
-    cat: 'eggcake',
+    prices: {
+      厚酥: 65,
+      原: 55
+    },
     name: '起司菇菇',
-    prices: {
-      原: 55,
-      厚酥: 65
-    }
+    cat: 'eggcake'
   }, {
     cat: 'eggcake',
     name: '海洋水蒸鮪魚',
@@ -2630,103 +2601,105 @@ const YUSEE_SEED = {
       厚酥: 65
     }
   }, {
-    cat: 'eggcake',
+    prices: {
+      厚酥: 70,
+      原: 60
+    },
     name: '馬鈴薯蛋沙拉',
+    cat: 'eggcake'
+  }, {
+    cat: 'eggcake',
     prices: {
       原: 60,
       厚酥: 70
-    }
+    },
+    name: '手工培根'
   }, {
-    cat: 'eggcake',
-    name: '手工培根',
-    prices: {
-      原: 60,
-      厚酥: 70
-    }
-  }, {
-    cat: 'eggcake',
     name: '韓國泡菜',
     prices: {
-      原: 60,
-      厚酥: 70
-    }
+      厚酥: 70,
+      原: 60
+    },
+    desc: '(辣)',
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
+    prices: {
+      原: 65,
+      厚酥: 75
+    },
     name: '德式香腸',
-    prices: {
-      原: 65,
-      厚酥: 75
-    }
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
+    prices: {
+      厚酥: 75,
+      原: 65
+    },
     name: '板燒烤肉',
-    prices: {
-      原: 65,
-      厚酥: 75
-    }
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
-    name: '三層培根',
+    name: '三種起司',
     prices: {
-      原: 65,
-      厚酥: 75
-    }
+      厚酥: 75,
+      原: 65
+    },
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '黃金泡菜',
     prices: {
       原: 65,
       厚酥: 75
-    }
+    },
+    cat: 'eggcake'
   }, {
     cat: 'eggcake',
-    name: '卡啦脆腿',
     prices: {
       原: 70,
       厚酥: 80
-    }
+    },
+    name: '卡啦脆腿'
   }, {
     cat: 'eggcake',
-    name: '嫩煎雞腿',
+    desc: '(辣)',
     prices: {
       原: 75,
       厚酥: 85
-    }
+    },
+    name: '嫩煎雞腿'
   }, {
-    cat: 'veggie',
     name: '田園蔬菜',
     prices: {
-      原: 55,
-      厚酥: 70
-    }
+      厚酥: 70,
+      原: 55
+    },
+    cat: 'veggie'
   }, {
-    cat: 'veggie',
     name: '地瓜蔬菜',
     prices: {
-      原: 55,
-      厚酥: 70
-    }
+      厚酥: 70,
+      原: 55
+    },
+    cat: 'veggie'
   }, {
-    cat: 'veggie',
     name: '黃金泡菜蔬食',
     prices: {
+      厚酥: 85,
+      原: 70
+    },
+    cat: 'veggie'
+  }, {
+    prices: {
       原: 70,
       厚酥: 85
-    }
-  }, {
-    cat: 'veggie',
+    },
     name: '香草豚肉',
-    prices: {
-      原: 70,
-      厚酥: 85
-    }
+    cat: 'veggie'
   }, {
-    cat: 'veggie',
-    name: '板燒烤肉',
     prices: {
       原: 70,
       厚酥: 85
-    }
+    },
+    name: '板燒烤肉',
+    cat: 'veggie'
   }, {
     cat: 'veggie',
     name: '澳洲純牛肉',
@@ -2736,61 +2709,75 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'veggie',
-    name: '德式香腸',
     prices: {
-      原: 70,
-      厚酥: 85
-    }
+      厚酥: 85,
+      原: 70
+    },
+    name: '德式香腸'
   }, {
-    cat: 'veggie',
-    name: '英式塔塔魚條',
     prices: {
       原: 75,
       厚酥: 90
-    }
+    },
+    name: '英式塔塔魚條',
+    cat: 'veggie'
   }, {
-    cat: 'veggie',
     name: '嫩煎雞腿',
     prices: {
-      原: 80,
-      厚酥: 95
-    }
+      厚酥: 95,
+      原: 80
+    },
+    cat: 'veggie',
+    desc: '(辣)'
   }, {
     cat: 'veggie',
+    desc: '(辣)',
     name: '勁辣卡啦雞腿',
     prices: {
-      原: 85,
-      厚酥: 100
+      厚酥: 100,
+      原: 85
     }
   }, {
     cat: 'veggie',
-    name: '英式塔塔蝦排',
     prices: {
       原: 100,
       厚酥: 115
-    }
+    },
+    name: '英式塔塔蝦排'
   }, {
     cat: 'mcmuffin',
-    name: '起司蛋',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      name: '加起司',
+      price: 15
+    }],
     prices: {
       default: 50
     },
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }, {
-      name: '加起司',
-      price: 15
-    }]
+    name: '起司蛋'
   }, {
-    cat: 'mcmuffin',
+    addons: [{
+      price: 40,
+      name: '加烤肉.蛋'
+    }, {
+      price: 15,
+      name: '加蛋'
+    }, {
+      price: 15,
+      name: '加起司'
+    }],
+    prices: {
+      default: 55
+    },
     name: '火腿蛋',
-    prices: {
-      default: 55
-    },
+    cat: 'mcmuffin'
+  }, {
+    cat: 'mcmuffin',
     addons: [{
       name: '加烤肉.蛋',
       price: 40
@@ -2800,25 +2787,12 @@ const YUSEE_SEED = {
     }, {
       name: '加起司',
       price: 15
-    }]
-  }, {
-    cat: 'mcmuffin',
-    name: '薯餅蛋',
+    }],
     prices: {
       default: 55
     },
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }, {
-      name: '加起司',
-      price: 15
-    }]
+    name: '薯餅蛋'
   }, {
-    cat: 'mcmuffin',
     name: '菇菇起司蛋',
     prices: {
       default: 55
@@ -2827,34 +2801,47 @@ const YUSEE_SEED = {
       name: '加烤肉.蛋',
       price: 40
     }, {
-      name: '加蛋',
-      price: 15
+      price: 15,
+      name: '加蛋'
     }, {
       name: '加起司',
       price: 15
-    }]
+    }],
+    cat: 'mcmuffin'
   }, {
     cat: 'mcmuffin',
-    name: '香草豚肉蛋',
-    prices: {
-      default: 65
-    },
     addons: [{
       name: '加烤肉.蛋',
       price: 40
     }, {
-      name: '加蛋',
-      price: 15
+      price: 15,
+      name: '加蛋'
     }, {
-      name: '加起司',
-      price: 15
-    }]
+      price: 15,
+      name: '加起司'
+    }],
+    prices: {
+      default: 65
+    },
+    name: '香草豚肉蛋'
   }, {
     cat: 'mcmuffin',
+    prices: {
+      default: 65
+    },
     name: '烤肉蛋',
-    prices: {
-      default: 65
-    },
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      price: 15,
+      name: '加蛋'
+    }, {
+      name: '加起司',
+      price: 15
+    }]
+  }, {
+    cat: 'mcmuffin',
     addons: [{
       name: '加烤肉.蛋',
       price: 40
@@ -2864,42 +2851,31 @@ const YUSEE_SEED = {
     }, {
       name: '加起司',
       price: 15
-    }]
-  }, {
-    cat: 'mcmuffin',
+    }],
     name: '牛肉蛋(澳洲純牛肉)',
     prices: {
       default: 65
-    },
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }, {
-      name: '加起司',
-      price: 15
-    }]
+    }
   }, {
     cat: 'mcmuffin',
-    name: '卡啦脆腿',
+    addons: [{
+      price: 40,
+      name: '加烤肉.蛋'
+    }, {
+      price: 15,
+      name: '加蛋'
+    }, {
+      price: 15,
+      name: '加起司'
+    }],
+    name: '卡啦脆腿蛋',
     prices: {
       default: 70
-    },
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }, {
-      name: '加起司',
-      price: 15
-    }]
+    }
   }, {
-    cat: 'mcmuffin',
     name: '嫩煎雞腿蛋',
+    cat: 'mcmuffin',
+    desc: '(辣)',
     prices: {
       default: 75
     },
@@ -2907,8 +2883,8 @@ const YUSEE_SEED = {
       name: '加烤肉.蛋',
       price: 40
     }, {
-      name: '加蛋',
-      price: 15
+      price: 15,
+      name: '加蛋'
     }, {
       name: '加起司',
       price: 15
@@ -2926,103 +2902,100 @@ const YUSEE_SEED = {
       name: '加蛋',
       price: 15
     }, {
-      name: '加起司',
-      price: 15
+      price: 15,
+      name: '加起司'
     }]
   }, {
-    cat: 'mcmuffin',
-    name: '松露蕈菇牛肉蛋',
+    addons: [{
+      name: '加烤肉.蛋',
+      price: 40
+    }, {
+      name: '加蛋',
+      price: 15
+    }, {
+      price: 15,
+      name: '加起司'
+    }],
     prices: {
       default: 80
     },
+    name: '松露蕈菇牛肉蛋',
+    cat: 'mcmuffin'
+  }, {
     addons: [{
       name: '加烤肉.蛋',
       price: 40
     }, {
-      name: '加蛋',
-      price: 15
+      price: 15,
+      name: '加蛋'
     }, {
       name: '加起司',
       price: 15
-    }]
-  }, {
-    cat: 'mcmuffin',
-    name: '英式塔塔蝦排蛋',
+    }],
     prices: {
       default: 90
     },
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }, {
-      name: '加起司',
-      price: 15
-    }]
+    name: '英式塔塔蝦排蛋',
+    cat: 'mcmuffin'
   }, {
-    cat: 'pasta',
-    name: '義式肉醬義大利麵',
+    group: '義大利麵',
+    addons: [{
+      price: 40,
+      name: '加烤肉.蛋'
+    }, {
+      price: 15,
+      name: '加蛋'
+    }],
     prices: {
       default: 75
     },
-    group: '義大利麵',
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }]
-  }, {
     cat: 'pasta',
+    name: '義式肉醬義大利麵'
+  }, {
     name: '磨菇肉醬義大利麵',
     prices: {
       default: 75
     },
-    group: '義大利麵',
     addons: [{
       name: '加烤肉.蛋',
       price: 40
     }, {
-      name: '加蛋',
-      price: 15
-    }]
+      price: 15,
+      name: '加蛋'
+    }],
+    group: '義大利麵',
+    cat: 'pasta'
   }, {
-    cat: 'pasta',
     name: '黑胡椒肉醬義大利麵',
     prices: {
       default: 75
     },
     group: '義大利麵',
     addons: [{
-      name: '加烤肉.蛋',
-      price: 40
+      price: 40,
+      name: '加烤肉.蛋'
     }, {
       name: '加蛋',
       price: 15
-    }]
-  }, {
+    }],
     cat: 'pasta',
+    desc: '(辣)'
+  }, {
     name: '海味XO醬義大利麵',
+    cat: 'pasta',
+    desc: '(辣)',
     prices: {
       default: 85
     },
     group: '義大利麵',
     addons: [{
-      name: '加烤肉.蛋',
-      price: 40
+      price: 40,
+      name: '加烤肉.蛋'
     }, {
       name: '加蛋',
       price: 15
     }]
   }, {
-    cat: 'pasta',
-    name: '培根白醬義大利麵',
-    prices: {
-      default: 115
-    },
     group: '義大利麵',
     addons: [{
       name: '加烤肉.蛋',
@@ -3030,80 +3003,87 @@ const YUSEE_SEED = {
     }, {
       name: '加蛋',
       price: 15
-    }]
+    }],
+    prices: {
+      default: 115
+    },
+    cat: 'pasta',
+    name: '培根白醬義大利麵'
   }, {
     cat: 'pasta',
-    name: '經典肉肉炒麵',
     prices: {
       default: 70
     },
-    group: '炒麵',
     addons: [{
       name: '加烤肉.蛋',
       price: 40
     }, {
       name: '加蛋',
       price: 15
-    }]
+    }],
+    group: '炒麵',
+    name: '經典烤肉炒麵'
   }, {
-    cat: 'pasta',
     name: '大阪豬肉炒麵',
+    group: '炒麵',
+    addons: [{
+      price: 40,
+      name: '加烤肉.蛋'
+    }, {
+      price: 15,
+      name: '加蛋'
+    }],
     prices: {
       default: 80
     },
-    group: '炒麵',
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }]
+    cat: 'pasta'
   }, {
-    cat: 'pasta',
-    name: '打拋豬肉炒麵',
+    name: '打拋豚肉炒麵',
     prices: {
       default: 95
     },
-    group: '炒麵',
     addons: [{
-      name: '加烤肉.蛋',
-      price: 40
+      price: 40,
+      name: '加烤肉.蛋'
     }, {
-      name: '加蛋',
-      price: 15
-    }]
-  }, {
+      price: 15,
+      name: '加蛋'
+    }],
+    group: '炒麵',
     cat: 'pasta',
-    name: '醬燒雞腿炒麵',
+    desc: '(辣)'
+  }, {
     prices: {
       default: 95
     },
+    addons: [{
+      price: 40,
+      name: '加烤肉.蛋'
+    }, {
+      name: '加蛋',
+      price: 15
+    }],
+    group: '炒麵',
+    cat: 'pasta',
+    name: '醬燒雞腿炒麵'
+  }, {
+    name: '泡菜豚肉炒麵',
     group: '炒麵',
     addons: [{
       name: '加烤肉.蛋',
       price: 40
     }, {
-      name: '加蛋',
-      price: 15
-    }]
-  }, {
-    cat: 'pasta',
-    name: '泡菜豬肉炒麵',
+      price: 15,
+      name: '加蛋'
+    }],
     prices: {
       default: 110
     },
-    group: '炒麵',
-    addons: [{
-      name: '加烤肉.蛋',
-      price: 40
-    }, {
-      name: '加蛋',
-      price: 15
-    }]
+    desc: '(辣)',
+    cat: 'pasta'
   }, {
     cat: 'pasta',
-    name: '泡菜牛肉炒麵',
+    desc: '(辣)',
     prices: {
       default: 125
     },
@@ -3114,24 +3094,25 @@ const YUSEE_SEED = {
     }, {
       name: '加蛋',
       price: 15
-    }]
+    }],
+    name: '泡菜牛肉炒麵'
   }, {
-    cat: 'pasta',
-    name: '湖南剩椒豬肉炒麵',
     prices: {
       default: 125
     },
     group: '炒麵',
     addons: [{
-      name: '加烤肉.蛋',
-      price: 40
+      price: 40,
+      name: '加烤肉.蛋'
     }, {
       name: '加蛋',
       price: 15
-    }]
-  }, {
+    }],
     cat: 'pasta',
-    name: '湖南剩椒牛肉炒麵',
+    desc: '(辣)',
+    name: '湖南剁椒豚肉炒麵'
+  }, {
+    name: '湖南剁椒牛肉炒麵',
     prices: {
       default: 140
     },
@@ -3142,39 +3123,43 @@ const YUSEE_SEED = {
     }, {
       name: '加蛋',
       price: 15
-    }]
+    }],
+    cat: 'pasta',
+    desc: '(辣)'
   }, {
     cat: 'ricebox',
-    name: '泰式打拋豚肉飯',
     prices: {
       丼飯: 159
-    }
+    },
+    name: '泰式打拋豚肉飯'
   }, {
-    cat: 'ricebox',
-    name: '湖南剩椒豬肉飯',
+    name: '湖南剁椒豚肉飯',
     prices: {
       丼飯: 169
-    }
-  }, {
+    },
     cat: 'ricebox',
-    name: '湖南剩椒五花牛肉飯',
+    desc: '(辣)'
+  }, {
+    desc: '(辣)',
+    cat: 'ricebox',
+    name: '湖南剁椒五花牛肉飯',
     prices: {
       丼飯: 179
     }
   }, {
     cat: 'ricebox',
-    name: '招牌鐵板豬肉飯',
     prices: {
-      丼飯: 159,
-      咖哩: 179
-    }
+      咖哩: 179,
+      丼飯: 159
+    },
+    name: '招牌鐵板豚肉飯'
   }, {
-    cat: 'ricebox',
     name: '照燒雞肉丸飯',
     prices: {
       丼飯: 159,
       咖哩: 179
-    }
+    },
+    cat: 'ricebox'
   }, {
     cat: 'ricebox',
     name: '香酥魚條飯',
@@ -3183,33 +3168,19 @@ const YUSEE_SEED = {
       咖哩: 179
     }
   }, {
-    cat: 'ricebox',
     name: '夏威夷鳳梨蝦排飯',
     prices: {
       丼飯: 169,
       咖哩: 189
-    }
+    },
+    cat: 'ricebox'
   }, {
     cat: 'ricebox',
-    name: '招牌鐵板五花牛肉飯',
     prices: {
-      丼飯: 179,
-      咖哩: 199
-    }
-  }, {
-    cat: 'ricebox',
-    name: '嫩煎雞腿飯',
-    prices: {
-      丼飯: 179,
-      咖哩: 199
-    }
-  }, {
-    cat: 'ricebox',
-    name: '日式相撲豬排飯',
-    prices: {
-      丼飯: 189,
-      咖哩: 209
-    }
+      咖哩: 199,
+      丼飯: 179
+    },
+    name: '招牌鐵板五花牛肉飯'
   }, {
     cat: 'snack',
     name: '蛋(半熟/全熟)',
@@ -3224,28 +3195,28 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'snack',
-    name: '小熱狗 ×4',
     prices: {
       default: 30
-    }
+    },
+    name: '小熱狗 ×4'
   }, {
     cat: 'snack',
-    name: '香甜玉米濃湯',
     prices: {
       default: 35
-    }
+    },
+    name: '香甜玉米濃湯'
   }, {
     cat: 'snack',
-    name: '港式蘿蔔糕',
     prices: {
       default: 40
-    }
+    },
+    name: '港式蘿蔔糕'
   }, {
-    cat: 'snack',
+    prices: {
+      default: 40
+    },
     name: '玉米布丁酥 ×4',
-    prices: {
-      default: 40
-    }
+    cat: 'snack'
   }, {
     cat: 'snack',
     name: '復刻地瓜球 ×8',
@@ -3260,28 +3231,28 @@ const YUSEE_SEED = {
     }
   }, {
     cat: 'snack',
-    name: '中華鍋貼',
     prices: {
       default: 40
-    }
+    },
+    name: '中華鍋貼'
   }, {
     cat: 'snack',
-    name: '起司雞肉洋蔥圈 ×5',
     prices: {
       default: 40
-    }
+    },
+    name: '起司雞肉洋蔥圈 ×5'
   }, {
     cat: 'snack',
-    name: '照燒雞肉丸 ×7',
     prices: {
       default: 45
-    }
+    },
+    name: '照燒雞肉丸 ×7'
   }, {
-    cat: 'snack',
     name: '香酥甜不辣',
     prices: {
       default: 50
-    }
+    },
+    cat: 'snack'
   }, {
     cat: 'snack',
     name: '摩佐起司條 ×4',
@@ -3289,23 +3260,24 @@ const YUSEE_SEED = {
       default: 50
     }
   }, {
-    cat: 'snack',
+    prices: {
+      default: 55
+    },
     name: '美式脆薯',
-    prices: {
-      default: 55
-    }
+    cat: 'snack'
   }, {
     cat: 'snack',
-    name: '南瓜酥',
     prices: {
       default: 55
-    }
+    },
+    name: '南瓜酥'
   }, {
-    cat: 'snack',
-    name: '秘炙雞蛋 ×2',
     prices: {
       default: 55
-    }
+    },
+    name: '秘炙雞翅 ×2',
+    cat: 'snack',
+    desc: '(辣)'
   }, {
     cat: 'snack',
     name: '紅糖Q粑 ×4',
@@ -3313,196 +3285,106 @@ const YUSEE_SEED = {
       default: 55
     }
   }, {
-    cat: 'snack',
+    prices: {
+      default: 75
+    },
     name: '蔬果沙拉盒',
+    cat: 'snack',
+    desc: '巴塔醬／千島醬／和風醬，續醬+15'
+  }, {
+    cat: 'snack',
+    desc: '附巴塔醬',
     prices: {
       default: 75
     },
-    desc: '巴塔醬／千島醬／和風醬，鎮醬+15'
+    name: '英式塔塔炸魚 ×5'
   }, {
-    cat: 'snack',
-    name: '英式塔塔炸魚 ×5',
     prices: {
       default: 75
     },
-    desc: '附巴塔醬'
-  }, {
-    cat: 'snack',
     name: '鮮嫩香酥雞',
-    prices: {
-      default: 75
-    }
+    cat: 'snack'
   }, {
-    cat: 'snack',
-    name: '豪華炸物拼盤',
     prices: {
       default: 140
     },
-    desc: '香酥條x2、薯條一份、熱狗x2、雞塊x2、洋蔥圈x2、地瓜球x4'
-  }, {
+    name: '豪華炸物拼盤',
     cat: 'snack',
+    desc: '香酥雞x2、薯條一份、熱狗x2、雞塊x2、洋蔥圈x2、地瓜球x4'
+  }, {
     name: '秘炙雞翅炸物拼盤',
     prices: {
       default: 179
     },
-    desc: '秘炙雞翅x2、薯條一份、魚條x2、布丁酥x2、起司條x2'
+    desc: '(辣)秘炙雞翅x2、薯條一份、魚條x2、布丁酥x2、起司條x2',
+    cat: 'snack'
+  }, {
+    prices: {
+      泡菜: 140,
+      原味: 125
+    },
+    name: '豚肉意麵',
+    cat: 'hotpot'
   }, {
     cat: 'hotpot',
-    name: '豬肉意麵',
     prices: {
       原味: 125,
       泡菜: 140
-    }
+    },
+    name: '豚肉冬粉'
   }, {
     cat: 'hotpot',
-    name: '豬肉多粉',
     prices: {
       原味: 125,
       泡菜: 140
-    }
+    },
+    name: '豚肉雞絲麵'
   }, {
     cat: 'hotpot',
-    name: '豬肉雞絲麵',
+    name: '豚肉水澤烏龍麵',
     prices: {
-      原味: 125,
-      泡菜: 140
+      泡菜: 155,
+      原味: 140
     }
   }, {
-    cat: 'hotpot',
-    name: '豬肉水津烏龍麵',
+    cat: 'ricebox',
+    desc: '(辣)',
+    name: '嫩煎雞腿飯',
     prices: {
-      原味: 140,
-      泡菜: 155
+      咖哩: 199,
+      丼飯: 179
     }
-  }]
+  }, {
+    prices: {
+      咖哩: 209,
+      丼飯: 189
+    },
+    name: '日式相撲豬排飯',
+    cat: 'ricebox'
+  }],
+  note: '飲品可調甜度、冰量；使用統一鮮乳；情人蜂蜜',
+  id: 'yusee',
+  hours: '早餐專賣',
+  phone: '(02) 2325-0335',
+  nameEn: 'Morning Yusee',
+  address: '台北市大安區和平東路二段117號',
+  themeColor: 'var(--yusee)',
+  name: '早安有喜',
+  branch: '大安和平店'
 };
 const BADUDU_SEED = {
-  id: 'badudu',
-  name: '呷齁霸嘟嘟',
   nameEn: 'BaDuDu',
-  branch: '大安和平',
-  address: '台北市大安區和平東路二段98-2號',
   phone: '09-2135-6338',
-  hours: '04:30 - 14:00（最後加點 13:45）',
+  branch: '大安和平',
+  name: '呷齁霸嘟嘟',
+  address: '台北市大安區和平東路二段98-2號',
   themeColor: 'var(--badudu)',
-  themeBg: 'var(--badudu-bg)',
-  note: '本店不主動加沙茶，需要請提前告知；半熟蛋請提早說。如不吃食材或有任何需求都可告知店員。',
-  categories: [{
-    id: 'omelet',
-    name: '香Q厚蛋餅',
-    variants: ['default'],
-    variantLabel: 'Chinese omelet'
-  }, {
-    id: 'preegg',
-    name: '調皮搗蛋',
-    variants: ['蛋餅', '吐司', '漢堡'],
-    variantLabel: 'preserved egg'
-  }, {
-    id: 'cheesefb',
-    name: '酥皮乳酪餅',
-    variants: ['default'],
-    variantLabel: '需等15分鐘 · 不含蛋',
-    desc: '⏱ 需等候約 10 分鐘；不含蛋'
-  }, {
-    id: 'burger',
-    name: '呷霸漢堡吐司',
-    variants: ['吐司', '漢堡'],
-    variantLabel: '吐司／漢堡 不同價',
-    desc: '+$40 可換米漢堡 / 可頌 / 潛艇堡。可額外加料：蛋、起司、火腿、培根、生菜、漢堡肉、豬排'
-  }, {
-    id: 'waffle',
-    name: '格格鬆餅堡',
-    variants: ['default'],
-    variantLabel: 'Waffle'
-  }, {
-    id: 'ricebrg',
-    name: '粒粒米漢堡',
-    variants: ['default'],
-    variantLabel: '需等15分鐘 · Rice burger',
-    desc: '⏱ 需等候約 15 分鐘'
-  }, {
-    id: 'croissant',
-    name: '酥脆可頌潛艇堡',
-    variants: ['可頌', '潛艇堡'],
-    variantLabel: '可頌／潛艇堡'
-  }, {
-    id: 'french',
-    name: '蹦啾法式吐司',
-    variants: ['default'],
-    variantLabel: '需等15分鐘 · French toast',
-    desc: '⏱ 需等候約 15 分鐘'
-  }, {
-    id: 'jam',
-    name: '甜在心果醬',
-    variants: ['薄片', '厚片', '乳酪餅'],
-    variantLabel: '薄$25/厚$35/乳酪$40'
-  }, {
-    id: 'gratin',
-    name: '牽絲焗烤',
-    variants: ['default'],
-    variantLabel: '需等20分鐘 · Gratin',
-    desc: '⏱ 需等候約 20 分鐘'
-  }, {
-    id: 'hidden',
-    name: '獨有隱藏版',
-    variants: ['default'],
-    variantLabel: 'Exclusive flavors'
-  }, {
-    id: 'dessert',
-    name: '嘴饞小點心',
-    variants: ['default'],
-    variantLabel: 'Dessert'
-  }, {
-    id: 'noodle',
-    name: '特選鐵板麵飯',
-    variants: ['麵', '飯'],
-    variantLabel: '部分品項可換成飯+30',
-    desc: '⚠ 皆含蛋一顆，半熟蛋請提早告知。可額外加料：青菜 +$20、起司 +$15、蛋 +$15、火腿 +$15、培根 +$20、漢堡肉 +$20、豬排 +$25、熱狗 +$30、德式腸 +$35'
-  }, {
-    id: 'hotpot',
-    name: '私房招牌鍋燒',
-    variants: ['意麵', '烏龍', '雞絲', '冬粉', '泡飯'],
-    variantLabel: '內含海鮮 · 五種麵體',
-    desc: '⚠ 內含海鮮，若有不吃的食材請告知。本店不主動加沙茶，需要請提前告知'
-  }, {
-    id: 'salad',
-    name: '瘦瘦健康沙拉',
-    variants: ['default'],
-    variantLabel: '附醬料 和風/千島/不醬'
-  }, {
-    id: 'set',
-    name: '舒活輕食套餐',
-    variants: ['default'],
-    variantLabel: '附中飲品',
-    desc: '套餐已附中杯飲品'
-  }, {
-    id: 'combo',
-    name: '呷霸超值套餐',
-    variants: ['default'],
-    variantLabel: 'Combo · 附中飲品',
-    desc: '套餐已附中杯飲品'
-  }, {
-    id: 'fried',
-    name: '精選炸快樂',
-    variants: ['default'],
-    variantLabel: 'Fried food set'
-  }, {
-    id: 'drink',
-    name: '來一杯解解渴',
-    variants: ['M', 'L', 'XL'],
-    variantLabel: 'M中/L大/XL特大'
-  }, {
-    id: 'coffee',
-    name: '提神研磨咖啡',
-    variants: ['M', 'L'],
-    variantLabel: 'M中／L大'
-  }],
   items: [{
     cat: 'omelet',
-    name: '原味',
     prices: {
       default: 50
-    }
+    },
+    name: '原味'
   }, {
     cat: 'omelet',
     name: '起司',
@@ -3510,17 +3392,17 @@ const BADUDU_SEED = {
       default: 60
     }
   }, {
-    cat: 'omelet',
     name: '火腿',
     prices: {
       default: 60
-    }
+    },
+    cat: 'omelet'
   }, {
     cat: 'omelet',
-    name: '培根',
     prices: {
       default: 60
-    }
+    },
+    name: '培根'
   }, {
     cat: 'omelet',
     name: '肉鬆',
@@ -3528,17 +3410,17 @@ const BADUDU_SEED = {
       default: 60
     }
   }, {
-    cat: 'omelet',
+    prices: {
+      default: 60
+    },
     name: '洋蔥',
-    prices: {
-      default: 60
-    }
+    cat: 'omelet'
   }, {
-    cat: 'omelet',
-    name: '玉米',
     prices: {
       default: 60
-    }
+    },
+    name: '玉米',
+    cat: 'omelet'
   }, {
     cat: 'omelet',
     name: '九層塔',
@@ -3546,17 +3428,17 @@ const BADUDU_SEED = {
       default: 60
     }
   }, {
-    cat: 'omelet',
-    name: '爆醬甜心(花生/巧克力)',
     prices: {
       default: 60
-    }
+    },
+    name: '爆醬甜心(花生/巧克力)',
+    cat: 'omelet'
   }, {
-    cat: 'omelet',
-    name: '蔬菜',
     prices: {
       default: 65
-    }
+    },
+    name: '蔬菜',
+    cat: 'omelet'
   }, {
     cat: 'omelet',
     name: '豬肉',
@@ -3564,17 +3446,17 @@ const BADUDU_SEED = {
       default: 65
     }
   }, {
-    cat: 'omelet',
-    name: '熱狗',
     prices: {
       default: 65
-    }
+    },
+    name: '熱狗',
+    cat: 'omelet'
   }, {
-    cat: 'omelet',
     name: '薯餅',
     prices: {
       default: 65
-    }
+    },
+    cat: 'omelet'
   }, {
     cat: 'omelet',
     name: '洋芋',
@@ -3582,23 +3464,23 @@ const BADUDU_SEED = {
       default: 70
     }
   }, {
-    cat: 'omelet',
     name: '鮪魚',
     prices: {
       default: 75
-    }
+    },
+    cat: 'omelet'
   }, {
     cat: 'omelet',
-    name: '豬排',
     prices: {
       default: 75
-    }
+    },
+    name: '豬排'
   }, {
     cat: 'omelet',
-    name: '咔啦雞腿',
     prices: {
       default: 85
-    }
+    },
+    name: '咔啦雞腿'
   }, {
     cat: 'preegg',
     name: 'QQ小皮蛋',
@@ -3607,57 +3489,53 @@ const BADUDU_SEED = {
     }
   }, {
     cat: 'preegg',
-    name: '皮蛋肉鬆',
     prices: {
       蛋餅: 80
-    }
+    },
+    name: '皮蛋肉鬆'
   }, {
-    cat: 'preegg',
-    name: '皮蛋鮪魚',
     prices: {
       蛋餅: 95
-    }
+    },
+    name: '皮蛋鮪魚',
+    cat: 'preegg'
   }, {
-    cat: 'cheesefb',
-    name: '煎蛋乳酪',
     prices: {
       default: 60
     },
-    desc: '加蛋+20'
+    name: '煎蛋乳酪',
+    desc: '加蛋+20',
+    cat: 'cheesefb'
   }, {
     cat: 'cheesefb',
+    desc: '加蛋+20',
     name: '起司乳酪',
     prices: {
       default: 60
-    },
-    desc: '加蛋+20'
+    }
   }, {
+    desc: '加蛋+20',
     cat: 'cheesefb',
-    name: '鮪魚乳酪',
     prices: {
       default: 65
     },
-    desc: '加蛋+20'
+    name: '鮪魚乳酪'
   }, {
+    desc: '加蛋+20',
     cat: 'cheesefb',
-    name: '豬肉乳酪',
     prices: {
       default: 80
     },
-    desc: '加蛋+20'
+    name: '豬肉乳酪'
   }, {
-    cat: 'cheesefb',
+    prices: {
+      default: 80
+    },
     name: '豬排乳酪',
-    prices: {
-      default: 80
-    },
+    cat: 'cheesefb',
     desc: '加蛋+20'
   }, {
     cat: 'burger',
-    name: '煎蛋',
-    prices: {
-      吐司: 45
-    },
     addons: [{
       name: '換米漢堡',
       price: 40
@@ -3671,14 +3549,14 @@ const BADUDU_SEED = {
       name: '蛋',
       price: 15
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
       name: '生菜',
       price: 20
@@ -3688,45 +3566,49 @@ const BADUDU_SEED = {
     }, {
       name: '豬排',
       price: 25
-    }]
+    }],
+    name: '煎蛋',
+    prices: {
+      吐司: 45
+    }
   }, {
     cat: 'burger',
+    addons: [{
+      price: 40,
+      name: '換米漢堡'
+    }, {
+      price: 40,
+      name: '換可頌'
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      price: 15,
+      name: '蛋'
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      price: 20,
+      name: '培根'
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      price: 20,
+      name: '漢堡肉'
+    }, {
+      price: 25,
+      name: '豬排'
+    }],
     name: '起司蛋',
     prices: {
       吐司: 55,
       漢堡: 55
-    },
-    addons: [{
-      name: '換米漢堡',
-      price: 40
-    }, {
-      name: '換可頌',
-      price: 40
-    }, {
-      name: '換潛艇堡',
-      price: 40
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '生菜',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }]
+    }
   }, {
     cat: 'burger',
     name: '蔬菜蛋',
@@ -3738,26 +3620,26 @@ const BADUDU_SEED = {
       name: '換米漢堡',
       price: 40
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
       name: '起司',
       price: 15
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
       name: '培根',
       price: 20
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
       name: '漢堡肉',
       price: 20
@@ -3767,26 +3649,58 @@ const BADUDU_SEED = {
     }]
   }, {
     cat: 'burger',
-    name: '火腿蛋',
+    addons: [{
+      price: 40,
+      name: '換米漢堡'
+    }, {
+      price: 40,
+      name: '換可頌'
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      price: 15,
+      name: '蛋'
+    }, {
+      price: 15,
+      name: '起司'
+    }, {
+      price: 15,
+      name: '火腿'
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      price: 20,
+      name: '生菜'
+    }, {
+      price: 20,
+      name: '漢堡肉'
+    }, {
+      price: 25,
+      name: '豬排'
+    }],
     prices: {
       吐司: 55,
       漢堡: 55
     },
+    name: '火腿蛋'
+  }, {
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
       name: '換潛艇堡',
       price: 40
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
       name: '火腿',
       price: 15
@@ -3797,60 +3711,28 @@ const BADUDU_SEED = {
       name: '生菜',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
       name: '豬排',
       price: 25
-    }]
-  }, {
-    cat: 'burger',
+    }],
     name: '培根蛋',
     prices: {
-      吐司: 55,
-      漢堡: 55
+      漢堡: 55,
+      吐司: 55
     },
-    addons: [{
-      name: '換米漢堡',
-      price: 40
-    }, {
-      name: '換可頌',
-      price: 40
-    }, {
-      name: '換潛艇堡',
-      price: 40
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '生菜',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }]
+    cat: 'burger'
   }, {
     cat: 'burger',
-    name: '肉鬆蛋',
     prices: {
-      吐司: 55,
-      漢堡: 55
+      漢堡: 55,
+      吐司: 55
     },
+    name: '肉鬆蛋',
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
       name: '換可頌',
       price: 40
@@ -3861,11 +3743,11 @@ const BADUDU_SEED = {
       name: '蛋',
       price: 15
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
       name: '培根',
       price: 20
@@ -3873,94 +3755,93 @@ const BADUDU_SEED = {
       name: '生菜',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }]
   }, {
     cat: 'burger',
-    name: '薯餅蛋',
     prices: {
       吐司: 60,
       漢堡: 60
     },
+    name: '薯餅蛋',
     addons: [{
       name: '換米漢堡',
       price: 40
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
       name: '蛋',
       price: 15
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
       name: '漢堡肉',
       price: 20
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }]
   }, {
     cat: 'burger',
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      price: 40,
+      name: '換可頌'
+    }, {
+      name: '換潛艇堡',
+      price: 40
+    }, {
+      price: 15,
+      name: '蛋'
+    }, {
+      name: '起司',
+      price: 15
+    }, {
+      price: 15,
+      name: '火腿'
+    }, {
+      price: 20,
+      name: '培根'
+    }, {
+      name: '生菜',
+      price: 20
+    }, {
+      price: 20,
+      name: '漢堡肉'
+    }, {
+      name: '豬排',
+      price: 25
+    }],
     name: '豬肉蛋',
     prices: {
-      吐司: 60,
-      漢堡: 60
-    },
-    addons: [{
-      name: '換米漢堡',
-      price: 40
-    }, {
-      name: '換可頌',
-      price: 40
-    }, {
-      name: '換潛艇堡',
-      price: 40
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '生菜',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }]
+      漢堡: 60,
+      吐司: 60
+    }
   }, {
-    cat: 'burger',
     name: '香雞蛋',
     prices: {
-      吐司: 60,
-      漢堡: 60
+      漢堡: 60,
+      吐司: 60
     },
     addons: [{
       name: '換米漢堡',
@@ -3969,84 +3850,117 @@ const BADUDU_SEED = {
       name: '換可頌',
       price: 40
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
       name: '生菜',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
-    }]
+      price: 25,
+      name: '豬排'
+    }],
+    cat: 'burger'
   }, {
     cat: 'burger',
-    name: '洋芋蛋(含水煮蛋)',
     prices: {
-      吐司: 65,
-      漢堡: 65
+      漢堡: 65,
+      吐司: 65
     },
+    name: '洋芋蛋(含水煮蛋)',
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
       name: '起司',
       price: 15
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
       name: '培根',
       price: 20
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
       name: '豬排',
       price: 25
     }]
   }, {
-    cat: 'burger',
+    addons: [{
+      name: '換米漢堡',
+      price: 40
+    }, {
+      price: 40,
+      name: '換可頌'
+    }, {
+      price: 40,
+      name: '換潛艇堡'
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      price: 15,
+      name: '起司'
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      price: 20,
+      name: '培根'
+    }, {
+      price: 20,
+      name: '生菜'
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      price: 25,
+      name: '豬排'
+    }],
     name: '鮪魚蛋',
     prices: {
-      吐司: 70,
-      漢堡: 70
+      漢堡: 70,
+      吐司: 70
     },
+    cat: 'burger'
+  }, {
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
       name: '蛋',
       price: 15
@@ -4060,22 +3974,22 @@ const BADUDU_SEED = {
       name: '培根',
       price: 20
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
-    }]
-  }, {
-    cat: 'burger',
+      price: 25,
+      name: '豬排'
+    }],
     name: '豬排蛋',
     prices: {
-      吐司: 70,
-      漢堡: 70
+      漢堡: 70,
+      吐司: 70
     },
+    cat: 'burger'
+  }, {
     addons: [{
       name: '換米漢堡',
       price: 40
@@ -4083,8 +3997,8 @@ const BADUDU_SEED = {
       name: '換可頌',
       price: 40
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
       name: '蛋',
       price: 15
@@ -4095,25 +4009,26 @@ const BADUDU_SEED = {
       name: '火腿',
       price: 15
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
       name: '生菜',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
-    }]
-  }, {
-    cat: 'burger',
+      price: 25,
+      name: '豬排'
+    }],
+    prices: {
+      漢堡: 75,
+      吐司: 70
+    },
     name: '鮮蝦排蛋',
-    prices: {
-      吐司: 70,
-      漢堡: 75
-    },
+    cat: 'burger'
+  }, {
+    cat: 'burger',
     addons: [{
       name: '換米漢堡',
       price: 40
@@ -4121,40 +4036,39 @@ const BADUDU_SEED = {
       name: '換可頌',
       price: 40
     }, {
-      name: '換潛艇堡',
-      price: 40
+      price: 40,
+      name: '換潛艇堡'
     }, {
       name: '蛋',
       price: 15
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
       name: '漢堡肉',
       price: 20
     }, {
-      name: '豬排',
-      price: 25
-    }]
-  }, {
-    cat: 'burger',
-    name: '花枝排蛋',
+      price: 25,
+      name: '豬排'
+    }],
     prices: {
-      吐司: 75,
-      漢堡: 75
+      漢堡: 75,
+      吐司: 75
     },
+    name: '花枝排蛋'
+  }, {
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
       name: '換可頌',
       price: 40
@@ -4162,78 +4076,46 @@ const BADUDU_SEED = {
       name: '換潛艇堡',
       price: 40
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
       name: '火腿',
       price: 15
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
       name: '豬排',
       price: 25
-    }]
-  }, {
-    cat: 'burger',
+    }],
     name: '無骨雞排蛋',
     prices: {
       吐司: 80,
       漢堡: 80
     },
-    addons: [{
-      name: '換米漢堡',
-      price: 40
-    }, {
-      name: '換可頌',
-      price: 40
-    }, {
-      name: '換潛艇堡',
-      price: 40
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '生菜',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }]
+    cat: 'burger'
   }, {
     cat: 'burger',
-    name: '照燒雞腿蛋',
     prices: {
       吐司: 80,
       漢堡: 80
     },
+    name: '照燒雞腿蛋',
     addons: [{
       name: '換米漢堡',
       price: 40
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
       name: '換潛艇堡',
       price: 40
@@ -4250,8 +4132,8 @@ const BADUDU_SEED = {
       name: '培根',
       price: 20
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
       name: '漢堡肉',
       price: 20
@@ -4260,11 +4142,10 @@ const BADUDU_SEED = {
       price: 25
     }]
   }, {
-    cat: 'burger',
     name: '藍帶豬排蛋',
     prices: {
-      吐司: 80,
-      漢堡: 80
+      漢堡: 80,
+      吐司: 80
     },
     addons: [{
       name: '換米漢堡',
@@ -4279,14 +4160,14 @@ const BADUDU_SEED = {
       name: '蛋',
       price: 15
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
       name: '火腿',
       price: 15
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
       name: '生菜',
       price: 20
@@ -4296,58 +4177,59 @@ const BADUDU_SEED = {
     }, {
       name: '豬排',
       price: 25
-    }]
+    }],
+    cat: 'burger'
   }, {
     cat: 'burger',
-    name: '香酥鱈魚蛋',
+    addons: [{
+      price: 40,
+      name: '換米漢堡'
+    }, {
+      name: '換可頌',
+      price: 40
+    }, {
+      price: 40,
+      name: '換潛艇堡'
+    }, {
+      price: 15,
+      name: '蛋'
+    }, {
+      price: 15,
+      name: '起司'
+    }, {
+      name: '火腿',
+      price: 15
+    }, {
+      price: 20,
+      name: '培根'
+    }, {
+      price: 20,
+      name: '生菜'
+    }, {
+      name: '漢堡肉',
+      price: 20
+    }, {
+      price: 25,
+      name: '豬排'
+    }],
     prices: {
       吐司: 80,
       漢堡: 80
     },
-    addons: [{
-      name: '換米漢堡',
-      price: 40
-    }, {
-      name: '換可頌',
-      price: 40
-    }, {
-      name: '換潛艇堡',
-      price: 40
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '生菜',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }]
+    name: '香酥鱈魚蛋'
   }, {
     cat: 'burger',
     name: '咔啦雞腿蛋(辣味/原味)',
     prices: {
-      吐司: 80,
-      漢堡: 80
+      漢堡: 80,
+      吐司: 80
     },
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
       name: '換潛艇堡',
       price: 40
@@ -4355,117 +4237,117 @@ const BADUDU_SEED = {
       name: '蛋',
       price: 15
     }, {
+      price: 15,
+      name: '起司'
+    }, {
+      price: 15,
+      name: '火腿'
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      price: 20,
+      name: '生菜'
+    }, {
+      price: 20,
+      name: '漢堡肉'
+    }, {
+      price: 25,
+      name: '豬排'
+    }]
+  }, {
+    addons: [{
+      price: 40,
+      name: '換米漢堡'
+    }, {
+      price: 40,
+      name: '換可頌'
+    }, {
+      price: 40,
+      name: '換潛艇堡'
+    }, {
+      price: 15,
+      name: '蛋'
+    }, {
       name: '起司',
       price: 15
     }, {
       name: '火腿',
       price: 15
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
       name: '漢堡肉',
       price: 20
     }, {
-      name: '豬排',
-      price: 25
-    }]
-  }, {
-    cat: 'burger',
+      price: 25,
+      name: '豬排'
+    }],
     name: '總匯',
     prices: {
       漢堡: 85
     },
-    addons: [{
-      name: '換米漢堡',
-      price: 40
-    }, {
-      name: '換可頌',
-      price: 40
-    }, {
-      name: '換潛艇堡',
-      price: 40
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '生菜',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }]
+    cat: 'burger'
   }, {
-    cat: 'burger',
-    name: '厚切牛肉蛋',
     prices: {
-      吐司: 140,
-      漢堡: 140
+      漢堡: 140,
+      吐司: 140
     },
+    name: '厚切牛肉蛋',
     addons: [{
-      name: '換米漢堡',
-      price: 40
+      price: 40,
+      name: '換米漢堡'
     }, {
-      name: '換可頌',
-      price: 40
+      price: 40,
+      name: '換可頌'
     }, {
       name: '換潛艇堡',
       price: 40
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
       name: '培根',
       price: 20
     }, {
-      name: '生菜',
-      price: 20
+      price: 20,
+      name: '生菜'
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
-    }]
+      price: 25,
+      name: '豬排'
+    }],
+    cat: 'burger'
   }, {
-    cat: 'waffle',
-    name: '果醬鬆餅堡(花生/巧克力/奶油/草莓/奶酥)',
     prices: {
       default: 50
-    }
+    },
+    name: '果醬鬆餅堡(花生/巧克力/奶油/草莓/奶酥)',
+    cat: 'waffle'
   }, {
-    cat: 'waffle',
     name: '蜂蜜鬆餅堡',
     prices: {
       default: 60
-    }
+    },
+    cat: 'waffle'
   }, {
-    cat: 'waffle',
     name: '煉乳鬆餅堡',
     prices: {
       default: 60
-    }
+    },
+    cat: 'waffle'
   }, {
     cat: 'waffle',
     name: '火腿歐姆蛋鬆餅堡',
@@ -4498,191 +4380,191 @@ const BADUDU_SEED = {
     }
   }, {
     cat: 'ricebrg',
-    name: '香酥鱈魚米漢堡',
     prices: {
       default: 120
-    }
+    },
+    name: '香酥鱈魚米漢堡'
   }, {
     cat: 'ricebrg',
-    name: '咔啦雞腿米漢堡',
     prices: {
       default: 120
-    }
+    },
+    name: '咔啦雞腿米漢堡'
   }, {
-    cat: 'ricebrg',
     name: 'DHA鮪魚蛋米漢堡',
     prices: {
       default: 120
-    }
+    },
+    cat: 'ricebrg'
   }, {
     cat: 'ricebrg',
-    name: '厚切牛肉米漢堡',
     prices: {
       default: 140
-    }
+    },
+    name: '厚切牛肉米漢堡'
   }, {
     cat: 'croissant',
-    name: '雙芝心',
     prices: {
       可頌: 95
-    }
+    },
+    name: '雙芝心'
   }, {
-    cat: 'croissant',
     name: '鮮蔬起司',
     prices: {
       可頌: 100,
       潛艇堡: 100
-    }
+    },
+    cat: 'croissant'
   }, {
-    cat: 'croissant',
+    prices: {
+      潛艇堡: 120,
+      可頌: 120
+    },
     name: '雙火腿芝心',
+    cat: 'croissant'
+  }, {
     prices: {
       可頌: 120,
       潛艇堡: 120
-    }
-  }, {
-    cat: 'croissant',
+    },
     name: 'DHA鮪魚蛋',
+    cat: 'croissant'
+  }, {
+    cat: 'croissant',
     prices: {
       可頌: 120,
       潛艇堡: 120
-    }
+    },
+    name: '咔啦雞腿蛋'
   }, {
     cat: 'croissant',
-    name: '咔啦雞腿蛋',
     prices: {
-      可頌: 120,
-      潛艇堡: 120
-    }
+      潛艇堡: 140,
+      可頌: 140
+    },
+    name: '厚切牛肉蛋'
   }, {
-    cat: 'croissant',
-    name: '厚切牛肉蛋',
     prices: {
-      可頌: 140,
-      潛艇堡: 140
-    }
-  }, {
-    cat: 'french',
+      default: 65
+    },
     name: '果醬法式吐司(花生/巧克力/奶油/草莓/奶酥)',
+    cat: 'french'
+  }, {
     prices: {
       default: 65
-    }
-  }, {
-    cat: 'french',
+    },
     name: '蜂蜜法式吐司',
+    cat: 'french'
+  }, {
     prices: {
       default: 65
-    }
-  }, {
-    cat: 'french',
+    },
     name: '煉乳法式吐司',
-    prices: {
-      default: 65
-    }
+    cat: 'french'
   }, {
-    cat: 'french',
     name: '肉鬆法式吐司',
     prices: {
       default: 75
-    }
+    },
+    cat: 'french'
   }, {
     cat: 'french',
-    name: 'DHA鮪魚法式吐司',
     prices: {
       default: 90
-    }
+    },
+    name: 'DHA鮪魚法式吐司'
   }, {
-    cat: 'jam',
     name: '花生',
     prices: {
-      薄片: 25,
       厚片: 35,
-      乳酪餅: 40
-    }
+      乳酪餅: 40,
+      薄片: 25
+    },
+    cat: 'jam'
   }, {
     cat: 'jam',
     name: '奶酥',
     prices: {
-      薄片: 25,
       厚片: 35,
+      薄片: 25,
       乳酪餅: 40
     }
   }, {
-    cat: 'jam',
     name: '草莓',
     prices: {
-      薄片: 25,
       厚片: 35,
+      薄片: 25,
       乳酪餅: 40
-    }
+    },
+    cat: 'jam'
   }, {
     cat: 'jam',
-    name: '奶油',
     prices: {
-      薄片: 25,
       厚片: 35,
+      薄片: 25,
       乳酪餅: 40
-    }
+    },
+    name: '奶油'
   }, {
     cat: 'jam',
-    name: '香蒜',
     prices: {
-      薄片: 25,
       厚片: 35,
+      薄片: 25,
       乳酪餅: 40
-    }
+    },
+    name: '香蒜'
   }, {
     cat: 'jam',
     name: '巧克力',
     prices: {
-      薄片: 25,
       厚片: 35,
-      乳酪餅: 40
+      乳酪餅: 40,
+      薄片: 25
     }
   }, {
     cat: 'jam',
-    name: '黃金起司磚',
     prices: {
       厚片: 40
-    }
+    },
+    name: '黃金起司磚'
   }, {
-    cat: 'jam',
     name: '調色厚片(任選兩種)',
     prices: {
       厚片: 40
     },
-    desc: '花生/巧克力/奶油/草莓/奶酥/香蒜'
+    desc: '花生/巧克力/奶油/草莓/奶酥/香蒜',
+    cat: 'jam'
   }, {
     cat: 'jam',
+    desc: '花生/巧克力/奶油/草莓/奶酥/香蒜',
     name: '棉花糖厚片(任選一種)',
     prices: {
       厚片: 95
-    },
-    desc: '花生/巧克力/奶油/草莓/奶酥/香蒜'
+    }
   }, {
-    cat: 'gratin',
     name: 'DHA鮪魚焗烤厚片',
     prices: {
       default: 100
-    }
+    },
+    cat: 'gratin'
   }, {
-    cat: 'gratin',
     name: '玉米培根焗烤厚片',
     prices: {
       default: 100
-    }
+    },
+    cat: 'gratin'
   }, {
-    cat: 'gratin',
     name: '焗烤蘑菇麵',
     prices: {
       default: 130
-    }
+    },
+    cat: 'gratin'
   }, {
     cat: 'gratin',
-    name: '焗烤黑胡椒麵',
     prices: {
       default: 130
-    }
+    },
+    name: '焗烤黑胡椒麵'
   }, {
     cat: 'gratin',
     name: '棉花田焗烤麵',
@@ -4691,22 +4573,22 @@ const BADUDU_SEED = {
     }
   }, {
     cat: 'hidden',
-    name: '好事花生蔥抓餅',
     prices: {
       default: 75
-    }
+    },
+    name: '好事花生蔥抓餅'
   }, {
-    cat: 'hidden',
     name: '黑炫風蔥抓餅',
     prices: {
       default: 75
-    }
+    },
+    cat: 'hidden'
   }, {
-    cat: 'hidden',
-    name: '德式腸夾漢堡',
     prices: {
       default: 80
-    }
+    },
+    name: '德式腸夾漢堡',
+    cat: 'hidden'
   }, {
     cat: 'hidden',
     name: '甜尋肉醬蛋吐司',
@@ -4715,22 +4597,22 @@ const BADUDU_SEED = {
     }
   }, {
     cat: 'hidden',
-    name: '黑炫風蛋餅吐司',
     prices: {
       default: 90
-    }
+    },
+    name: '黑炫風蛋餅吐司'
   }, {
     cat: 'hidden',
-    name: '黑炫風咔啦蛋吐司',
     prices: {
       default: 110
-    }
+    },
+    name: '黑炫風咔啦蛋吐司'
   }, {
-    cat: 'dessert',
     name: '小熱狗',
     prices: {
       default: 30
-    }
+    },
+    cat: 'dessert'
   }, {
     cat: 'dessert',
     name: '玉米蛋',
@@ -4751,10 +4633,10 @@ const BADUDU_SEED = {
     }
   }, {
     cat: 'dessert',
-    name: '九層塔蛋',
     prices: {
       default: 35
-    }
+    },
+    name: '九層塔蛋'
   }, {
     cat: 'dessert',
     name: '小肉豆',
@@ -4762,131 +4644,131 @@ const BADUDU_SEED = {
       default: 40
     }
   }, {
-    cat: 'dessert',
     name: '炸飯糰',
     prices: {
       default: 40
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '德式香腸',
     prices: {
       default: 40
-    }
+    },
+    cat: 'dessert'
   }, {
     cat: 'dessert',
-    name: '炸湯圓',
     prices: {
       default: 40
-    }
+    },
+    name: '炸湯圓'
   }, {
-    cat: 'dessert',
+    prices: {
+      default: 45
+    },
     name: '香蔥吉拿棒',
+    cat: 'dessert'
+  }, {
     prices: {
       default: 45
-    }
-  }, {
-    cat: 'dessert',
+    },
     name: '歐姆蛋',
-    prices: {
-      default: 45
-    }
+    cat: 'dessert'
   }, {
     cat: 'dessert',
-    name: '蘿蔔糕',
     prices: {
       default: 50
-    }
+    },
+    name: '蘿蔔糕'
   }, {
-    cat: 'dessert',
+    prices: {
+      default: 50
+    },
     name: '麥克雞塊(五片入)',
-    prices: {
-      default: 50
-    }
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '薯餅(兩片入)',
     prices: {
       default: 50
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '炸煎餃(五顆)',
     prices: {
       default: 50
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '蔥抓餅',
     prices: {
       default: 50
-    }
+    },
+    cat: 'dessert'
   }, {
     cat: 'dessert',
-    name: '小雞球',
     prices: {
       default: 50
-    }
+    },
+    name: '小雞球'
   }, {
     cat: 'dessert',
-    name: '雞肉圈',
     prices: {
       default: 50
-    }
+    },
+    name: '雞肉圈'
   }, {
-    cat: 'dessert',
+    prices: {
+      default: 50
+    },
     name: '地瓜球',
-    prices: {
-      default: 50
-    }
+    cat: 'dessert'
   }, {
     cat: 'dessert',
-    name: '玉米布丁酥',
     prices: {
       default: 50
-    }
+    },
+    name: '玉米布丁酥'
   }, {
-    cat: 'dessert',
     name: '洋蔥圈',
     prices: {
       default: 50
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '脆薯條',
     prices: {
       default: 55
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '起司條(三條)',
     prices: {
       default: 55
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '鮮奶芋泥球',
     prices: {
       default: 55
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
     name: '檸檬雞柳條',
     prices: {
       default: 55
-    }
+    },
+    cat: 'dessert'
   }, {
-    cat: 'dessert',
+    prices: {
+      default: 60
+    },
     name: '薯餅蛋塔',
-    prices: {
-      default: 60
-    }
+    cat: 'dessert'
   }, {
     cat: 'dessert',
-    name: '鱈魚條(三條)',
     prices: {
       default: 60
-    }
+    },
+    name: '鱈魚條(三條)'
   }, {
     cat: 'dessert',
     name: '酥炸杏鮑菇',
@@ -4894,17 +4776,12 @@ const BADUDU_SEED = {
       default: 65
     }
   }, {
-    cat: 'dessert',
-    name: '玉米濃湯(冬天限定)',
     prices: {
       default: 65
-    }
-  }, {
-    cat: 'noodle',
-    name: '蘑菇麵',
-    prices: {
-      麵: 80
     },
+    name: '玉米濃湯(冬天限定)',
+    cat: 'dessert'
+  }, {
     addons: [{
       name: '青菜',
       price: 20
@@ -4915,8 +4792,43 @@ const BADUDU_SEED = {
       name: '蛋',
       price: 15
     }, {
-      name: '火腿',
+      price: 15,
+      name: '火腿'
+    }, {
+      price: 20,
+      name: '培根'
+    }, {
+      price: 20,
+      name: '漢堡肉'
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      price: 30,
+      name: '熱狗'
+    }, {
+      name: '德式腸',
+      price: 35
+    }],
+    prices: {
+      麵: 80
+    },
+    name: '蘑菇麵',
+    cat: 'noodle'
+  }, {
+    cat: 'noodle',
+    addons: [{
+      price: 20,
+      name: '青菜'
+    }, {
+      name: '起司',
       price: 15
+    }, {
+      price: 15,
+      name: '蛋'
+    }, {
+      price: 15,
+      name: '火腿'
     }, {
       name: '培根',
       price: 20
@@ -4927,101 +4839,70 @@ const BADUDU_SEED = {
       name: '豬排',
       price: 25
     }, {
-      name: '熱狗',
-      price: 30
+      price: 30,
+      name: '熱狗'
     }, {
       name: '德式腸',
       price: 35
-    }]
-  }, {
-    cat: 'noodle',
+    }],
     name: '黑胡椒麵',
     prices: {
       麵: 80
-    },
+    }
+  }, {
+    cat: 'noodle',
     addons: [{
       name: '青菜',
       price: 20
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
       name: '蛋',
       price: 15
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }, {
       name: '熱狗',
       price: 30
     }, {
       name: '德式腸',
       price: 35
-    }]
-  }, {
-    cat: 'noodle',
-    name: '肉醬麵',
+    }],
     prices: {
       麵: 80
     },
-    addons: [{
-      name: '青菜',
-      price: 20
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }, {
-      name: '熱狗',
-      price: 30
-    }, {
-      name: '德式腸',
-      price: 35
-    }]
+    name: '肉醬麵'
   }, {
-    cat: 'noodle',
-    name: '醬燒板條',
     prices: {
       麵: 90
     },
+    name: '醬燒板條',
     addons: [{
-      name: '青菜',
-      price: 20
+      price: 20,
+      name: '青菜'
     }, {
       name: '起司',
       price: 15
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
-      name: '培根',
-      price: 20
+      price: 20,
+      name: '培根'
     }, {
       name: '漢堡肉',
       price: 20
@@ -5029,28 +4910,59 @@ const BADUDU_SEED = {
       name: '豬排',
       price: 25
     }, {
-      name: '熱狗',
-      price: 30
+      price: 30,
+      name: '熱狗'
+    }, {
+      price: 35,
+      name: '德式腸'
+    }],
+    cat: 'noodle'
+  }, {
+    cat: 'noodle',
+    addons: [{
+      price: 20,
+      name: '青菜'
+    }, {
+      price: 15,
+      name: '起司'
+    }, {
+      name: '蛋',
+      price: 15
+    }, {
+      price: 15,
+      name: '火腿'
+    }, {
+      name: '培根',
+      price: 20
+    }, {
+      price: 20,
+      name: '漢堡肉'
+    }, {
+      name: '豬排',
+      price: 25
+    }, {
+      price: 30,
+      name: '熱狗'
     }, {
       name: '德式腸',
       price: 35
-    }]
-  }, {
-    cat: 'noodle',
+    }],
     name: '杏鮑菇麵',
     prices: {
       麵: 100,
       飯: 130
-    },
+    }
+  }, {
+    cat: 'noodle',
     addons: [{
-      name: '青菜',
-      price: 20
+      price: 20,
+      name: '青菜'
     }, {
       name: '起司',
       price: 15
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
       name: '火腿',
       price: 15
@@ -5058,25 +4970,24 @@ const BADUDU_SEED = {
       name: '培根',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }, {
       name: '熱狗',
       price: 30
     }, {
       name: '德式腸',
       price: 35
-    }]
-  }, {
-    cat: 'noodle',
+    }],
     name: '三杯雞丁麵',
     prices: {
       麵: 95,
       飯: 125
-    },
+    }
+  }, {
     addons: [{
       name: '青菜',
       price: 20
@@ -5093,31 +5004,31 @@ const BADUDU_SEED = {
       name: '培根',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }, {
       name: '熱狗',
       price: 30
     }, {
-      name: '德式腸',
-      price: 35
-    }]
-  }, {
-    cat: 'noodle',
+      price: 35,
+      name: '德式腸'
+    }],
     name: '宮保雞丁麵',
     prices: {
       麵: 95,
       飯: 125
     },
+    cat: 'noodle'
+  }, {
     addons: [{
-      name: '青菜',
-      price: 20
+      price: 20,
+      name: '青菜'
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
       name: '蛋',
       price: 15
@@ -5128,69 +5039,39 @@ const BADUDU_SEED = {
       name: '培根',
       price: 20
     }, {
-      name: '漢堡肉',
-      price: 20
+      price: 20,
+      name: '漢堡肉'
     }, {
       name: '豬排',
       price: 25
     }, {
-      name: '熱狗',
-      price: 30
+      price: 30,
+      name: '熱狗'
     }, {
       name: '德式腸',
       price: 35
-    }]
-  }, {
-    cat: 'noodle',
+    }],
+    prices: {
+      飯: 125,
+      麵: 95
+    },
     name: '奶油雞丁麵',
-    prices: {
-      麵: 95,
-      飯: 125
-    },
-    addons: [{
-      name: '青菜',
-      price: 20
-    }, {
-      name: '起司',
-      price: 15
-    }, {
-      name: '蛋',
-      price: 15
-    }, {
-      name: '火腿',
-      price: 15
-    }, {
-      name: '培根',
-      price: 20
-    }, {
-      name: '漢堡肉',
-      price: 20
-    }, {
-      name: '豬排',
-      price: 25
-    }, {
-      name: '熱狗',
-      price: 30
-    }, {
-      name: '德式腸',
-      price: 35
-    }]
+    cat: 'noodle'
   }, {
-    cat: 'noodle',
+    prices: {
+      飯: 150,
+      麵: 110
+    },
     name: '泰式打拋豬麵',
-    prices: {
-      麵: 110,
-      飯: 150
-    },
     addons: [{
       name: '青菜',
       price: 20
     }, {
-      name: '起司',
-      price: 15
+      price: 15,
+      name: '起司'
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
       name: '火腿',
       price: 15
@@ -5201,22 +5082,21 @@ const BADUDU_SEED = {
       name: '漢堡肉',
       price: 20
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }, {
       name: '熱狗',
       price: 30
     }, {
-      name: '德式腸',
-      price: 35
-    }]
+      price: 35,
+      name: '德式腸'
+    }],
+    cat: 'noodle'
   }, {
-    cat: 'noodle',
     name: '不一樣炒泡麵',
     prices: {
       麵: 90
     },
-    desc: '泡麵固定散蛋',
     addons: [{
       name: '青菜',
       price: 20
@@ -5224,11 +5104,11 @@ const BADUDU_SEED = {
       name: '起司',
       price: 15
     }, {
-      name: '蛋',
-      price: 15
+      price: 15,
+      name: '蛋'
     }, {
-      name: '火腿',
-      price: 15
+      price: 15,
+      name: '火腿'
     }, {
       name: '培根',
       price: 20
@@ -5236,276 +5116,278 @@ const BADUDU_SEED = {
       name: '漢堡肉',
       price: 20
     }, {
-      name: '豬排',
-      price: 25
+      price: 25,
+      name: '豬排'
     }, {
-      name: '熱狗',
-      price: 30
+      price: 30,
+      name: '熱狗'
     }, {
-      name: '德式腸',
-      price: 35
-    }]
+      price: 35,
+      name: '德式腸'
+    }],
+    cat: 'noodle',
+    desc: '泡麵固定散蛋'
   }, {
     cat: 'hotpot',
-    name: '經典原味',
     prices: {
-      意麵: 150,
-      烏龍: 150,
-      雞絲: 150,
       冬粉: 150,
+      意麵: 150,
+      雞絲: 150,
+      烏龍: 150,
       泡飯: 150
-    }
+    },
+    name: '經典原味'
   }, {
     cat: 'hotpot',
-    name: '韓式泡菜',
     prices: {
-      意麵: 190,
+      泡飯: 190,
       烏龍: 190,
       雞絲: 190,
       冬粉: 190,
-      泡飯: 190
-    }
+      意麵: 190
+    },
+    name: '韓式泡菜'
   }, {
     cat: 'hotpot',
-    name: '香濃豆酥(純素,不加水)',
     prices: {
-      意麵: 200,
       烏龍: 200,
-      雞絲: 200,
+      泡飯: 200,
       冬粉: 200,
-      泡飯: 200
-    }
+      意麵: 200,
+      雞絲: 200
+    },
+    name: '香濃豆酥(純素,不加水)'
   }, {
-    cat: 'hotpot',
-    name: '肉燥牛肉起司',
     prices: {
       意麵: 230,
-      烏龍: 230,
-      雞絲: 230,
       冬粉: 230,
-      泡飯: 230
-    }
-  }, {
-    cat: 'hotpot',
-    name: '梅花肉多多',
-    prices: {
-      意麵: 230,
-      烏龍: 230,
       雞絲: 230,
-      冬粉: 230,
+      烏龍: 230,
       泡飯: 230
     },
-    desc: '多多系列均附贈一杯紅茶500cc'
+    name: '肉燥牛肉起司',
+    cat: 'hotpot'
+  }, {
+    prices: {
+      烏龍: 230,
+      泡飯: 230,
+      冬粉: 230,
+      意麵: 230,
+      雞絲: 230
+    },
+    name: '梅花肉多多',
+    desc: '多多系列均附贈一杯紅茶500cc',
+    cat: 'hotpot'
   }, {
     cat: 'hotpot',
+    desc: '多多系列均附贈一杯紅茶500cc',
     name: '蛤蜊多多',
     prices: {
-      意麵: 230,
+      泡飯: 230,
       烏龍: 230,
       雞絲: 230,
       冬粉: 230,
-      泡飯: 230
-    },
-    desc: '多多系列均附贈一杯紅茶500cc'
+      意麵: 230
+    }
   }, {
+    desc: '多多系列均附贈一杯紅茶500cc',
     cat: 'hotpot',
     name: '鮮蝦多多',
     prices: {
-      意麵: 230,
       烏龍: 230,
+      泡飯: 230,
+      意麵: 230,
       雞絲: 230,
-      冬粉: 230,
-      泡飯: 230
-    },
-    desc: '多多系列均附贈一杯紅茶500cc'
+      冬粉: 230
+    }
   }, {
+    desc: '附醬料 和風/千島/不醬',
     cat: 'salad',
     name: '生菜沙拉',
     prices: {
       default: 90
-    },
-    desc: '附醬料 和風/千島/不醬'
+    }
   }, {
-    cat: 'salad',
-    name: '火腿沙拉',
     prices: {
       default: 100
     },
-    desc: '附醬料 和風/千島/不醬'
+    name: '火腿沙拉',
+    desc: '附醬料 和風/千島/不醬',
+    cat: 'salad'
   }, {
+    desc: '附醬料 和風/千島/不醬',
     cat: 'salad',
-    name: '豬排沙拉',
     prices: {
       default: 105
     },
-    desc: '附醬料 和風/千島/不醬'
+    name: '豬排沙拉'
   }, {
+    desc: '附醬料 和風/千島/不醬',
     cat: 'salad',
     name: '德式腸沙拉',
     prices: {
       default: 110
-    },
-    desc: '附醬料 和風/千島/不醬'
+    }
   }, {
-    cat: 'salad',
     name: '呷霸自製洋芋沙拉',
     prices: {
       default: 110
     },
-    desc: '附醬料 和風/千島/不醬'
+    desc: '附醬料 和風/千島/不醬',
+    cat: 'salad'
   }, {
     cat: 'set',
+    desc: '可頌+散蛋+蔬菜+洋芋+德式腸+(中)飲品。飲品冰熱請寫備註',
     name: 'A. 窈窕完美無瑕可頌套餐',
     prices: {
       default: 180
-    },
-    desc: '可頌+散蛋+蔬菜+洋芋+德式腸+(中)飲品。飲品冰熱請寫備註'
+    }
   }, {
+    desc: '法式吐司+散蛋+蔬菜+洋芋+豬排+(中)飲品。口味請寫備註',
     cat: 'set',
-    name: 'B. 活力充沛法式小豬套餐',
     prices: {
       default: 190
     },
-    desc: '法式吐司+散蛋+蔬菜+洋芋+豬排+(中)飲品。口味請寫備註'
+    name: 'B. 活力充沛法式小豬套餐'
   }, {
     cat: 'combo',
-    name: '超值1. 薯餅蛋吐司+(中)飲品',
+    desc: '飲品擇一寫備註:紅茶/奶茶/綠茶 · 熱/溫/涼/冰',
     prices: {
       default: 75
     },
-    desc: '飲品擇一寫備註:紅茶/奶茶/綠茶 · 熱/溫/涼/冰'
+    name: '超值1. 薯餅蛋吐司+(中)飲品'
   }, {
-    cat: 'combo',
-    name: '超值2. 豬排蛋漢堡+(中)飲品',
     prices: {
       default: 85
     },
+    name: '超值2. 豬排蛋漢堡+(中)飲品',
+    cat: 'combo',
     desc: '飲品擇一寫備註'
   }, {
+    desc: '飲品擇一寫備註',
     cat: 'combo',
-    name: '超值3. 炸煎餃(5顆)+蔥蛋+(中)飲品',
     prices: {
       default: 95
     },
-    desc: '飲品擇一寫備註'
+    name: '超值3. 炸煎餃(5顆)+蔥蛋+(中)飲品'
   }, {
     cat: 'combo',
-    name: '超值4. 蘿蔔糕+蛋+豬排+(中)飲品',
+    desc: '飲品擇一寫備註',
     prices: {
       default: 105
     },
-    desc: '飲品擇一寫備註'
+    name: '超值4. 蘿蔔糕+蛋+豬排+(中)飲品'
   }, {
-    cat: 'combo',
     name: '超值5. 起司蛋餅+小肉豆+(中)飲品',
     prices: {
       default: 110
     },
-    desc: '飲品擇一寫備註'
+    desc: '飲品擇一寫備註',
+    cat: 'combo'
   }, {
-    cat: 'combo',
-    name: '超值6. 鐵板麵+豬排或小熱狗+(中)飲品',
     prices: {
       default: 115
     },
-    desc: '麵擇:黑胡椒/蘑菇 · 主菜擇:豬排/小熱狗 · 寫備註'
+    name: '超值6. 鐵板麵+豬排或小熱狗+(中)飲品',
+    desc: '麵擇:黑胡椒/蘑菇 · 主菜擇:豬排/小熱狗 · 寫備註',
+    cat: 'combo'
   }, {
-    cat: 'combo',
     name: '超值7. 厚切牛肉花生蛋漢堡+(中)飲品',
     prices: {
       default: 125
     },
+    cat: 'combo',
     desc: '飲品擇一寫備註'
   }, {
+    desc: '飲品擇一寫備註',
     cat: 'combo',
-    name: '超值8. 照燒雞腿米漢堡+(中)飲品',
     prices: {
       default: 130
     },
-    desc: '飲品擇一寫備註'
+    name: '超值8. 照燒雞腿米漢堡+(中)飲品'
   }, {
     cat: 'combo',
+    desc: '飲品擇一寫備註',
     name: '超值9. 黑炫風咔啦蛋吐司+脆薯條+(中)飲品',
     prices: {
       default: 180
-    },
-    desc: '飲品擇一寫備註'
+    }
   }, {
     cat: 'combo',
+    desc: '麵擇:意麵/烏龍/雞絲/冬粉/泡飯 · 小炸物擇一寫備註',
     name: '超值10. 原味海鮮鍋燒麵+小炸物+(中)飲品',
     prices: {
       default: 210
-    },
-    desc: '麵擇:意麵/烏龍/雞絲/冬粉/泡飯 · 小炸物擇一寫備註'
+    }
   }, {
     cat: 'fried',
-    name: '炸A. 炸飯糰+雞肉圈+小肉豆',
     prices: {
       default: 75
-    }
+    },
+    name: '炸A. 炸飯糰+雞肉圈+小肉豆'
   }, {
     cat: 'fried',
-    name: '炸B. 小熱狗+脆薯條+麥克雞塊',
     prices: {
       default: 125
-    }
+    },
+    name: '炸B. 小熱狗+脆薯條+麥克雞塊'
   }, {
-    cat: 'fried',
-    name: '炸C. 薯餅+檸檬雞柳條+炸湯圓',
     prices: {
       default: 135
-    }
+    },
+    name: '炸C. 薯餅+檸檬雞柳條+炸湯圓',
+    cat: 'fried'
   }, {
-    cat: 'fried',
     name: '炸D. 小雞球+地瓜球+起司條',
     prices: {
       default: 145
-    }
+    },
+    cat: 'fried'
   }, {
-    cat: 'fried',
     name: '炸E. 香蔥吉拿棒+檸檬雞柳條+杏鮑菇',
     prices: {
       default: 160
-    }
+    },
+    cat: 'fried'
   }, {
     cat: 'fried',
-    name: '炸F. 小肉豆+麥克雞塊+洋蔥圈+鱈魚條',
     prices: {
       default: 185
-    }
+    },
+    name: '炸F. 小肉豆+麥克雞塊+洋蔥圈+鱈魚條'
   }, {
-    cat: 'fried',
     name: '炸G. 小熱狗+香蔥吉拿棒+薯餅+雞肉圈+玉米布丁酥',
     prices: {
       default: 200
-    }
+    },
+    cat: 'fried'
   }, {
     cat: 'drink',
-    name: '紅茶',
     prices: {
-      M: 20,
-      XL: 25
+      XL: 25,
+      M: 20
     },
+    name: '紅茶',
     addons: [{
-      name: '熱',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '熱'
     }, {
-      name: '溫',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '溫'
     }, {
       name: '涼',
       price: 0,
       group: '溫度'
     }, {
-      name: '冰',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '冰'
     }, {
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
       price: 0,
@@ -5520,150 +5402,150 @@ const BADUDU_SEED = {
       group: '冰量'
     }]
   }, {
-    cat: 'drink',
+    addons: [{
+      name: '熱',
+      group: '溫度',
+      price: 0
+    }, {
+      name: '溫',
+      group: '溫度',
+      price: 0
+    }, {
+      price: 0,
+      group: '溫度',
+      name: '涼'
+    }, {
+      name: '冰',
+      price: 0,
+      group: '溫度'
+    }, {
+      name: '正常冰',
+      group: '冰量',
+      price: 0
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '少冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '微冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '去冰'
+    }],
     name: '奶茶',
     prices: {
-      M: 20,
-      XL: 25
+      XL: 25,
+      M: 20
     },
+    cat: 'drink'
+  }, {
+    cat: 'drink',
     addons: [{
-      name: '熱',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '熱'
     }, {
-      name: '溫',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '溫'
     }, {
       name: '涼',
       price: 0,
       group: '溫度'
     }, {
-      name: '冰',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '冰'
     }, {
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '微冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'drink',
+      name: '去冰'
+    }],
     name: '綠茶',
     prices: {
       M: 20,
       XL: 25
-    },
-    addons: [{
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '溫',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '涼',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '冰',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    }
   }, {
-    cat: 'drink',
+    prices: {
+      L: 30,
+      M: 20
+    },
     name: '有糖豆漿',
-    prices: {
-      M: 20,
-      L: 30
-    },
     addons: [{
       name: '熱',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '溫',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
-      name: '涼',
+      group: '溫度',
       price: 0,
-      group: '溫度'
-    }]
+      name: '涼'
+    }],
+    cat: 'drink'
   }, {
     cat: 'drink',
-    name: '無糖豆漿',
+    addons: [{
+      price: 0,
+      group: '溫度',
+      name: '熱'
+    }, {
+      price: 0,
+      group: '溫度',
+      name: '溫'
+    }, {
+      price: 0,
+      group: '溫度',
+      name: '涼'
+    }],
     prices: {
-      M: 20,
+      L: 30,
+      M: 20
+    },
+    name: '無糖豆漿'
+  }, {
+    prices: {
       L: 30
     },
-    addons: [{
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '溫',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '涼',
-      price: 0,
-      group: '溫度'
-    }]
-  }, {
-    cat: 'drink',
     name: '紅茶豆漿',
-    prices: {
-      L: 30
-    },
     addons: [{
       name: '熱',
       price: 0,
       group: '溫度'
     }, {
-      name: '溫',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '溫'
     }, {
-      name: '涼',
       price: 0,
-      group: '溫度'
-    }]
+      group: '溫度',
+      name: '涼'
+    }],
+    cat: 'drink'
   }, {
     cat: 'drink',
-    name: '混米豆漿',
     prices: {
       L: 35
     },
+    name: '混米豆漿',
     addons: [{
       name: '熱',
       price: 0,
@@ -5673,9 +5555,9 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度'
     }, {
-      name: '涼',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '涼'
     }]
   }, {
     cat: 'drink',
@@ -5686,124 +5568,123 @@ const BADUDU_SEED = {
     },
     addons: [{
       name: '熱',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '溫',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
-      name: '涼',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '涼'
     }]
   }, {
-    cat: 'drink',
-    name: '美白薏仁',
     prices: {
       M: 25,
       L: 35
     },
+    name: '美白薏仁',
     addons: [{
-      name: '熱',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '熱'
     }, {
       name: '溫',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
-      name: '涼',
+      group: '溫度',
       price: 0,
-      group: '溫度'
-    }]
+      name: '涼'
+    }],
+    cat: 'drink'
   }, {
     cat: 'drink',
+    prices: {
+      L: 50,
+      M: 40
+    },
     name: '重乳鮮奶茶',
-    prices: {
-      M: 40,
-      L: 50
-    },
     addons: [{
       name: '熱',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '溫',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
-      name: '涼',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '涼'
     }, {
       name: '冰',
       price: 0,
       group: '溫度'
     }, {
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
-      name: '少冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '少冰'
     }, {
       name: '微冰',
       price: 0,
       group: '冰量'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '去冰'
     }]
   }, {
     cat: 'drink',
+    prices: {
+      M: 40,
+      L: 50
+    },
     name: '香濃可可亞',
-    prices: {
-      M: 40,
-      L: 50
-    },
     addons: [{
       name: '熱',
       price: 0,
       group: '溫度'
     }, {
-      name: '溫',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '溫'
     }, {
-      name: '涼',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '涼'
     }, {
-      name: '冰',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '冰'
     }, {
-      name: '正常冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
+      name: '正常冰'
     }, {
-      name: '少冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '去冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }]
   }, {
-    cat: 'drink',
+    prices: {
+      L: 50,
+      M: 40
+    },
     name: '活力柳橙汁',
-    prices: {
-      M: 40,
-      L: 50
-    },
     addons: [{
       name: '熱',
       price: 0,
@@ -5813,77 +5694,78 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度'
     }, {
-      name: '涼',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '涼'
     }, {
       name: '冰',
+      group: '溫度',
+      price: 0
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '正常冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '少冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '微冰'
+    }, {
+      name: '去冰',
+      group: '冰量',
+      price: 0
+    }],
+    cat: 'drink'
+  }, {
+    addons: [{
+      name: '熱',
       price: 0,
       group: '溫度'
     }, {
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '溫度',
+      name: '溫'
     }, {
-      name: '少冰',
+      name: '涼',
+      group: '溫度',
+      price: 0
+    }, {
       price: 0,
-      group: '冰量'
+      group: '溫度',
+      name: '冰'
+    }, {
+      group: '冰量',
+      price: 0,
+      name: '正常冰'
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '少冰'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'drink',
+      group: '冰量',
+      price: 0
+    }],
     name: '愛戀蘋果汁',
     prices: {
-      M: 40,
-      L: 50
+      L: 50,
+      M: 40
     },
-    addons: [{
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '溫',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '涼',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '冰',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    cat: 'drink'
   }, {
     cat: 'drink',
-    name: '特優鮮豆沙(夏季限定)',
     prices: {
-      L: 40,
-      XL: 50
-    }
+      XL: 50,
+      L: 40
+    },
+    name: '特優鮮豆沙(夏季限定)'
   }, {
     cat: 'drink',
     name: '綠豆沙牛奶(夏季限定)',
@@ -5892,52 +5774,52 @@ const BADUDU_SEED = {
       XL: 60
     }
   }, {
-    cat: 'drink',
     name: '懷念調味乳(玻璃罐裝)',
-    prices: {
-      M: 40
-    },
-    desc: '麥芽/草莓/巧克力',
     addons: [{
-      name: '果汁',
       price: 0,
-      group: '口味'
+      group: '口味',
+      name: '果汁'
     }, {
       name: '麥芽',
-      price: 0,
-      group: '口味'
+      group: '口味',
+      price: 0
     }, {
       name: '草莓',
       price: 0,
       group: '口味'
     }, {
-      name: '巧克力',
+      group: '口味',
       price: 0,
-      group: '口味'
-    }]
+      name: '巧克力'
+    }],
+    prices: {
+      M: 40
+    },
+    desc: '麥芽/草莓/巧克力',
+    cat: 'drink'
   }, {
     cat: 'coffee',
+    prices: {
+      M: 50,
+      L: 60
+    },
     name: '美式(無糖)',
-    prices: {
-      M: 50,
-      L: 60
-    },
     addons: [{
       name: '熱',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '涼',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '冰',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '正常冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
       name: '少冰',
       price: 0,
@@ -5948,16 +5830,47 @@ const BADUDU_SEED = {
       group: '冰量'
     }, {
       name: '去冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }]
   }, {
-    cat: 'coffee',
+    prices: {
+      M: 50,
+      L: 60
+    },
     name: '黑咖啡(有糖)',
-    prices: {
-      M: 50,
-      L: 60
-    },
+    addons: [{
+      group: '溫度',
+      price: 0,
+      name: '熱'
+    }, {
+      name: '涼',
+      group: '溫度',
+      price: 0
+    }, {
+      name: '冰',
+      price: 0,
+      group: '溫度'
+    }, {
+      name: '正常冰',
+      group: '冰量',
+      price: 0
+    }, {
+      name: '少冰',
+      group: '冰量',
+      price: 0
+    }, {
+      price: 0,
+      group: '冰量',
+      name: '微冰'
+    }, {
+      name: '去冰',
+      group: '冰量',
+      price: 0
+    }],
+    cat: 'coffee'
+  }, {
+    cat: 'coffee',
     addons: [{
       name: '熱',
       price: 0,
@@ -5967,64 +5880,32 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度'
     }, {
-      name: '冰',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '冰'
     }, {
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '微冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '微冰'
     }, {
-      name: '去冰',
       price: 0,
-      group: '冰量'
-    }]
-  }, {
-    cat: 'coffee',
-    name: '招牌咖啡',
+      group: '冰量',
+      name: '去冰'
+    }],
     prices: {
       M: 50,
       L: 60
     },
-    addons: [{
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '涼',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '冰',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '正常冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
-    }]
+    name: '招牌咖啡'
   }, {
-    cat: 'coffee',
     name: '特調拿鐵',
     prices: {
       M: 60,
@@ -6035,270 +5916,334 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度'
     }, {
-      name: '涼',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '涼'
     }, {
       name: '冰',
       price: 0,
       group: '溫度'
     }, {
-      name: '正常冰',
       price: 0,
-      group: '冰量'
+      group: '冰量',
+      name: '正常冰'
     }, {
       name: '少冰',
       price: 0,
       group: '冰量'
     }, {
       name: '微冰',
-      price: 0,
-      group: '冰量'
+      group: '冰量',
+      price: 0
     }, {
-      name: '去冰',
+      group: '冰量',
       price: 0,
-      group: '冰量'
-    }]
-  }]
-};
-const SHANLIN_SEED = {
-  id: 'shanlin',
-  name: '山林美食館',
-  nameEn: 'Shan-lin',
-  branch: '大安辛亥路',
-  address: '台北市大安區辛亥路二段171巷31號',
-  phone: '(02) 2377-4298',
-  hours: '早餐專賣 · 焗烤類 10:30 後供應',
-  themeColor: 'var(--shanlin)',
-  themeBg: 'var(--shanlin-bg)',
-  note: '主菜可選漢堡蛋／吐司蛋／丹麥蛋(+30)／乳酪餅。鐵板麵+蛋。冬季限定品項冬天才有',
+      name: '去冰'
+    }],
+    cat: 'coffee'
+  }],
+  themeBg: 'var(--badudu-bg)',
   categories: [{
-    id: 'main',
-    name: '主菜品項',
-    variants: ['漢堡蛋', '吐司蛋', '丹麥蛋', '乳酪餅'],
-    variantLabel: '四種變體 · 丹麥蛋+30'
-  }, {
-    id: 'eggcake',
-    name: '蛋餅',
+    name: '香Q厚蛋餅',
     variants: ['default'],
-    variantLabel: '14 種口味'
+    id: 'omelet',
+    variantLabel: 'Chinese omelet'
   }, {
-    id: 'noodle',
-    name: '鐵板麵類',
+    variants: ['蛋餅', '吐司', '漢堡'],
+    name: '調皮搗蛋',
+    variantLabel: 'preserved egg',
+    id: 'preegg'
+  }, {
+    variantLabel: '需等15分鐘 · 不含蛋',
+    id: 'cheesefb',
     variants: ['default'],
-    variantLabel: '已加蛋'
+    name: '酥皮乳酪餅',
+    desc: '⏱ 需等候約 10 分鐘；不含蛋'
   }, {
+    desc: '+$40 可換米漢堡 / 可頌 / 潛艇堡。可額外加料：蛋、起司、火腿、培根、生菜、漢堡肉、豬排',
+    id: 'burger',
+    variantLabel: '吐司／漢堡 不同價',
+    variants: ['吐司', '漢堡'],
+    name: '呷霸漢堡吐司'
+  }, {
+    variants: ['default'],
+    name: '格格鬆餅堡',
+    id: 'waffle',
+    variantLabel: 'Waffle'
+  }, {
+    desc: '⏱ 需等候約 15 分鐘',
+    variantLabel: '需等15分鐘 · Rice burger',
+    id: 'ricebrg',
+    variants: ['default'],
+    name: '粒粒米漢堡'
+  }, {
+    id: 'croissant',
+    variantLabel: '可頌／潛艇堡',
+    name: '酥脆可頌潛艇堡',
+    variants: ['可頌', '潛艇堡']
+  }, {
+    variants: ['default'],
+    name: '蹦啾法式吐司',
+    id: 'french',
+    variantLabel: '需等15分鐘 · French toast',
+    desc: '⏱ 需等候約 15 分鐘'
+  }, {
+    variantLabel: '薄$25/厚$35/乳酪$40',
     id: 'jam',
-    name: '果醬類',
-    variants: ['吐司', '厚片'],
-    variantLabel: '吐司$25／厚片$35'
+    variants: ['薄片', '厚片', '乳酪餅'],
+    name: '甜在心果醬'
   }, {
-    id: 'gratin',
-    name: '焗烤類',
+    desc: '⏱ 需等候約 20 分鐘',
     variants: ['default'],
-    variantLabel: '10:30 後供應'
+    name: '牽絲焗烤',
+    variantLabel: '需等20分鐘 · Gratin',
+    id: 'gratin'
   }, {
-    id: 'snack',
-    name: '單點類',
+    id: 'hidden',
+    variantLabel: 'Exclusive flavors',
     variants: ['default'],
-    variantLabel: '小份點心'
+    name: '獨有隱藏版'
   }, {
-    id: 'drink',
-    name: '飲料類',
-    variants: ['小', '大'],
-    variantLabel: '小杯／大杯'
+    variantLabel: 'Dessert',
+    id: 'dessert',
+    variants: ['default'],
+    name: '嘴饞小點心'
+  }, {
+    desc: '⚠ 皆含蛋一顆，半熟蛋請提早告知。可額外加料：青菜 +$20、起司 +$15、蛋 +$15、火腿 +$15、培根 +$20、漢堡肉 +$20、豬排 +$25、熱狗 +$30、德式腸 +$35',
+    id: 'noodle',
+    variantLabel: '部分品項可換成飯+30',
+    variants: ['麵', '飯'],
+    name: '特選鐵板麵飯'
   }, {
     id: 'hotpot',
-    name: '私房料理',
-    variants: ['意麵', '雞絲麵', '烏龍麵', '泡飯'],
-    variantLabel: '四種麵體'
-  }],
-  items: [{
-    cat: 'main',
-    name: '蔬菜',
-    prices: {
-      漢堡蛋: 50,
-      吐司蛋: 50,
-      丹麥蛋: 80,
-      乳酪餅: 50
-    }
+    variantLabel: '內含海鮮 · 五種麵體',
+    variants: ['意麵', '烏龍', '雞絲', '冬粉', '泡飯'],
+    name: '私房招牌鍋燒',
+    desc: '⚠ 內含海鮮，若有不吃的食材請告知。本店不主動加沙茶，需要請提前告知'
   }, {
-    cat: 'main',
+    variants: ['default'],
+    name: '瘦瘦健康沙拉',
+    id: 'salad',
+    variantLabel: '附醬料 和風/千島/不醬'
+  }, {
+    desc: '套餐已附中杯飲品',
+    variants: ['default'],
+    name: '舒活輕食套餐',
+    id: 'set',
+    variantLabel: '附中飲品'
+  }, {
+    id: 'combo',
+    variantLabel: 'Combo · 附中飲品',
+    variants: ['default'],
+    name: '呷霸超值套餐',
+    desc: '套餐已附中杯飲品'
+  }, {
+    name: '精選炸快樂',
+    variants: ['default'],
+    id: 'fried',
+    variantLabel: 'Fried food set'
+  }, {
+    id: 'drink',
+    variantLabel: 'M中/L大/XL特大',
+    name: '來一杯解解渴',
+    variants: ['M', 'L', 'XL']
+  }, {
+    name: '提神研磨咖啡',
+    variants: ['M', 'L'],
+    variantLabel: 'M中／L大',
+    id: 'coffee'
+  }],
+  hours: '04:30 - 14:00（最後加點 13:45）',
+  id: 'badudu',
+  note: '本店不主動加沙茶，需要請提前告知；半熟蛋請提早說。如不吃食材或有任何需求都可告知店員。'
+};
+const SHANLIN_SEED = {
+  items: [{
+    prices: {
+      乳酪餅: 50,
+      吐司蛋: 50,
+      漢堡蛋: 50,
+      丹麥蛋: 80
+    },
+    name: '蔬菜',
+    cat: 'main'
+  }, {
     name: '起士',
     prices: {
-      漢堡蛋: 50,
-      吐司蛋: 50,
       丹麥蛋: 80,
+      吐司蛋: 50,
+      漢堡蛋: 50,
       乳酪餅: 50
-    }
+    },
+    cat: 'main'
   }, {
     cat: 'main',
-    name: '肉鬆',
     prices: {
-      漢堡蛋: 50,
-      吐司蛋: 50,
       丹麥蛋: 80,
-      乳酪餅: 50
-    }
+      乳酪餅: 50,
+      吐司蛋: 50,
+      漢堡蛋: 50
+    },
+    name: '肉鬆'
   }, {
     cat: 'main',
-    name: '火腿',
     prices: {
+      乳酪餅: 50,
       漢堡蛋: 50,
       吐司蛋: 50,
-      丹麥蛋: 80,
-      乳酪餅: 50
-    }
+      丹麥蛋: 80
+    },
+    name: '火腿'
   }, {
-    cat: 'main',
     name: '培根',
     prices: {
       漢堡蛋: 50,
+      乳酪餅: 50,
       吐司蛋: 50,
-      丹麥蛋: 80,
-      乳酪餅: 50
-    }
+      丹麥蛋: 80
+    },
+    cat: 'main'
   }, {
     cat: 'main',
-    name: '豬肉',
     prices: {
-      漢堡蛋: 55,
-      吐司蛋: 55,
       丹麥蛋: 85,
-      乳酪餅: 55
-    }
+      吐司蛋: 55,
+      乳酪餅: 55,
+      漢堡蛋: 55
+    },
+    name: '豬肉'
   }, {
     cat: 'main',
     name: '香雞',
     prices: {
-      漢堡蛋: 55,
+      乳酪餅: 55,
       吐司蛋: 55,
-      丹麥蛋: 85,
-      乳酪餅: 55
+      漢堡蛋: 55,
+      丹麥蛋: 85
     }
   }, {
-    cat: 'main',
-    name: '洋芋',
     prices: {
-      漢堡蛋: 60,
       吐司蛋: 60,
-      丹麥蛋: 90,
-      乳酪餅: 60
-    }
+      漢堡蛋: 60,
+      乳酪餅: 60,
+      丹麥蛋: 90
+    },
+    name: '洋芋',
+    cat: 'main'
   }, {
     cat: 'main',
     name: '鮪魚',
     prices: {
-      漢堡蛋: 65,
-      吐司蛋: 65,
       丹麥蛋: 95,
-      乳酪餅: 65
+      吐司蛋: 65,
+      乳酪餅: 65,
+      漢堡蛋: 65
     }
   }, {
-    cat: 'main',
+    prices: {
+      丹麥蛋: 95,
+      乳酪餅: 65,
+      漢堡蛋: 65,
+      吐司蛋: 65
+    },
     name: '燻雞',
-    prices: {
-      漢堡蛋: 65,
-      吐司蛋: 65,
-      丹麥蛋: 95,
-      乳酪餅: 65
-    }
+    cat: 'main'
   }, {
     cat: 'main',
-    name: '豬排',
     prices: {
-      漢堡蛋: 65,
-      吐司蛋: 65,
       丹麥蛋: 95,
-      乳酪餅: 65
-    }
+      漢堡蛋: 65,
+      乳酪餅: 65,
+      吐司蛋: 65
+    },
+    name: '豬排'
   }, {
-    cat: 'main',
+    prices: {
+      丹麥蛋: 100,
+      漢堡蛋: 70,
+      乳酪餅: 70,
+      吐司蛋: 70
+    },
     name: '花枝',
-    prices: {
-      漢堡蛋: 70,
-      吐司蛋: 70,
-      丹麥蛋: 100,
-      乳酪餅: 70
-    }
+    cat: 'main'
   }, {
-    cat: 'main',
+    prices: {
+      丹麥蛋: 100,
+      乳酪餅: 70,
+      漢堡蛋: 70,
+      吐司蛋: 70
+    },
     name: '鮮蝦',
-    prices: {
-      漢堡蛋: 70,
-      吐司蛋: 70,
-      丹麥蛋: 100,
-      乳酪餅: 70
-    }
+    cat: 'main'
   }, {
     cat: 'main',
-    name: '藍帶豬排',
     prices: {
       漢堡蛋: 75,
+      乳酪餅: 75,
       吐司蛋: 75,
-      丹麥蛋: 105,
-      乳酪餅: 75
-    }
+      丹麥蛋: 105
+    },
+    name: '藍帶豬排'
   }, {
     cat: 'main',
     name: '咔拉雞腿',
     prices: {
+      乳酪餅: 75,
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105,
-      乳酪餅: 75
+      丹麥蛋: 105
     }
   }, {
     cat: 'main',
     name: '總匯',
     prices: {
+      丹麥蛋: 105,
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105,
       乳酪餅: 75
     }
   }, {
-    cat: 'main',
     name: '無骨雞',
     prices: {
+      乳酪餅: 75,
       漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105,
-      乳酪餅: 75
-    }
+      丹麥蛋: 105
+    },
+    cat: 'main'
   }, {
-    cat: 'main',
     name: '燒雞腿',
     prices: {
-      漢堡蛋: 75,
       吐司蛋: 75,
-      丹麥蛋: 105,
-      乳酪餅: 75
-    }
+      漢堡蛋: 75,
+      乳酪餅: 75,
+      丹麥蛋: 105
+    },
+    cat: 'main'
   }, {
-    cat: 'main',
     name: '鱈魚',
     prices: {
-      漢堡蛋: 75,
-      吐司蛋: 75,
       丹麥蛋: 105,
-      乳酪餅: 75
-    }
+      漢堡蛋: 75,
+      乳酪餅: 75,
+      吐司蛋: 75
+    },
+    cat: 'main'
   }, {
-    cat: 'main',
     name: '雙喜雞蛋',
     prices: {
+      丹麥蛋: 110,
       漢堡蛋: 80,
       吐司蛋: 80,
-      丹麥蛋: 110,
       乳酪餅: 80
-    }
+    },
+    cat: 'main'
   }, {
-    cat: 'eggcake',
-    name: '原味',
     prices: {
       default: 40
-    }
+    },
+    name: '原味',
+    cat: 'eggcake'
   }, {
     cat: 'eggcake',
     name: '起士',
@@ -6306,41 +6251,41 @@ const SHANLIN_SEED = {
       default: 50
     }
   }, {
-    cat: 'eggcake',
-    name: '玉米',
     prices: {
       default: 50
-    }
+    },
+    name: '玉米',
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '火腿',
     prices: {
       default: 50
-    }
+    },
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
-    name: '培根',
     prices: {
       default: 50
-    }
+    },
+    name: '培根',
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '肉鬆',
     prices: {
       default: 50
-    }
+    },
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '熱狗',
     prices: {
       default: 55
-    }
+    },
+    cat: 'eggcake'
   }, {
     cat: 'eggcake',
-    name: '豬肉',
     prices: {
       default: 55
-    }
+    },
+    name: '豬肉'
   }, {
     cat: 'eggcake',
     name: '薯餅',
@@ -6355,46 +6300,46 @@ const SHANLIN_SEED = {
     }
   }, {
     cat: 'eggcake',
-    name: '洋芋',
     prices: {
       default: 60
-    }
+    },
+    name: '洋芋'
   }, {
-    cat: 'eggcake',
-    name: '鮪魚',
     prices: {
       default: 65
-    }
+    },
+    name: '鮪魚',
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '豬排',
     prices: {
       default: 65
-    }
+    },
+    cat: 'eggcake'
   }, {
-    cat: 'eggcake',
     name: '燻雞',
     prices: {
       default: 65
-    }
+    },
+    cat: 'eggcake'
   }, {
-    cat: 'noodle',
     name: '蘑菇麵',
     prices: {
       default: 70
-    }
+    },
+    cat: 'noodle'
   }, {
-    cat: 'noodle',
-    name: '黑胡椒麵',
     prices: {
       default: 70
-    }
+    },
+    name: '黑胡椒麵',
+    cat: 'noodle'
   }, {
-    cat: 'noodle',
-    name: '肉醬麵',
     prices: {
       default: 80
-    }
+    },
+    name: '肉醬麵',
+    cat: 'noodle'
   }, {
     cat: 'noodle',
     name: '奶油雞麵',
@@ -6402,23 +6347,23 @@ const SHANLIN_SEED = {
       default: 80
     }
   }, {
-    cat: 'noodle',
     name: '三杯雞麵',
     prices: {
       default: 80
-    }
+    },
+    cat: 'noodle'
   }, {
-    cat: 'noodle',
     name: '宮保雞丁麵',
     prices: {
       default: 80
-    }
+    },
+    cat: 'noodle'
   }, {
-    cat: 'noodle',
     name: '杏鮑菇麵(辣)',
     prices: {
       default: 80
-    }
+    },
+    cat: 'noodle'
   }, {
     cat: 'noodle',
     name: '醬燒板條',
@@ -6426,84 +6371,84 @@ const SHANLIN_SEED = {
       default: 80
     }
   }, {
-    cat: 'noodle',
-    name: '打拋豬飯／麵',
     prices: {
       default: 110
-    }
+    },
+    name: '打拋豬飯／麵',
+    cat: 'noodle'
   }, {
-    cat: 'jam',
-    name: '草莓',
     prices: {
       吐司: 25,
       厚片: 35
-    }
+    },
+    name: '草莓',
+    cat: 'jam'
   }, {
-    cat: 'jam',
     name: '藍莓',
     prices: {
-      吐司: 25,
-      厚片: 35
-    }
+      厚片: 35,
+      吐司: 25
+    },
+    cat: 'jam'
   }, {
-    cat: 'jam',
     name: '花生',
     prices: {
-      吐司: 25,
-      厚片: 35
-    }
+      厚片: 35,
+      吐司: 25
+    },
+    cat: 'jam'
   }, {
-    cat: 'jam',
     name: '奶油',
     prices: {
-      吐司: 25,
-      厚片: 35
-    }
+      厚片: 35,
+      吐司: 25
+    },
+    cat: 'jam'
   }, {
     cat: 'jam',
-    name: '香蒜',
     prices: {
-      吐司: 25,
-      厚片: 35
-    }
+      厚片: 35,
+      吐司: 25
+    },
+    name: '香蒜'
   }, {
     cat: 'jam',
-    name: '奶酥',
     prices: {
-      吐司: 25,
-      厚片: 35
-    }
+      厚片: 35,
+      吐司: 25
+    },
+    name: '奶酥'
   }, {
     cat: 'jam',
-    name: '巧克力',
     prices: {
-      吐司: 25,
-      厚片: 35
-    }
+      厚片: 35,
+      吐司: 25
+    },
+    name: '巧克力'
   }, {
     cat: 'gratin',
-    name: '鮪魚厚片',
     prices: {
       default: 85
-    }
+    },
+    name: '鮪魚厚片'
   }, {
-    cat: 'gratin',
     name: '燻雞厚片',
     prices: {
       default: 85
-    }
+    },
+    cat: 'gratin'
   }, {
-    cat: 'gratin',
     name: '玉米培根厚片',
     prices: {
       default: 85
-    }
+    },
+    cat: 'gratin'
   }, {
-    cat: 'gratin',
     name: '蘑菇麵',
     prices: {
       default: 110
-    }
+    },
+    cat: 'gratin'
   }, {
     cat: 'gratin',
     name: '黑胡椒麵',
@@ -6511,47 +6456,47 @@ const SHANLIN_SEED = {
       default: 110
     }
   }, {
-    cat: 'snack',
+    prices: {
+      default: 25
+    },
     name: '小熱狗',
+    cat: 'snack'
+  }, {
     prices: {
       default: 25
-    }
-  }, {
-    cat: 'snack',
+    },
     name: '蔥花蛋',
-    prices: {
-      default: 25
-    }
+    cat: 'snack'
   }, {
-    cat: 'snack',
     name: '玉米蛋',
     prices: {
       default: 25
-    }
+    },
+    cat: 'snack'
   }, {
-    cat: 'snack',
     name: '小肉豆',
     prices: {
       default: 35
-    }
+    },
+    cat: 'snack'
   }, {
-    cat: 'snack',
     name: '德式香腸',
     prices: {
       default: 35
-    }
+    },
+    cat: 'snack'
   }, {
-    cat: 'snack',
-    name: '炸飯糰',
     prices: {
       default: 35
-    }
+    },
+    name: '炸飯糰',
+    cat: 'snack'
   }, {
-    cat: 'snack',
     name: '蘿蔔糕',
     prices: {
       default: 45
-    }
+    },
+    cat: 'snack'
   }, {
     cat: 'snack',
     name: '麥克雞塊',
@@ -6566,22 +6511,22 @@ const SHANLIN_SEED = {
     }
   }, {
     cat: 'snack',
-    name: '煎餃',
     prices: {
       default: 45
-    }
+    },
+    name: '煎餃'
   }, {
-    cat: 'snack',
     name: '蔥抓餅',
     prices: {
       default: 45
-    }
+    },
+    cat: 'snack'
   }, {
-    cat: 'snack',
-    name: '雞肉圈',
     prices: {
       default: 45
-    }
+    },
+    name: '雞肉圈',
+    cat: 'snack'
   }, {
     cat: 'snack',
     name: '洋蔥圈',
@@ -6589,11 +6534,11 @@ const SHANLIN_SEED = {
       default: 45
     }
   }, {
-    cat: 'snack',
     name: '玉米布丁酥',
     prices: {
       default: 50
-    }
+    },
+    cat: 'snack'
   }, {
     cat: 'snack',
     name: '脆薯條',
@@ -6601,35 +6546,35 @@ const SHANLIN_SEED = {
       default: 50
     }
   }, {
-    cat: 'snack',
     name: '芋頭糕',
     prices: {
       default: 50
-    }
+    },
+    cat: 'snack'
   }, {
     cat: 'snack',
-    name: '檸檬雞柳條',
     prices: {
       default: 50
-    }
+    },
+    name: '檸檬雞柳條'
   }, {
-    cat: 'snack',
     name: '玉米濃湯(冬季)',
     prices: {
       default: 50
-    }
+    },
+    cat: 'snack'
   }, {
-    cat: 'snack',
     name: '鱈魚條',
     prices: {
       default: 55
-    }
+    },
+    cat: 'snack'
   }, {
-    cat: 'snack',
     name: '洋芋沙拉',
     prices: {
       default: 65
-    }
+    },
+    cat: 'snack'
   }, {
     cat: 'snack',
     name: '生菜沙拉',
@@ -6637,12 +6582,6 @@ const SHANLIN_SEED = {
       default: 65
     }
   }, {
-    cat: 'drink',
-    name: '無糖豆漿',
-    prices: {
-      小: 20,
-      大: 35
-    },
     addons: [{
       name: '冰',
       price: 0,
@@ -6651,162 +6590,168 @@ const SHANLIN_SEED = {
       name: '熱',
       price: 0,
       group: '溫度'
-    }]
+    }],
+    prices: {
+      大: 35,
+      小: 20
+    },
+    name: '無糖豆漿',
+    cat: 'drink'
   }, {
     cat: 'drink',
+    addons: [{
+      price: 0,
+      group: '溫度',
+      name: '冰'
+    }, {
+      name: '熱',
+      price: 0,
+      group: '溫度'
+    }],
     name: '豆漿',
     prices: {
-      小: 20,
-      大: 35
-    },
+      大: 35,
+      小: 20
+    }
+  }, {
     addons: [{
-      name: '冰',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '冰'
     }, {
       name: '熱',
       price: 0,
       group: '溫度'
-    }]
-  }, {
-    cat: 'drink',
-    name: '米漿',
+    }],
     prices: {
-      小: 25,
-      大: 40
+      大: 40,
+      小: 25
     },
+    name: '米漿',
+    cat: 'drink'
+  }, {
     addons: [{
       name: '冰',
       price: 0,
       group: '溫度'
     }, {
       name: '熱',
-      price: 0,
-      group: '溫度'
-    }]
-  }, {
-    cat: 'drink',
+      group: '溫度',
+      price: 0
+    }],
     name: '紅茶',
     prices: {
       小: 20,
       大: 25
     },
-    addons: [{
-      name: '冰',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }]
+    cat: 'drink'
   }, {
     cat: 'drink',
+    addons: [{
+      name: '冰',
+      group: '溫度',
+      price: 0
+    }, {
+      price: 0,
+      group: '溫度',
+      name: '熱'
+    }],
     name: '奶茶',
     prices: {
-      小: 20,
-      大: 25
-    },
-    addons: [{
-      name: '冰',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }]
+      大: 25,
+      小: 20
+    }
   }, {
-    cat: 'drink',
     name: '薄糖綠茶',
     prices: {
       小: 20,
       大: 25
     },
     addons: [{
-      name: '冰',
       price: 0,
-      group: '溫度'
+      group: '溫度',
+      name: '冰'
     }, {
-      name: '熱',
+      group: '溫度',
       price: 0,
-      group: '溫度'
-    }]
+      name: '熱'
+    }],
+    cat: 'drink'
   }, {
-    cat: 'drink',
     name: '招牌咖啡',
     prices: {
-      小: 35,
-      大: 45
+      大: 45,
+      小: 35
     },
     addons: [{
       name: '冰',
-      price: 0,
-      group: '溫度'
+      group: '溫度',
+      price: 0
     }, {
       name: '熱',
       price: 0,
       group: '溫度'
-    }]
+    }],
+    cat: 'drink'
   }, {
     cat: 'drink',
-    name: '柳橙汁',
     prices: {
-      小: 30,
-      大: 40
-    }
+      大: 40,
+      小: 30
+    },
+    name: '柳橙汁'
   }, {
     cat: 'drink',
+    addons: [{
+      price: 0,
+      group: '溫度',
+      name: '冰'
+    }, {
+      price: 0,
+      group: '溫度',
+      name: '熱'
+    }],
     name: '薏仁漿',
     prices: {
-      小: 25,
-      大: 40
-    },
-    addons: [{
-      name: '冰',
-      price: 0,
-      group: '溫度'
-    }, {
-      name: '熱',
-      price: 0,
-      group: '溫度'
-    }]
-  }, {
-    cat: 'drink',
-    name: '綠豆沙',
-    prices: {
-      小: 35,
-      大: 45
+      大: 40,
+      小: 25
     }
   }, {
     cat: 'drink',
-    name: '鮮奶茶',
     prices: {
-      小: 35,
-      大: 45
+      大: 45,
+      小: 35
     },
+    name: '綠豆沙'
+  }, {
     addons: [{
-      name: '冰',
+      group: '溫度',
       price: 0,
-      group: '溫度'
+      name: '冰'
     }, {
       name: '熱',
       price: 0,
       group: '溫度'
-    }]
+    }],
+    prices: {
+      小: 35,
+      大: 45
+    },
+    name: '鮮奶茶',
+    cat: 'drink'
   }, {
     cat: 'drink',
-    name: '調味乳',
     prices: {
       小: 35
-    }
+    },
+    name: '調味乳'
   }, {
     cat: 'hotpot',
     name: '鍋燒',
     prices: {
       意麵: 135,
-      雞絲麵: 135,
       烏龍麵: 135,
+      雞絲麵: 135,
       泡飯: 135
     }
   }, {
@@ -6814,29 +6759,80 @@ const SHANLIN_SEED = {
     name: '鮮蝦多多',
     prices: {
       意麵: 230,
-      雞絲麵: 230,
       烏龍麵: 230,
+      雞絲麵: 230,
       泡飯: 230
     }
   }, {
-    cat: 'hotpot',
     name: '蛤蜊多多',
     prices: {
-      意麵: 230,
-      雞絲麵: 230,
       烏龍麵: 230,
-      泡飯: 230
-    }
+      意麵: 230,
+      泡飯: 230,
+      雞絲麵: 230
+    },
+    cat: 'hotpot'
   }, {
     cat: 'hotpot',
     name: '梅花肉多多',
     prices: {
-      意麵: 230,
       雞絲麵: 230,
-      烏龍麵: 230,
-      泡飯: 230
+      泡飯: 230,
+      意麵: 230,
+      烏龍麵: 230
     }
-  }]
+  }],
+  themeBg: 'var(--shanlin-bg)',
+  categories: [{
+    variantLabel: '四種變體 · 丹麥蛋+30',
+    id: 'main',
+    variants: ['漢堡蛋', '吐司蛋', '丹麥蛋', '乳酪餅'],
+    name: '主菜品項'
+  }, {
+    variantLabel: '14 種口味',
+    id: 'eggcake',
+    name: '蛋餅',
+    variants: ['default']
+  }, {
+    name: '鐵板麵類',
+    variants: ['default'],
+    variantLabel: '已加蛋',
+    id: 'noodle'
+  }, {
+    id: 'jam',
+    variantLabel: '吐司$25／厚片$35',
+    name: '果醬類',
+    variants: ['吐司', '厚片']
+  }, {
+    variants: ['default'],
+    name: '焗烤類',
+    variantLabel: '10:30 後供應',
+    id: 'gratin'
+  }, {
+    name: '單點類',
+    variants: ['default'],
+    id: 'snack',
+    variantLabel: '小份點心'
+  }, {
+    variantLabel: '小杯／大杯',
+    id: 'drink',
+    variants: ['小', '大'],
+    name: '飲料類'
+  }, {
+    id: 'hotpot',
+    variantLabel: '四種麵體',
+    variants: ['意麵', '雞絲麵', '烏龍麵', '泡飯'],
+    name: '私房料理'
+  }],
+  hours: '早餐專賣 · 焗烤類 10:30 後供應',
+  id: 'shanlin',
+  note: '主菜可選漢堡蛋／吐司蛋／丹麥蛋(+30)／乳酪餅。鐵板麵+蛋。冬季限定品項冬天才有',
+  nameEn: 'Shan-lin',
+  phone: '(02) 2377-4298',
+  branch: '大安辛亥路',
+  name: '山林美食館',
+  themeColor: 'var(--shanlin)',
+  address: '台北市大安區辛亥路二段171巷31號'
 };
 const SHOP_SEEDS = {
   yusee: YUSEE_SEED,
@@ -7844,8 +7840,25 @@ function ItemRow({
   const hasAddons = (item.addons || []).length > 0;
   // local state: which addons are currently armed for "next click"
   const [armedAddons, setArmedAddons] = useState([]);
+  // Radio-style groups: only one can be selected at a time
+  const RADIO_GROUPS = ['溫度', '冰量', '甜度', '口味'];
   const toggleAddon = addonName => {
-    setArmedAddons(prev => prev.includes(addonName) ? prev.filter(a => a !== addonName) : [...prev, addonName]);
+    const addonObj = (item.addons || []).find(a => a.name === addonName);
+    const group = addonObj?.group || '加購';
+    const isRadio = RADIO_GROUPS.includes(group);
+    setArmedAddons(prev => {
+      if (prev.includes(addonName)) {
+        // Toggle off (un-select)
+        return prev.filter(a => a !== addonName);
+      }
+      if (isRadio) {
+        // Radio: replace any other addon in the same group
+        const sameGroupAddons = (item.addons || []).filter(a => (a.group || '加購') === group).map(a => a.name);
+        return [...prev.filter(a => !sameGroupAddons.includes(a)), addonName];
+      }
+      // Checkbox: just add
+      return [...prev, addonName];
+    });
   };
 
   // compute armed addon delta price
@@ -7968,49 +7981,63 @@ function ItemRow({
     const orderedGroups = [...preferredOrder.filter(g => grouped[g]), ...Object.keys(grouped).filter(g => !preferredOrder.includes(g))];
     return /*#__PURE__*/React.createElement("div", {
       className: "mt-1.5 space-y-1"
-    }, orderedGroups.map(g => /*#__PURE__*/React.createElement("div", {
-      key: g,
-      className: "flex flex-wrap items-center gap-1.5"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "text-[10px] tk-x",
-      style: {
-        color: 'var(--mute)',
-        minWidth: '30px'
-      }
-    }, g), grouped[g].map(addon => {
-      const on = armedAddons.includes(addon.name);
-      return /*#__PURE__*/React.createElement("button", {
-        key: addon.name,
-        onClick: () => toggleAddon(addon.name),
-        className: "btn-tactile px-2 py-1 text-[11px] flex items-center gap-1",
-        style: {
-          border: `1px solid ${on ? shop.themeColor : 'var(--line)'}`,
-          background: on ? shop.themeBg : 'var(--paper)',
-          color: on ? shop.themeColor : 'var(--mute)',
-          fontWeight: on ? 700 : 400
-        }
+    }, orderedGroups.map(g => {
+      const isRadioGroup = RADIO_GROUPS.includes(g);
+      return /*#__PURE__*/React.createElement("div", {
+        key: g,
+        className: "flex flex-wrap items-center gap-1.5"
       }, /*#__PURE__*/React.createElement("span", {
+        className: "text-[10px] tk-x",
         style: {
-          display: 'inline-block',
-          width: 10,
-          height: 10,
-          border: `1.5px solid ${on ? shop.themeColor : 'var(--mute)'}`,
-          background: on ? shop.themeColor : 'transparent',
-          position: 'relative'
+          color: 'var(--mute)',
+          minWidth: '30px'
         }
-      }, on && /*#__PURE__*/React.createElement("span", {
-        style: {
-          position: 'absolute',
-          top: -3,
-          left: 0,
-          color: 'var(--paper)',
-          fontSize: 10,
-          lineHeight: 1
-        }
-      }, "\u2713")), /*#__PURE__*/React.createElement("span", null, addon.name), addon.price !== 0 && /*#__PURE__*/React.createElement("span", {
-        className: "num"
-      }, addon.price >= 0 ? `+$${addon.price}` : `-$${Math.abs(addon.price)}`));
-    }))));
+      }, g, isRadioGroup ? '·' : ''), grouped[g].map(addon => {
+        const on = armedAddons.includes(addon.name);
+        return /*#__PURE__*/React.createElement("button", {
+          key: addon.name,
+          onClick: () => toggleAddon(addon.name),
+          className: "btn-tactile px-2 py-1 text-[11px] flex items-center gap-1",
+          style: {
+            border: `1px solid ${on ? shop.themeColor : 'var(--line)'}`,
+            background: on ? shop.themeBg : 'var(--paper)',
+            color: on ? shop.themeColor : 'var(--mute)',
+            fontWeight: on ? 700 : 400
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            display: 'inline-block',
+            width: 10,
+            height: 10,
+            border: `1.5px solid ${on ? shop.themeColor : 'var(--mute)'}`,
+            background: on ? shop.themeColor : 'transparent',
+            borderRadius: isRadioGroup ? '50%' : '0',
+            position: 'relative'
+          }
+        }, on && !isRadioGroup && /*#__PURE__*/React.createElement("span", {
+          style: {
+            position: 'absolute',
+            top: -3,
+            left: 0,
+            color: 'var(--paper)',
+            fontSize: 10,
+            lineHeight: 1
+          }
+        }, "\u2713"), on && isRadioGroup && /*#__PURE__*/React.createElement("span", {
+          style: {
+            position: 'absolute',
+            top: 1.5,
+            left: 1.5,
+            width: 4,
+            height: 4,
+            background: 'var(--paper)',
+            borderRadius: '50%'
+          }
+        })), /*#__PURE__*/React.createElement("span", null, addon.name), addon.price !== 0 && /*#__PURE__*/React.createElement("span", {
+          className: "num"
+        }, addon.price >= 0 ? `+$${addon.price}` : `-$${Math.abs(addon.price)}`));
+      }));
+    }));
   })());
 }
 
@@ -12200,7 +12227,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.1"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.3"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
