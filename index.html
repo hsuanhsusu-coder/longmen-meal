@@ -8719,11 +8719,12 @@ function OrderEditorDrawer({
     setError('');
     // 套餐 vs 飲料數量檢查
     if (shop.id === 'yusee') {
-      const comboQty = countCombos(draft, shop.id);
-      const swapQty = countSwappedDrinks(draft, shop.id);
-      if (comboQty > swapQty) {
-        const missing = comboQty - swapQty;
-        const proceed = confirm(`⚠ 您點了 ${comboQty} 個套餐、但只配了 ${swapQty} 杯飲料\n\n` + `剩 ${missing} 個套餐沒選飲料。\n\n` + `按【確定】→ 維持預設（剩 ${missing} 份套餐用預設中杯紅茶 M）\n` + `按【取消】→ 回去再選 ${missing} 杯飲料`);
+      // 新邏輯：只檢查「選了 -$25 折扣」的套餐有沒有配對飲料
+      const discountQty = countDiscountCombos(draft, shop.id);
+      const swappedQty = countSwappedDrinks(draft, shop.id);
+      if (discountQty > swappedQty) {
+        const missing = discountQty - swappedQty;
+        const proceed = confirm(`⚠ 您有 ${discountQty} 個套餐選了「換飲品 -$25 折抵」、但只配了 ${swappedQty} 杯自選飲料\n\n` + `剩 ${missing} 個套餐折抵尚未配飲料。\n\n` + `按【取消】→ 回去飲料分類補點 ${missing} 杯（享受折抵）\n` + `按【確定】→ 仍要提交（這 ${missing} 個套餐將沒附飲品也沒折抵）`);
         if (!proceed) return;
       }
     }
@@ -9432,11 +9433,12 @@ function ChildOrderPanel({
     setError('');
     // 套餐 vs 飲料數量檢查
     if (shop.id === 'yusee') {
-      const comboQty = countCombos(draft, shop.id);
-      const swapQty = countSwappedDrinks(draft, shop.id);
-      if (comboQty > swapQty) {
-        const missing = comboQty - swapQty;
-        const proceed = confirm(`⚠ 您點了 ${comboQty} 個套餐、但只配了 ${swapQty} 杯飲料\n\n` + `剩 ${missing} 個套餐沒選飲料。\n\n` + `按【確定】→ 維持預設（剩 ${missing} 份套餐用預設中杯紅茶 M）\n` + `按【取消】→ 回去再選 ${missing} 杯飲料`);
+      // 新邏輯：只檢查「選了 -$25 折扣」的套餐有沒有配對飲料
+      const discountQty = countDiscountCombos(draft, shop.id);
+      const swappedQty = countSwappedDrinks(draft, shop.id);
+      if (discountQty > swappedQty) {
+        const missing = discountQty - swappedQty;
+        const proceed = confirm(`⚠ 您有 ${discountQty} 個套餐選了「換飲品 -$25 折抵」、但只配了 ${swappedQty} 杯自選飲料\n\n` + `剩 ${missing} 個套餐折抵尚未配飲料。\n\n` + `按【取消】→ 回去飲料分類補點 ${missing} 杯（享受折抵）\n` + `按【確定】→ 仍要提交（這 ${missing} 個套餐將沒附飲品也沒折抵）`);
         if (!proceed) return;
       }
     }
@@ -12596,7 +12598,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.8"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.9"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
