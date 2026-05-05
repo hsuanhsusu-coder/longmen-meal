@@ -601,7 +601,7 @@ function recomputeComboSwap(draft, shopId) {
 /* ════════════════════════════════════════════════════════════
    MENU SEED DATA — used to populate Firestore on first run
    Synced from production Firestore on 2026-05-05
-   (corrects user-edited names & layouts)
+   v0.8.4: removed 冰量 from badudu drink/coffee
    ════════════════════════════════════════════════════════════ */
 
 const YUSEE_SEED = {
@@ -5384,22 +5384,6 @@ const BADUDU_SEED = {
       group: '溫度',
       price: 0,
       name: '冰'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '正常冰'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      price: 0,
-      group: '冰量'
     }]
   }, {
     addons: [{
@@ -5418,22 +5402,6 @@ const BADUDU_SEED = {
       name: '冰',
       price: 0,
       group: '溫度'
-    }, {
-      name: '正常冰',
-      group: '冰量',
-      price: 0
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '少冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '微冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '去冰'
     }],
     name: '奶茶',
     prices: {
@@ -5459,22 +5427,6 @@ const BADUDU_SEED = {
       group: '溫度',
       price: 0,
       name: '冰'
-    }, {
-      name: '正常冰',
-      group: '冰量',
-      price: 0
-    }, {
-      name: '少冰',
-      group: '冰量',
-      price: 0
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '去冰'
     }],
     name: '綠茶',
     prices: {
@@ -5622,22 +5574,6 @@ const BADUDU_SEED = {
       name: '冰',
       price: 0,
       group: '溫度'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '正常冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '少冰'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '去冰'
     }]
   }, {
     cat: 'drink',
@@ -5662,22 +5598,6 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度',
       name: '冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '正常冰'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '少冰'
-    }, {
-      name: '微冰',
-      group: '冰量',
-      price: 0
-    }, {
-      name: '去冰',
-      group: '冰量',
-      price: 0
     }]
   }, {
     prices: {
@@ -5701,22 +5621,6 @@ const BADUDU_SEED = {
       name: '冰',
       group: '溫度',
       price: 0
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '正常冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '少冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '微冰'
-    }, {
-      name: '去冰',
-      group: '冰量',
-      price: 0
     }],
     cat: 'drink'
   }, {
@@ -5736,22 +5640,6 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度',
       name: '冰'
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '正常冰'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '少冰'
-    }, {
-      name: '微冰',
-      group: '冰量',
-      price: 0
-    }, {
-      name: '去冰',
-      group: '冰量',
-      price: 0
     }],
     name: '愛戀蘋果汁',
     prices: {
@@ -5816,22 +5704,6 @@ const BADUDU_SEED = {
       name: '冰',
       group: '溫度',
       price: 0
-    }, {
-      name: '正常冰',
-      group: '冰量',
-      price: 0
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '去冰',
-      group: '冰量',
-      price: 0
     }]
   }, {
     prices: {
@@ -5851,22 +5723,6 @@ const BADUDU_SEED = {
       name: '冰',
       price: 0,
       group: '溫度'
-    }, {
-      name: '正常冰',
-      group: '冰量',
-      price: 0
-    }, {
-      name: '少冰',
-      group: '冰量',
-      price: 0
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '微冰'
-    }, {
-      name: '去冰',
-      group: '冰量',
-      price: 0
     }],
     cat: 'coffee'
   }, {
@@ -5883,22 +5739,6 @@ const BADUDU_SEED = {
       price: 0,
       group: '溫度',
       name: '冰'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '正常冰'
-    }, {
-      name: '少冰',
-      group: '冰量',
-      price: 0
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '微冰'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '去冰'
     }],
     prices: {
       M: 50,
@@ -5923,22 +5763,6 @@ const BADUDU_SEED = {
       name: '冰',
       price: 0,
       group: '溫度'
-    }, {
-      price: 0,
-      group: '冰量',
-      name: '正常冰'
-    }, {
-      name: '少冰',
-      price: 0,
-      group: '冰量'
-    }, {
-      name: '微冰',
-      group: '冰量',
-      price: 0
-    }, {
-      group: '冰量',
-      price: 0,
-      name: '去冰'
     }],
     cat: 'coffee'
   }],
@@ -8069,7 +7893,7 @@ function MenuSections({
       });
       return n;
     }, 0);
-    const defaultOpen = expandAll || idx === 0 || itemsOrderedFromCat > 0;
+    const defaultOpen = expandAll || itemsOrderedFromCat > 0;
     return /*#__PURE__*/React.createElement("details", {
       key: cat.id,
       className: "mb-2",
@@ -12227,7 +12051,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.3"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.4"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
