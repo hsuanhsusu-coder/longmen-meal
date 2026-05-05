@@ -494,9 +494,10 @@ const formatDateBig = s => {
     dd: d.getDate()
   };
 };
-const itemKey = (shopId, catId, name, variant, addons) => {
+const itemKey = (shopId, catId, name, variant, addons, comboMeta) => {
   const addonStr = addons && addons.length ? `|+${[...addons].sort().join(',')}` : '';
-  return `${shopId}|${catId}|${name}|${variant}${addonStr}`;
+  const metaStr = comboMeta ? `|套餐:${comboMeta.drink || ''}-${comboMeta.temp || ''}` : '';
+  return `${shopId}|${catId}|${name}|${variant}${addonStr}${metaStr}`;
 };
 const safeKey = k => k.replace(/[\/\.\#\$\[\]]/g, '_');
 const fmtTime = ts => {
@@ -530,6 +531,11 @@ const isOverrideAction = (account, swimmerId, isCutoff) => {
 /* combo discount system — early-warn parents who ordered combo + drink but didn't tick "換飲品 -$25" */
 const COMBO_CATS = ['platter', 'burger', 'ricebox']; // 早安有喜套餐分類
 const DRINK_CATS = ['tea', 'milktea', 'honey', 'fruit', 'coffee']; // 早安有喜飲品分類
+
+/* 呷霸套餐分類 — 必須選一杯指定飲品（紅茶/奶茶/綠茶 + 熱/溫/涼/冰）  */
+const BADUDU_SET_CATS = ['set', 'combo'];
+const BADUDU_SET_DRINKS = ['紅茶', '奶茶', '綠茶'];
+const BADUDU_SET_TEMPS = ['熱', '溫', '涼', '冰'];
 
 /* 計算訂單裡的套餐總數量 (展開 qty) */
 function countCombos(orderItems, shopId) {
@@ -7643,6 +7649,102 @@ function OrderView({
    Core principle: edit in LOCAL state, batch-submit to Firestore
    ════════════════════════════════════════════════════════════ */
 
+/* 呷霸套餐強制選飲品 modal */
+function BaduduSetModal({
+  shop,
+  item,
+  variant,
+  onConfirm,
+  onCancel
+}) {
+  const [drink, setDrink] = useState(null);
+  const [temp, setTemp] = useState(null);
+  const ready = drink && temp;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center p-4",
+    style: {
+      background: 'rgba(0,0,0,0.5)'
+    },
+    onClick: onCancel
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-md w-full p-5",
+    style: {
+      background: 'var(--paper)',
+      border: `2px solid ${shop.themeColor}`
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "display-cn text-lg mb-3",
+    style: {
+      color: shop.themeColor
+    }
+  }, "\uD83C\uDF71 ", item.name), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs mb-4",
+    style: {
+      color: 'var(--ink-2)'
+    }
+  }, "\u5957\u9910\u5DF2\u9644\u4E2D\u676F\u98F2\u54C1\uFF0C\u8ACB\u9078\u64C7\u98F2\u54C1\u7A2E\u985E\u8207\u6EAB\u5EA6"), /*#__PURE__*/React.createElement("div", {
+    className: "mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs tk-x mb-1.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u98F2\u54C1 \xB7 \u4EFB\u9078 1"), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, BADUDU_SET_DRINKS.map(d => /*#__PURE__*/React.createElement("button", {
+    key: d,
+    onClick: () => setDrink(d),
+    className: "btn-tactile flex-1 py-2 text-sm",
+    style: {
+      border: `1.5px solid ${drink === d ? shop.themeColor : 'var(--line)'}`,
+      background: drink === d ? shop.themeBg : 'var(--paper)',
+      color: drink === d ? shop.themeColor : 'var(--ink-2)',
+      fontWeight: drink === d ? 700 : 400
+    }
+  }, d)))), /*#__PURE__*/React.createElement("div", {
+    className: "mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs tk-x mb-1.5",
+    style: {
+      color: 'var(--mute)'
+    }
+  }, "\u6EAB\u5EA6 \xB7 \u4EFB\u9078 1"), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, BADUDU_SET_TEMPS.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t,
+    onClick: () => setTemp(t),
+    className: "btn-tactile flex-1 py-2 text-sm",
+    style: {
+      border: `1.5px solid ${temp === t ? shop.themeColor : 'var(--line)'}`,
+      background: temp === t ? shop.themeBg : 'var(--paper)',
+      color: temp === t ? shop.themeColor : 'var(--ink-2)',
+      fontWeight: temp === t ? 700 : 400
+    }
+  }, t)))), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    className: "btn-tactile flex-1 py-2 text-sm",
+    style: {
+      border: '1.5px solid var(--line)',
+      color: 'var(--ink-2)'
+    }
+  }, "\u53D6\u6D88"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => ready && onConfirm({
+      drink,
+      temp
+    }),
+    disabled: !ready,
+    className: "btn-tactile flex-1 py-2 text-sm display-cn",
+    style: {
+      background: ready ? shop.themeColor : 'var(--mute)',
+      color: 'var(--paper)',
+      cursor: ready ? 'pointer' : 'not-allowed'
+    }
+  }, "\u2713 \u52A0\u5165\u8A02\u55AE"))));
+}
+
 /* Single item row with +/- buttons, single price-button per variant */
 function ItemRow({
   item,
@@ -8057,7 +8159,13 @@ function CartLine({
       color: shop.themeColor,
       fontWeight: 700
     }
-  }, addonsList.map(a => `+${a}`).join(' '))), /*#__PURE__*/React.createElement("div", {
+  }, addonsList.map(a => `+${a}`).join(' ')), line.comboMeta && /*#__PURE__*/React.createElement("span", {
+    className: "text-xs ml-1",
+    style: {
+      color: shop.themeColor,
+      fontWeight: 700
+    }
+  }, "\xB7 \u9644", line.comboMeta.drink, line.comboMeta.temp)), /*#__PURE__*/React.createElement("div", {
     className: "num text-xs mt-0.5",
     style: {
       color: 'var(--ink-2)'
@@ -8169,6 +8277,8 @@ function OrderEditorDrawer({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // Pending badudu set modal: {item, variant, addons} — when user clicks + on a set/combo
+  const [pendingSetModal, setPendingSetModal] = useState(null);
   const grade = GRADE_INFO[member.grade] || {
     label: '?',
     color: 'var(--mute)'
@@ -8219,17 +8329,11 @@ function OrderEditorDrawer({
     });
     setDraft(recomputeComboSwap(newDraft, shop.id));
   };
-  const onAdd = (item, variant, addons) => {
-    addons = addons || [];
-    const k = itemKey(shop.id, item.cat, item.name, variant, addons);
-    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
 
-    // 點套餐跳提示
-    if (shop.id === 'yusee' && COMBO_CATS.includes(item.cat)) {
-      setTimeout(() => {
-        alert(`🍱 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `提醒：套餐已附中杯紅茶 M。\n\n` + `✦ 不換 → 不用做事，店家會給預設紅茶\n` + `✦ 想換其他飲品 → 去飲料分類點 1 杯（系統會自動套用 -$25 折抵）`);
-      }, 100);
-    }
+  // 真正執行加入訂單（含 comboMeta 支援）
+  const reallyAdd = (item, variant, addons, comboMeta) => {
+    const k = itemKey(shop.id, item.cat, item.name, variant, addons, comboMeta);
+    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
     setDraft(d => {
       const cur = d[k];
       const next = {
@@ -8242,6 +8346,7 @@ function OrderEditorDrawer({
           price: item.prices[variant] + addonPriceDelta,
           basePrice: item.prices[variant],
           addons: addons.length ? [...addons] : undefined,
+          comboMeta: comboMeta || undefined,
           qty: (cur?.qty || 0) + 1,
           note: cur?.note || '',
           addedAt: cur?.addedAt || Date.now()
@@ -8249,7 +8354,7 @@ function OrderEditorDrawer({
       };
       const recomputed = recomputeComboSwap(next, shop.id);
 
-      // 如果是飲料、且這次 add 後此行新增折抵、跳出提示
+      // 早安有喜飲料折抵提示
       if (shop.id === 'yusee' && DRINK_CATS.includes(item.cat)) {
         const newLine = recomputed[k];
         const oldSwapQty = cur?.swapQty || 0;
@@ -8262,6 +8367,40 @@ function OrderEditorDrawer({
       }
       return recomputed;
     });
+  };
+  const onAdd = (item, variant, addons) => {
+    addons = addons || [];
+    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
+
+    // 呷霸套餐 → 強制跳 modal 選飲品
+    if (shop.id === 'badudu' && BADUDU_SET_CATS.includes(item.cat)) {
+      // 檢查訂單是否已有此套餐 (任一飲品搭配) — 如果有，按 + 算進其中之一
+      const existingKey = Object.keys(draft).find(k => {
+        const l = draft[k];
+        return l && l.cat === item.cat && l.name === item.name && l.variant === variant;
+      });
+      if (existingKey) {
+        // 已有同套餐 → 直接 +1 (用同樣 comboMeta)
+        const existing = draft[existingKey];
+        reallyAdd(item, variant, addons, existing.comboMeta);
+      } else {
+        // 第一次點 → 跳 modal
+        setPendingSetModal({
+          item,
+          variant,
+          addons
+        });
+      }
+      return;
+    }
+
+    // 早安有喜套餐跳提示
+    if (shop.id === 'yusee' && COMBO_CATS.includes(item.cat)) {
+      setTimeout(() => {
+        alert(`🍱 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `提醒：套餐已附中杯紅茶 M。\n\n` + `✦ 不換 → 不用做事，店家會給預設紅茶\n` + `✦ 想換其他飲品 → 去飲料分類點 1 杯（系統會自動套用 -$25 折抵）`);
+      }, 100);
+    }
+    reallyAdd(item, variant, addons);
   };
   const onSub = (item, variant, addons) => {
     addons = addons || [];
@@ -8401,7 +8540,16 @@ function OrderEditorDrawer({
       background: 'rgba(0,0,0,0.4)'
     },
     onClick: tryClose
-  }, /*#__PURE__*/React.createElement("div", {
+  }, pendingSetModal && /*#__PURE__*/React.createElement(BaduduSetModal, {
+    shop: shop,
+    item: pendingSetModal.item,
+    variant: pendingSetModal.variant,
+    onConfirm: comboMeta => {
+      reallyAdd(pendingSetModal.item, pendingSetModal.variant, pendingSetModal.addons, comboMeta);
+      setPendingSetModal(null);
+    },
+    onCancel: () => setPendingSetModal(null)
+  }), "      ", /*#__PURE__*/React.createElement("div", {
     className: "absolute inset-0 sm:inset-4 sm:max-w-4xl sm:mx-auto slide-up flex flex-col",
     style: {
       background: 'var(--bg)',
@@ -8789,6 +8937,8 @@ function ChildOrderPanel({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [justSubmitted, setJustSubmitted] = useState(false);
+  // Pending badudu set modal
+  const [pendingSetModal, setPendingSetModal] = useState(null);
   // Track who/when last submitted, to detect "someone else just changed this"
   const [lastSeenSubmittedAt, setLastSeenSubmittedAt] = useState(existingOrder?.submittedAt || null);
   const [lastSeenSubmittedBy, setLastSeenSubmittedBy] = useState(existingOrder?.submittedByName || null);
@@ -8845,17 +8995,11 @@ function ChildOrderPanel({
     });
     setDraft(recomputeComboSwap(newDraft, shop.id));
   };
-  const onAdd = (item, variant, addons) => {
-    addons = addons || [];
-    const k = itemKey(shop.id, item.cat, item.name, variant, addons);
-    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
 
-    // 點套餐跳提示
-    if (shop.id === 'yusee' && COMBO_CATS.includes(item.cat)) {
-      setTimeout(() => {
-        alert(`🍱 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `提醒：套餐已附中杯紅茶 M。\n\n` + `✦ 不換 → 不用做事，店家會給預設紅茶\n` + `✦ 想換其他飲品 → 去飲料分類點 1 杯（系統會自動套用 -$25 折抵）`);
-      }, 100);
-    }
+  // 真正執行加入訂單（含 comboMeta 支援）
+  const reallyAdd = (item, variant, addons, comboMeta) => {
+    const k = itemKey(shop.id, item.cat, item.name, variant, addons, comboMeta);
+    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
     setDraft(d => {
       const cur = d[k];
       const next = {
@@ -8868,6 +9012,7 @@ function ChildOrderPanel({
           price: item.prices[variant] + addonPriceDelta,
           basePrice: item.prices[variant],
           addons: addons.length ? [...addons] : undefined,
+          comboMeta: comboMeta || undefined,
           qty: (cur?.qty || 0) + 1,
           note: cur?.note || '',
           addedAt: cur?.addedAt || Date.now()
@@ -8875,7 +9020,7 @@ function ChildOrderPanel({
       };
       const recomputed = recomputeComboSwap(next, shop.id);
 
-      // 如果是飲料、且這次 add 後此行新增折抵、跳出提示
+      // 早安有喜飲料折抵提示
       if (shop.id === 'yusee' && DRINK_CATS.includes(item.cat)) {
         const newLine = recomputed[k];
         const oldSwapQty = cur?.swapQty || 0;
@@ -8888,6 +9033,40 @@ function ChildOrderPanel({
       }
       return recomputed;
     });
+  };
+  const onAdd = (item, variant, addons) => {
+    addons = addons || [];
+    const addonPriceDelta = (item.addons || []).filter(a => addons.includes(a.name)).reduce((s, a) => s + (a.price || 0), 0);
+
+    // 呷霸套餐 → 強制跳 modal 選飲品
+    if (shop.id === 'badudu' && BADUDU_SET_CATS.includes(item.cat)) {
+      // 檢查訂單是否已有此套餐 (任一飲品搭配) — 如果有，按 + 算進其中之一
+      const existingKey = Object.keys(draft).find(k => {
+        const l = draft[k];
+        return l && l.cat === item.cat && l.name === item.name && l.variant === variant;
+      });
+      if (existingKey) {
+        // 已有同套餐 → 直接 +1 (用同樣 comboMeta)
+        const existing = draft[existingKey];
+        reallyAdd(item, variant, addons, existing.comboMeta);
+      } else {
+        // 第一次點 → 跳 modal
+        setPendingSetModal({
+          item,
+          variant,
+          addons
+        });
+      }
+      return;
+    }
+
+    // 早安有喜套餐跳提示
+    if (shop.id === 'yusee' && COMBO_CATS.includes(item.cat)) {
+      setTimeout(() => {
+        alert(`🍱 已加入【${item.name}】 $${item.prices[variant] + addonPriceDelta}\n\n` + `提醒：套餐已附中杯紅茶 M。\n\n` + `✦ 不換 → 不用做事，店家會給預設紅茶\n` + `✦ 想換其他飲品 → 去飲料分類點 1 杯（系統會自動套用 -$25 折抵）`);
+      }, 100);
+    }
+    reallyAdd(item, variant, addons);
   };
   const onSub = (item, variant, addons) => {
     addons = addons || [];
@@ -9187,7 +9366,16 @@ function ChildOrderPanel({
   /* ───── EDIT MODE: show menu + draft cart ───── */
   return /*#__PURE__*/React.createElement("div", {
     className: "pb-32"
-  }, externalChangeNotice && /*#__PURE__*/React.createElement("div", {
+  }, pendingSetModal && /*#__PURE__*/React.createElement(BaduduSetModal, {
+    shop: shop,
+    item: pendingSetModal.item,
+    variant: pendingSetModal.variant,
+    onConfirm: comboMeta => {
+      reallyAdd(pendingSetModal.item, pendingSetModal.variant, pendingSetModal.addons, comboMeta);
+      setPendingSetModal(null);
+    },
+    onCancel: () => setPendingSetModal(null)
+  }), externalChangeNotice && /*#__PURE__*/React.createElement("div", {
     className: "mb-4 p-3 text-sm pop-in flex items-start gap-2",
     style: {
       background: 'var(--note-bg)',
@@ -9583,6 +9771,9 @@ function SummaryView({
     if (line.addons && line.addons.length) {
       nameStr += line.addons.map(a => `+${a}`).join('');
     }
+    if (line.comboMeta) {
+      nameStr += `·附${line.comboMeta.drink}${line.comboMeta.temp}`;
+    }
     parts.push(nameStr);
     const grossSubtotal = (line.qty || 0) * (line.price || 0);
     const swapDiscount = 25 * (line.swapQty || 0);
@@ -9761,7 +9952,12 @@ function SummaryView({
           color: shop.themeColor,
           fontWeight: 700
         }
-      }, addonsStr)), /*#__PURE__*/React.createElement("span", {
+      }, addonsStr), l.comboMeta && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: shop.themeColor,
+          fontWeight: 700
+        }
+      }, " \xB7 \u9644", l.comboMeta.drink, l.comboMeta.temp)), /*#__PURE__*/React.createElement("span", {
         className: "num text-[11px]",
         style: {
           color: 'var(--mute)'
@@ -12051,7 +12247,7 @@ function HelpSheet({
           color: 'var(--mute)',
           fontSize: '11px'
         }
-      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.4"))
+      }, "\u7CFB\u7D71\u7248\u672C\uFF1Av0.8.5"))
     }
   };
   const visibleSections = Object.entries(sections).filter(([k, s]) => !s.roles || s.roles.includes(role));
@@ -12628,6 +12824,7 @@ function App() {
           if (v.swapApplied) line.swapApplied = true;
           if (v.swapQty) line.swapQty = v.swapQty;
           if (v.addedAt) line.addedAt = v.addedAt;
+          if (v.comboMeta) line.comboMeta = v.comboMeta;
           sanitized[k] = line;
         }
       });
